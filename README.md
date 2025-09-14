@@ -13,4 +13,4 @@ npm install (only for the first time)
 npm run dev
 
 
-* Add all new screens to the pages folder
+* Add all new screens to the src/views folder and update the router in router.js
