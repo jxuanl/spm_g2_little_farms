@@ -1,7 +1,7 @@
 # SPM_Project_G2
 
 Folder structure
-/src → Source code
+/little_farms/src → Source code
 /tests → Test cases
 /docs → Documentation (README, design docs, etc.)
 /scripts → Utility or setup scripts
