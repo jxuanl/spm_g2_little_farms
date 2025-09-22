@@ -17,21 +17,21 @@
       </button>
 
       <nav class="space-y-2">
-        <button
+        <router-link
           v-for="item in menuItems"
           :key="item.id"
+          :to="item.path"
           :class="[
             'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50',
             'w-full justify-start h-10 px-4 py-2',
-            activeView === item.id 
+            $route.path === item.path
               ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' 
               : 'hover:bg-accent hover:text-accent-foreground'
           ]"
-          @click="$emit('viewChange', item.id)"
         >
           <component :is="item.icon" class="w-4 h-4 mr-3" />
           {{ item.label }}
-        </button>
+        </router-link>
       </nav>
     </div>
 
@@ -110,24 +110,22 @@ interface Project {
 }
 
 interface Props {
-  activeView: string;
   activeProject: string;
 }
 
 defineProps<Props>();
 
 defineEmits<{
-  viewChange: [view: string];
   projectChange: [projectId: string];
   createTask: [];
 }>();
 
 const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: Home },
-  { id: "my-tasks", label: "My Tasks", icon: Users },
-  { id: "calendar", label: "Calendar", icon: Calendar },
-  { id: "reports", label: "Reports", icon: BarChart3 },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
+  { id: "my-tasks", label: "My Tasks", icon: Users, path: "/my-tasks" },
+  { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
+  { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
+  { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 
 const projects: Project[] = [
