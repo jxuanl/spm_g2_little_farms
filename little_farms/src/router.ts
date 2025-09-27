@@ -7,6 +7,7 @@ import Reports from './views/Reports.vue'
 import Settings from './views/Settings.vue'
 import Home from './views/Home.vue'
 import About from './views/About.vue'
+import LoginPage from './views/LoginPage.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/dashboard' },
@@ -16,7 +17,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/reports', component: Reports },
   { path: '/settings', component: Settings },
   { path: '/home', component: Home },
-  { path: '/about', component: About }
+  { path: '/about', component: About },
+  { path: '/login', component: LoginPage },
 ]
 
 const router = createRouter({
