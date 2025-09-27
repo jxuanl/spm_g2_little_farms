@@ -165,31 +165,25 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, reactive } from 'vue';
 import { CalendarIcon, X } from 'lucide-vue-next';
-import type { Task } from '../types/Task';
 
-interface Props {
-  isOpen: boolean;
-}
+defineProps({
+  isOpen: Boolean
+});
 
-defineProps<Props>();
-
-const emit = defineEmits<{
-  close: [];
-  createTask: [task: Task];
-}>();
+const emit = defineEmits(['close', 'createTask']);
 
 const formData = reactive({
   title: "",
   description: "",
-  priority: "medium" as Task['priority'],
-  status: "todo" as Task['status'],
+  priority: "medium",
+  status: "todo",
   project: "website",
   assignee: "john-doe",
   dueDate: "",
-  tags: [] as string[],
+  tags: [],
 });
 
 const newTag = ref("");
@@ -213,7 +207,7 @@ const handleSubmit = () => {
   const assignee = assignees.find(a => a.id === formData.assignee);
   const project = projects.find(p => p.id === formData.project);
 
-  const newTask: Task = {
+  const newTask = {
     id: Date.now().toString(),
     title: formData.title,
     description: formData.description,
@@ -237,8 +231,8 @@ const handleSubmit = () => {
   Object.assign(formData, {
     title: "",
     description: "",
-    priority: "medium" as Task['priority'],
-    status: "todo" as Task['status'],
+    priority: "medium",
+    status: "todo",
     project: "website",
     assignee: "john-doe",
     dueDate: "",
@@ -256,7 +250,7 @@ const addTag = () => {
   }
 };
 
-const removeTag = (tagToRemove: string) => {
+const removeTag = (tagToRemove) => {
   const index = formData.tags.indexOf(tagToRemove);
   if (index > -1) {
     formData.tags.splice(index, 1);
