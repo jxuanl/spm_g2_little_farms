@@ -30,16 +30,15 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed } from 'vue';
 import TaskSidebar from '../components/TaskSidebar.vue';
 import TaskHeader from '../components/TaskHeader.vue';
 import TaskList from '../components/TaskList.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
-import type { Task } from '../types/Task';
 
 // Mock data for demonstration
-const initialTasks: Task[] = [
+const initialTasks = [
   {
     id: "1",
     title: "Redesign landing page header",
@@ -126,7 +125,7 @@ const initialTasks: Task[] = [
   }
 ];
 
-const tasks = ref<Task[]>(initialTasks);
+const tasks = ref(initialTasks);
 const activeProject = ref("all");
 const searchQuery = ref("");
 const statusFilter = ref("all");
@@ -146,31 +145,31 @@ const filteredTasks = computed(() => {
   });
 });
 
-const setActiveProject = (project: string) => {
+const setActiveProject = (project) => {
   activeProject.value = project;
 };
 
-const setSearchQuery = (query: string) => {
+const setSearchQuery = (query) => {
   searchQuery.value = query;
 };
 
-const setStatusFilter = (status: string) => {
+const setStatusFilter = (status) => {
   statusFilter.value = status;
 };
 
-const setPriorityFilter = (priority: string) => {
+const setPriorityFilter = (priority) => {
   priorityFilter.value = priority;
 };
 
-const setIsCreateModalOpen = (open: boolean) => {
+const setIsCreateModalOpen = (open) => {
   isCreateModalOpen.value = open;
 };
 
-const handleCreateTask = (newTask: Task) => {
+const handleCreateTask = (newTask) => {
   tasks.value = [newTask, ...tasks.value];
 };
 
-const handleTaskClick = (taskId: string) => {
+const handleTaskClick = (taskId) => {
   console.log("Edit task:", taskId);
   // In a real app, this would open an edit modal or navigate to task detail
 };

@@ -107,7 +107,7 @@
                 type="text"
                 placeholder="Search tasks..."
                 :value="searchQuery"
-                @input="$emit('searchChange', ($event.target as HTMLInputElement).value)"
+                @input="$emit('searchChange', $event.target.value)"
                 class="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pl-10"
               />
             </div>
@@ -115,7 +115,7 @@
             <div class="relative">
               <select 
                 :value="statusFilter" 
-                @change="$emit('statusFilterChange', ($event.target as HTMLSelectElement).value)"
+                @change="$emit('statusFilterChange', $event.target.value)"
                 class="flex h-10 w-40 items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="all">All Status</option>
@@ -129,7 +129,7 @@
             <div class="relative">
               <select 
                 :value="priorityFilter" 
-                @change="$emit('priorityFilterChange', ($event.target as HTMLSelectElement).value)"
+                @change="$emit('priorityFilterChange', $event.target.value)"
                 class="flex h-10 w-40 items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="all">All Priority</option>
@@ -343,9 +343,8 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed } from 'vue';
-import type { Task } from '../types/Task';
 import { 
   Plus, 
   TrendingUp, 
@@ -361,24 +360,22 @@ import {
   SortAsc
 } from 'lucide-vue-next';
 
-interface Props {
-  tasks: Task[];
-  searchQuery: string;
-  statusFilter: string;
-  priorityFilter: string;
-}
+const props = defineProps({
+  tasks: Array,
+  searchQuery: String,
+  statusFilter: String,
+  priorityFilter: String
+});
 
-const props = defineProps<Props>();
+defineEmits([
+  'taskClick',
+  'createTask',
+  'searchChange',
+  'statusFilterChange',
+  'priorityFilterChange'
+]);
 
-defineEmits<{
-  taskClick: [taskId: string];
-  createTask: [];
-  searchChange: [query: string];
-  statusFilterChange: [status: string];
-  priorityFilterChange: [priority: string];
-}>();
-
-const openDropdown = ref<string | null>(null);
+const openDropdown = ref(null);
 
 // Calculate statistics
 const totalTasks = computed(() => props.tasks.length);
@@ -406,10 +403,10 @@ const priorityConfig = {
   low: { label: "Low", variant: "outline" },
 };
 
-const getStatusConfig = (status: Task['status']) => statusConfig[status];
-const getPriorityConfig = (priority: Task['priority']) => priorityConfig[priority];
+const getStatusConfig = (status) => statusConfig[status];
+const getPriorityConfig = (priority) => priorityConfig[priority];
 
-const getPriorityClasses = (priority: Task['priority']) => {
+const getPriorityClasses = (priority) => {
   const variant = getPriorityConfig(priority).variant;
   switch (variant) {
     case 'destructive':
@@ -423,20 +420,20 @@ const getPriorityClasses = (priority: Task['priority']) => {
   }
 };
 
-const isTaskOverdue = (task: Task) => 
+const isTaskOverdue = (task) => 
   new Date(task.dueDate) < new Date() && task.status !== "done";
 
-const isTaskDueSoon = (task: Task) => 
+const isTaskDueSoon = (task) => 
   new Date(task.dueDate) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) && 
   new Date(task.dueDate) > new Date() && task.status !== "done";
 
-const getDateClasses = (task: Task) => {
+const getDateClasses = (task) => {
   if (isTaskOverdue(task)) return 'text-destructive';
   if (isTaskDueSoon(task)) return 'text-yellow-600';
   return '';
 };
 
-const toggleTaskDropdown = (taskId: string) => {
+const toggleTaskDropdown = (taskId) => {
   openDropdown.value = openDropdown.value === taskId ? null : taskId;
 };
 </script>

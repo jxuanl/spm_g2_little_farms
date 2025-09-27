@@ -90,7 +90,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { 
   Home, 
   Folder, 
@@ -102,23 +102,11 @@ import {
   ChevronDown
 } from 'lucide-vue-next';
 
-interface Project {
-  id: string;
-  name: string;
-  tasksCount: number;
-  color: string;
-}
+defineProps({
+  activeProject: String
+});
 
-interface Props {
-  activeProject: string;
-}
-
-defineProps<Props>();
-
-defineEmits<{
-  projectChange: [projectId: string];
-  createTask: [];
-}>();
+defineEmits(['projectChange', 'createTask']);
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
@@ -128,7 +116,7 @@ const menuItems = [
   { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 
-const projects: Project[] = [
+const projects = [
   { id: "all", name: "All Tasks", tasksCount: 24, color: "bg-blue-500" },
   { id: "website", name: "Website Redesign", tasksCount: 8, color: "bg-green-500" },
   { id: "mobile", name: "Mobile App", tasksCount: 12, color: "bg-purple-500" },

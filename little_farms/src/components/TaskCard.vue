@@ -122,7 +122,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed } from 'vue';
 import { 
   Calendar, 
@@ -132,17 +132,12 @@ import {
   Clock,
   Flag
 } from 'lucide-vue-next';
-import type { Task } from '../types/Task';
 
-interface Props {
-  task: Task;
-}
+const props = defineProps({
+  task: Object
+});
 
-const props = defineProps<Props>();
-
-defineEmits<{
-  taskClick: [taskId: string];
-}>();
+defineEmits(['taskClick']);
 
 const showDropdown = ref(false);
 

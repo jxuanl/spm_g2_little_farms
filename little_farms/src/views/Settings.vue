@@ -39,25 +39,24 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue';
 import { Settings as SettingsIcon } from 'lucide-vue-next';
 import TaskSidebar from '../components/TaskSidebar.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
-import type { Task } from '../types/Task';
 
 const activeProject = ref("all");
 const isCreateModalOpen = ref(false);
 
-const setActiveProject = (project: string) => {
+const setActiveProject = (project) => {
   activeProject.value = project;
 };
 
-const setIsCreateModalOpen = (open: boolean) => {
+const setIsCreateModalOpen = (open) => {
   isCreateModalOpen.value = open;
 };
 
-const handleCreateTask = (newTask: Task) => {
+const handleCreateTask = (newTask) => {
   console.log("Create task:", newTask);
 };
 </script>
