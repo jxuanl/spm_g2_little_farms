@@ -2,6 +2,6 @@
   <router-view />
 </template>
 
-<script setup lang="ts">
+<script setup>
 // App.vue now acts as the main container for router views
 </script>
