@@ -6,6 +6,7 @@ import Reports from '../src/views/Reports.vue'
 import Settings from '../src/views/Settings.vue'
 import Home from '../src/views/Home.vue'
 import About from '../src/views/About.vue'
+import login from '../src/views/LoginPage.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -15,7 +16,8 @@ const routes = [
   { path: '/reports', component: Reports },
   { path: '/settings', component: Settings },
   { path: '/home', component: Home },
-  { path: '/about', component: About }
+  { path: '/about', component: About },
+  { path: '/login', component: login }
 ]
 
 const router = createRouter({
