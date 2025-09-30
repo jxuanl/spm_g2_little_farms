@@ -43,7 +43,7 @@
 import { ref } from 'vue';
 import { Calendar as CalendarIcon } from 'lucide-vue-next';
 import TaskSidebar from '../components/TaskSidebar.vue';
-import CreateTaskModal from '../components/CreateTaskModal.vue';
+import CreateTaskModal from '../components/CreateTaskModal.vue'
 
 const activeProject = ref("all");
 const isCreateModalOpen = ref(false);

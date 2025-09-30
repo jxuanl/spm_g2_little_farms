@@ -63,10 +63,8 @@ import { ref, computed, onMounted } from 'vue';
 import { Users } from 'lucide-vue-next';
 import TaskSidebar from '../components/TaskSidebar.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
-// import TaskList from '../components/TaskList.vue';
+// import TaskList from '../src/components/TaskList.vue';
 import TaskListForMyTasks from '../components/TaskListForMyTasks.vue';
-import { taskService } from '../services/taskService.js';
-import { getUserByEmail } from '../services/userService.js';
 
 const activeProject = ref("all");
 const isCreateModalOpen = ref(false);
@@ -80,24 +78,27 @@ const currentUser = ref(null);
 onMounted(async () => {
   loading.value = true;
 
-  // Fetch current user
-  const user = await getUserByEmail("sunday@gmail.com"); // HARDCODED
-
-  if (!user) {
-    console.error("No user found");
-    loading.value = false;
-    return;
-  }
-
-  currentUser.value = user;
-  sessionStorage.setItem("userSession", JSON.stringify(user));
-
   try {
-    // Fetch tasks assigned to this user
-    const tasks = await taskService.getTasksForUser(user.id);
-    console.log("Tasks retrieved:", tasks);
+    // 1. Fetch current user by email (adjust endpoint as needed)
+    const userRes = await fetch('/api/users/by-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'sunday@gmail.com' })
+    });
+    if (!userRes.ok) throw new Error('Failed to fetch user');
+    const user = await userRes.json();
+    if (!user) {
+      console.error('No user found');
+      loading.value = false;
+      return;
+    }
+    currentUser.value = user;
+    sessionStorage.setItem('userSession', JSON.stringify(user));
 
-    // Map tasks into the format TaskList.vue expects
+    // 2. Fetch tasks for this user (adjust endpoint as needed)
+    const tasksRes = await fetch(`/api/tasks/user/${user.id}`);
+    if (!tasksRes.ok) throw new Error('Failed to fetch tasks');
+    const tasks = await tasksRes.json();
     myTasks.value = tasks.map(task => ({
       id: task.id,
       title: task.title,
@@ -105,26 +106,23 @@ onMounted(async () => {
       tags: task.tags || [],
       status: task.status,
       priority: task.priority,
-      project: task.projectId || "No Project",
+      project: task.projectId || 'No Project',
       assignee: {
         name: user.name,
-        initials: user.name.split(" ").map(n => n[0]).join("").toUpperCase()
+        initials: user.name.split(' ').map(n => n[0]).join('').toUpperCase()
       },
       dueDate: task.deadline || task.createdDate,
       progress: task.progress || 0,
       comments: task.comments || 0,
       attachments: task.attachments || 0
-    }))
-    // Sort by recency (newest first)
-    .sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
-
-    console.log("Mapped tasks for display:", myTasks.value);
+    })).sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
   } catch (err) {
-    console.error("Error fetching tasks:", err);
+    console.error('Error fetching tasks:', err);
   }
 
   loading.value = false;
 });
+
 
 const setActiveProject = (project) => {
   activeProject.value = project;

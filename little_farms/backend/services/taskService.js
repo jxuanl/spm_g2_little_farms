@@ -1,27 +1,21 @@
-import { db } from "../firebase.js";
-import { collection, query, where, getDocs, orderBy, doc } from "firebase/firestore";
-// import { addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
-
+import { db } from "../adminFirebase.js";
 const TASK_COLLECTION = "Tasks";
 
-
-/**
- * Fetch tasks assigned to a specific user by user document ID
- * @param {string} userId - Firestore document ID of the user
- * @returns {Promise<object[]>}
- */
-
 export async function getTasksForUser(userId) {
+  console.log(userId); //correct
     try {
-      const userRef = doc(db, "Users", userId); // create a document reference
-  
-      const q = query(
-        collection(db, TASK_COLLECTION),
-        where("assignedTo", "array-contains", userRef)
-      );
-  
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // const userRef = doc(db, "Users", userId); // create a document reference
+      const userRef = db.collection('Users').doc(userId) // correct
+      console.log('UserRef path:', userRef.path)
+
+      // Query tasks where assignedTo array contains this userRef
+        const snapshot = await db
+      .collection('Tasks')
+      .where('assignedTo', 'array-contains', userRef)
+      .get()
+      console.log('Tasks count:', snapshot.size)
+
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
     } catch (err) {
       console.error("Error fetching user tasks:", err);
       return [];
