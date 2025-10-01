@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 *.env
 .history
+frontend/node_modules
+dist
+frontend/dist
+backend/serviceAccountKey.json
+node_modules

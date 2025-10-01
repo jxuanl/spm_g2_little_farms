@@ -1,11 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from './views/Dashboard.vue'
-import MyTasks from './views/MyTasks.vue'
-import Calendar from './views/Calendar.vue'
-import Reports from './views/Reports.vue'
-import Settings from './views/Settings.vue'
-import Home from './views/Home.vue'
-import About from './views/About.vue'
+import Dashboard from './src/views/Dashboard.vue'
+import MyTasks from './src/views/MyTasks.vue'
+import Calendar from './src/views/Calendar.vue'
+import Reports from './src/views/Reports.vue'
+import Settings from './src/views/Settings.vue'
+import Home from './src/views/Home.vue'
+import About from './src/views/About.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
