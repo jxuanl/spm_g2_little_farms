@@ -1,13 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from '../src/views/Dashboard.vue'
-import MyTasks from '../src/views/MyTasks.vue'
-import Calendar from '../src/views/Calendar.vue'
-import Reports from '../src/views/Reports.vue'
-import Settings from '../src/views/Settings.vue'
-import Home from '../src/views/Home.vue'
-import About from '../src/views/About.vue'
-import login from '../src/views/LoginPage.vue'
-import Project from './views/Project.vue'
+import Dashboard from './src/views/Dashboard.vue'
+import MyTasks from './src/views/MyTasks.vue'
+import Calendar from './src/views/Calendar.vue'
+import Reports from './src/views/Reports.vue'
+import Settings from './src/views/Settings.vue'
+import Home from './src/views/Home.vue'
+import About from './src/views/About.vue'
+import login from './src/views/LoginPage.vue'
+// import Project from './src/views/Project.vue'
 
 
 const routes = [
@@ -20,7 +20,7 @@ const routes = [
   { path: '/home', component: Home },
   { path: '/about', component: About },
   { path: '/login', component: login },
-  { path: '/project', component: Project },
+  // { path: '/project', component: Project },
 ]
 
 const router = createRouter({
