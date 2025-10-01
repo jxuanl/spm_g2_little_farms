@@ -1,3 +1,4 @@
+
 import express from 'express';
 import AuthService from '../services/userService.js'
 
@@ -360,4 +361,6 @@ router.delete('/users/:uid', authenticate, async (req, res) => {
   }
 });
 
+
 export default router;
+
