@@ -1,59 +1,65 @@
 <template>
-  <div class="login-container">
-    <div class="login-card">
-      <h2 class="login-title">Sign In</h2>
-      <p class="welcome-text">Welcome back!</p>
+  <div class="login-page">
+    <div class="login-container">
+      <h1>Sign In</h1>
+      <p>Welcome back!</p>
 
-      <form @submit.prevent="handleLogin" class="login-form">
+      <!-- Error Message -->
+      <div v-if="error" class="error-message">
+        {{ error }}
+      </div>
+
+      <!-- Success Message -->
+      <div v-if="successMessage" class="success-message">
+        {{ successMessage }}
+      </div>
+
+      <!-- Login Form -->
+      <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <label for="email" class="form-label">Email Address</label>
+          <label for="email">Email Address</label>
           <input
             type="email"
             id="email"
             v-model="email"
             placeholder="Enter your email"
-            class="form-input"
             required
             :disabled="loading"
           />
         </div>
 
         <div class="form-group">
-          <label for="password" class="form-label">Password</label>
+          <label for="password">Password</label>
           <input
             type="password"
             id="password"
             v-model="password"
             placeholder="Enter your password"
-            class="form-input"
             required
             :disabled="loading"
           />
         </div>
 
-        <button 
-          type="submit" 
-          class="login-button"
-          :disabled="loading || !email || !password"
-        >
-          {{ loading ? 'Signing In...' : 'Sign In' }}
+        <button type="submit" :disabled="loading" class="login-button">
+          {{ loading ? 'Signing in...' : 'Sign In' }}
         </button>
 
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
-
-        <a href="#" @click.prevent="handleForgotPassword" class="forgot-password-link">
+        <button
+          type="button"
+          @click="handleForgotPassword"
+          :disabled="loading"
+          class="forgot-password-button"
+        >
           Forgot Password?
-        </a>
+        </button>
       </form>
     </div>
   </div>
 </template>
 
 <script>
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from '@/firebase'
-import { auth } from '@/firebase'
+import { signInWithCustomToken } from 'firebase/auth'
+import { auth } from '../../firebase'
 
 export default {
   name: 'LoginPage',
@@ -62,83 +68,63 @@ export default {
       email: '',
       password: '',
       loading: false,
-      error: ''
+      error: '',
+      successMessage: ''
     }
   },
   methods: {
     async handleLogin() {
       this.loading = true
       this.error = ''
+      this.successMessage = ''
 
       try {
-        // Sign in with Firebase Auth
-        const userCredential = await signInWithEmailAndPassword(auth, this.email, this.password)
-        const user = userCredential.user
-        console.log(user);
-
-
-        // Call backend API to get user profile by Firebase UID
-        // Assumes your backend has GET /api/auth/profile?uid=...
-        const response = await fetch('/api/auth/login', {
+        // Call backend API to authenticate
+        const response = await fetch('http://localhost:3001/api/users/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: this.email })
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: this.email,
+            password: this.password
+          })
         })
 
+        const data = await response.json()
+
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to fetch user profile')
+          throw new Error(data.message || 'Login failed')
         }
-        
-        const userData = await response.json()
-          
-        // Store session combining Firebase data and backend user profile
+
+        // Sign in with the custom token returned from backend
+        await signInWithCustomToken(auth, data.token)
+
+        // Store user session data
         const sessionData = {
-          uid: user.uid,
-          email: userData.email || user.email,
-          name: userData.name || 'User',
-          role: userData.role || 'staff',
-          department: userData.department || 'General',
-          loginTime: new Date().toISOString()
+          uid: data.user.uid,
+          email: data.user.email,
+          name: data.user.name,
+          role: data.user.role,
+          department: data.user.department,
+          loginTime: data.user.loginTime
         }
 
         // Store in sessionStorage
         sessionStorage.setItem('userSession', JSON.stringify(sessionData))
-          
-        // Store in localStorage for persistence across browser sessions
-        //   localStorage.setItem('userSession', JSON.stringify(sessionData))
-        // Emit login event or redirect
+
+        // Emit login event
         this.$emit('login-success', sessionData)
+
+        console.log('Login successful:', sessionData)
+
+        // Redirect to dashboard
         if (this.$router) {
           this.$router.push('/dashboard')
-          console.log('Login successful:', sessionData)
-        } else {
-          throw new Error('User profile not found in database')
         }
-
       } catch (error) {
         console.error('Login error:', error)
-        
-        // Handle specific Firebase error codes
-        switch (error.code) {
-          case 'auth/user-not-found':
-            this.error = 'No account found with this email address'
-            break
-          case 'auth/wrong-password':
-            this.error = 'Incorrect password'
-            break
-          case 'auth/invalid-email':
-            this.error = 'Invalid email address'
-            break
-          case 'auth/user-disabled':
-            this.error = 'This account has been disabled'
-            break
-          case 'auth/too-many-requests':
-            this.error = 'Too many failed attempts. Please try again later'
-            break
-          default:
-            this.error = error.message || 'Login failed. Please try again'
-        }
+        this.error = error.message || 'Login failed. Please try again'
       } finally {
         this.loading = false
       }
@@ -150,31 +136,71 @@ export default {
         return
       }
 
+      this.loading = true
+      this.error = ''
+      this.successMessage = ''
+
       try {
-        await sendPasswordResetEmail(auth, this.email)
-        alert('Password reset email sent! Check your inbox.')
+        const response = await fetch('http://localhost:3001/api/users/forgot-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: this.email
+          })
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to send reset email')
+        }
+
+        this.successMessage = 'Password reset email sent! Check your inbox.'
         this.error = ''
       } catch (error) {
         console.error('Password reset error:', error)
-        this.error = 'Failed to send password reset email'
+        this.error = error.message || 'Failed to send password reset email'
+      } finally {
+        this.loading = false
       }
     },
 
-    // Method to get session data throughout the app
+    // Get session data
     getUserSession() {
-    //   const sessionData = sessionStorage.getItem('userSession') || localStorage.getItem('userSession')
       const sessionData = sessionStorage.getItem('userSession')
       return sessionData ? JSON.parse(sessionData) : null
     },
 
-    // Method to clear session
-    logout() {
-      sessionStorage.removeItem('userSession')
-    //   localStorage.removeItem('userSession')
-      auth.signOut()
-      
-      if (this.$router) {
-        this.$router.push('/login')
+    // Logout method
+    async logout() {
+      try {
+        const token = await auth.currentUser?.getIdToken()
+
+        if (token) {
+          // Call backend logout endpoint
+          await fetch('http://localhost:3001/api/users/logout', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+        }
+
+        // Clear session storage
+        sessionStorage.removeItem('userSession')
+
+        // Sign out from Firebase
+        await auth.signOut()
+
+        // Redirect to login
+        if (this.$router) {
+          this.$router.push('/login')
+        }
+      } catch (error) {
+        console.error('Logout error:', error)
       }
     }
   },
@@ -190,113 +216,121 @@ export default {
 </script>
 
 <style scoped>
-.login-container {
-  min-height: 100vh;
+.login-page {
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  min-height: 100vh;
   background-color: #f5f5f5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.login-card {
+.login-container {
   background: white;
-  padding: 2rem;
+  padding: 40px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 400px;
 }
 
-.login-title {
+h1 {
   text-align: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
   color: #333;
-  font-size: 1.5rem;
-  font-weight: 600;
 }
 
-.welcome-text {
+p {
   text-align: center;
   color: #666;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
+  margin-bottom: 24px;
 }
 
-.login-form {
-  display: flex;
-  flex-direction: column;
+.error-message {
+  background-color: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border: 1px solid #fcc;
+}
+
+.success-message {
+  background-color: #efe;
+  color: #3c3;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border: 1px solid #cfc;
 }
 
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 16px;
 }
 
-.form-label {
+label {
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
   color: #333;
-  font-size: 0.9rem;
   font-weight: 500;
 }
 
-.form-input {
+input {
   width: 100%;
-  padding: 0.75rem;
+  padding: 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 1rem;
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-}
+  font-size: 14px;
+  box-sizing: border-box;}
 
-.form-input:focus {
+input:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: #4a5568;
 }
 
-.form-input:disabled {
-  background-color: #f8f9fa;
+input:disabled {
+  background-color: #f5f5f5;
   cursor: not-allowed;
 }
 
 .login-button {
-  background-color: #007bff;
+  width: 100%;
+  padding: 12px;
+  background-color: #4a5568;
   color: white;
-  padding: 0.75rem;
   border: none;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-bottom: 1rem;
+  margin-top: 8px;
 }
 
 .login-button:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: #2d3748;
 }
 
 .login-button:disabled {
-  background-color: #6c757d;
+  background-color: #cbd5e0;
   cursor: not-allowed;
 }
 
-.error-message {
-  color: #dc3545;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-  text-align: center;
+.forgot-password-button {
+  width: 100%;
+  padding: 8px;
+  background: none;
+  border: none;
+  color: #4299e1;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
 }
 
-.forgot-password-link {
-  text-align: center;
-  color: #007bff;
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.forgot-password-link:hover {
+.forgot-password-button:hover:not(:disabled) {
   text-decoration: underline;
+}
+
+.forgot-password-button:disabled {
+  color: #cbd5e0;
+  cursor: not-allowed;
 }
 </style>
