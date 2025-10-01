@@ -1,12 +1,16 @@
 {
-  "name": "little_farms",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev:frontend": "npm -w frontend run dev",
+    "dev:backend": "npm -w backend run dev"
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=7"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
