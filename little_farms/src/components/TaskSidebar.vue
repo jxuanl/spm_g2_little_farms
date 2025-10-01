@@ -99,7 +99,8 @@ import {
   BarChart3, 
   Settings,
   Plus,
-  ChevronDown
+  ChevronDown,
+  LucideFolderKanban
 } from 'lucide-vue-next';
 
 defineProps({
@@ -114,6 +115,7 @@ const menuItems = [
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
   { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+  { id: "project", label: "Project", icon: LucideFolderKanban, path: "/project" },
 ];
 
 const projects = [

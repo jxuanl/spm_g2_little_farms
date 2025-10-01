@@ -7,6 +7,8 @@ import Settings from '../src/views/Settings.vue'
 import Home from '../src/views/Home.vue'
 import About from '../src/views/About.vue'
 import login from '../src/views/LoginPage.vue'
+import Project from './views/Project.vue'
+
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -17,7 +19,8 @@ const routes = [
   { path: '/settings', component: Settings },
   { path: '/home', component: Home },
   { path: '/about', component: About },
-  { path: '/login', component: login }
+  { path: '/login', component: login },
+  { path: '/project', component: Project },
 ]
 
 const router = createRouter({
