@@ -52,9 +52,8 @@
 </template>
 
 <script>
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
-import { auth, db } from '../firebase'
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from '@/firebase'
+import { auth } from '@/firebase'
 
 export default {
   name: 'LoginPage',
@@ -77,38 +76,42 @@ export default {
         const user = userCredential.user
         console.log(user);
 
-        // Fetch user data from Firestore
-        const userDoc = await getDoc(doc(db, 'Users', user.uid))
+
+        // Call backend API to get user profile by Firebase UID
+        // Assumes your backend has GET /api/auth/profile?uid=...
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: this.email })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to fetch user profile')
+        }
         
-        if (userDoc.exists()) {
-          const userData = userDoc.data()
+        const userData = await response.json()
           
-          // Store user session data
-          const sessionData = {
-            uid: user.uid,
-            email: userData.email || user.email,
-            name: userData.name || 'User',
-            role: userData.role || 'staff',
-            department: userData.department || 'General',
-            loginTime: new Date().toISOString()
-          }
+        // Store session combining Firebase data and backend user profile
+        const sessionData = {
+          uid: user.uid,
+          email: userData.email || user.email,
+          name: userData.name || 'User',
+          role: userData.role || 'staff',
+          department: userData.department || 'General',
+          loginTime: new Date().toISOString()
+        }
 
-          // Store in sessionStorage
-          sessionStorage.setItem('userSession', JSON.stringify(sessionData))
+        // Store in sessionStorage
+        sessionStorage.setItem('userSession', JSON.stringify(sessionData))
           
-          // Store in localStorage for persistence across browser sessions
+        // Store in localStorage for persistence across browser sessions
         //   localStorage.setItem('userSession', JSON.stringify(sessionData))
-
-          // Emit login event or redirect
-          this.$emit('login-success', sessionData)
-          
-          // If using Vue Router
-          if (this.$router) {
-            this.$router.push('/dashboard')
-          }
-
+        // Emit login event or redirect
+        this.$emit('login-success', sessionData)
+        if (this.$router) {
+          this.$router.push('/dashboard')
           console.log('Login successful:', sessionData)
-          
         } else {
           throw new Error('User profile not found in database')
         }
