@@ -1,9 +1,9 @@
 <template>
   <div class="h-screen bg-background flex">
     <TaskSidebar 
-    :activeProject="activeProject" 
-    @projectChange="setActiveProject"
-    @createTask="() => setIsCreateModalOpen(true)" 
+      :activeProject="activeProject" 
+      @projectChange="setActiveProject"
+      @createTask="() => setIsCreateModalOpen(true)" 
     />
   
     <div class="flex-1 flex flex-col">
@@ -42,87 +42,36 @@
         </div>
 
         <TaskListForMyTasks 
-        v-else
-        :tasks="myTasks" 
-        @taskClick="handleTaskClick" 
-        @createTask="() => setIsCreateModalOpen(true)"
+          v-else
+          :tasks="myTasks" 
+          @taskClick="handleTaskClick" 
+          @createTask="() => setIsCreateModalOpen(true)"
         />
       </div>
     </div>
   </div>
 
   <CreateTaskModal 
-  :isOpen="isCreateModalOpen" 
-  @close="() => setIsCreateModalOpen(false)"
-  @createTask="handleCreateTask" 
+    :isOpen="isCreateModalOpen" 
+    @close="() => setIsCreateModalOpen(false)"
+    @createTask="handleCreateTask" 
   />
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Users } from 'lucide-vue-next';
 import TaskSidebar from '../components/TaskSidebar.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
-// import TaskList from '../src/components/TaskList.vue';
 import TaskListForMyTasks from '../components/TaskListForMyTasks.vue';
 
 const activeProject = ref("all");
 const isCreateModalOpen = ref(false);
-const searchQuery = ref("");
-const statusFilter = ref("all");
-const priorityFilter = ref("all");
 const loading = ref(false);
 const myTasks = ref([]);
 const currentUser = ref(null);
 
-onMounted(async () => {
-  loading.value = true;
-
-  try {
-    // 1. Fetch current user by email (adjust endpoint as needed)
-    const userRes = await fetch('/api/users/by-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'sunday@gmail.com' })
-    });
-    if (!userRes.ok) throw new Error('Failed to fetch user');
-    const user = await userRes.json();
-    if (!user) {
-      console.error('No user found');
-      loading.value = false;
-      return;
-    }
-    currentUser.value = user;
-    sessionStorage.setItem('userSession', JSON.stringify(user));
-
-    // 2. Fetch tasks for this user (adjust endpoint as needed)
-    const tasksRes = await fetch(`/api/tasks/user/${user.id}`);
-    if (!tasksRes.ok) throw new Error('Failed to fetch tasks');
-    const tasks = await tasksRes.json();
-    myTasks.value = tasks.map(task => ({
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      tags: task.tags || [],
-      status: task.status,
-      priority: task.priority,
-      project: task.projectId || 'No Project',
-      assignee: {
-        name: user.name,
-        initials: user.name.split(' ').map(n => n[0]).join('').toUpperCase()
-      },
-      dueDate: task.deadline || task.createdDate,
-      progress: task.progress || 0,
-      comments: task.comments || 0,
-      attachments: task.attachments || 0
-    })).sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
-  } catch (err) {
-    console.error('Error fetching tasks:', err);
-  }
-
-  loading.value = false;
-});
-
+// simple layout; no extra filters needed
 
 const setActiveProject = (project) => {
   activeProject.value = project;
@@ -134,6 +83,70 @@ const setIsCreateModalOpen = (open) => {
 
 const handleCreateTask = (newTask) => {
   console.log("Create task:", newTask);
-  // In a real app, this would add the task to the user's task list
 };
+
+async function fetchTasks() {
+  if (!currentUser.value?.id) {
+    console.error("No ID found for current user");
+    return;
+  }
+
+  try {
+    // const response = await fetch(`/api/tasks/${currentUser.value.id}`);
+    const response = await fetch(`/api/tasks?userId=${currentUser.value.id}`);
+    // const response = await fetch(`/api/tasks?userId=nDEfuE5zYzMPtZX33xJUY88qpy13`);
+    console.log(response)
+    if (!response.ok) throw new Error("Failed to fetch tasks");
+
+    const tasks = await response.json();
+    myTasks.value = tasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      tags: task.tags || [],
+      status: task.status,
+      priority: task.priority,
+      project: task.projectId || "No Project",
+      assignee: {
+        name: currentUser.value.name,
+        initials: currentUser.value.name
+          .split(" ")
+          .map(n => n[0])
+          .join("")
+          .toUpperCase(),
+      },
+      dueDate: task.deadline || task.createdDate,
+      progress: task.progress || 0,
+      comments: task.comments || 0,
+      attachments: task.attachments || 0,
+    }));
+  } catch (err) {
+    console.error("Error fetching tasks:", err);
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => {
+  loading.value = true;
+  console.log(JSON.parse(sessionStorage.getItem('userSession')));
+
+  // Read sessionStorage only on mount
+  const storedUser = sessionStorage.getItem("userSession");
+  if (!storedUser) {
+    console.error("No user found in session storage");
+    loading.value = false;
+    return;
+  }
+
+  currentUser.value = JSON.parse(storedUser);
+
+  // Only fetch tasks if ID exists
+  if (currentUser.value?.id) {
+    fetchTasks();
+  } else {
+    console.error("User session missing ID");
+    loading.value = false;
+  }
+});
 </script>
