@@ -320,14 +320,42 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { CalendarIcon, X, ChevronDown } from 'lucide-vue-next';
+import { auth } from '../../firebase.js';
 
-defineProps({
-  isOpen: Boolean
-});
+const emit = defineEmits(['close', 'taskCreated']);
 
-const emit = defineEmits(['close', 'createTask']);
+// API function to create task
+const createTaskAPI = async (taskData) => {
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    const response = await fetch('http://localhost:3001/api/tasks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: JSON.stringify(taskData)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create task');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
+// Get current user from session
+const getCurrentUser = () => {
+  const userSession = sessionStorage.getItem('userSession');
+  return userSession ? JSON.parse(userSession) : null;
+};
 
 // Error and warning states
 const errors = reactive({
@@ -486,52 +514,58 @@ const getAssigneePlaceholder = () => {
   return formData.assignees.length > 0 ? getSelectedAssigneeNames() : 'Select assignees';
 };
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!validateForm()) {
     return;
   }
 
-  const selectedAssignees = assignees.filter(a => formData.assignees.includes(a.id));
-  const project = projects.find(p => p.id === formData.project);
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    errors.title = 'User session not found. Please log in again.';
+    return;
+  }
 
-  const newTask = {
-    id: Date.now().toString(),
-    title: formData.title.trim(),
-    description: formData.description.trim(),
-    status: formData.status || 'To Do',
-    priority: formData.priority || 'Medium',
-    dueDate: formData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    assignees: selectedAssignees.map(a => ({
-      id: a.id,
-      name: a.name,
-      initials: a.initials,
-    })),
-    // Keep single assignee for backward compatibility
-    assignee: selectedAssignees.length > 0 ? {
-      name: selectedAssignees[0].name,
-      initials: selectedAssignees[0].initials,
-    } : {
-      name: "Unassigned",
-      initials: "UA",
-    },
-    project: project?.name || "Website Redesign",
-    progress: 0,
-    comments: 0,
-    attachments: 0,
-    tags: formData.tags,
-  };
+  try {
+    // Clear any previous error messages
+    errors.title = '';
+    
+    // Map frontend form data to backend API format
+    const taskData = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      priority: formData.priority || 'medium',
+      status: formData.status || 'To Do',
+      deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
+      assigneeIds: formData.assignees.length > 0 ? formData.assignees : [currentUser.uid || 'default-user'],
+      projectId: formData.project || null,
+      createdBy: currentUser.uid || 'default-user',
+      tags: formData.tags || []
+    };
 
-  emit('createTask', newTask);
-  
-  // Show success message
-  showSuccessMessage.value = true;
-  
-  // Hide success message after 2 seconds and close modal
-  setTimeout(() => {
-    showSuccessMessage.value = false;
-    resetForm();
-    emit('close');
-  }, 2000);
+    console.log('Creating task with data:', taskData);
+    
+    // Call the backend API
+    const createdTask = await createTaskAPI(taskData);
+    
+    console.log('Task created successfully:', createdTask);
+    
+    // Show success message
+    showSuccessMessage.value = true;
+    
+    // Emit the created task to parent component
+    emit('taskCreated', createdTask);
+    
+    // Hide success message after 2 seconds and close modal
+    setTimeout(() => {
+      showSuccessMessage.value = false;
+      resetForm();
+      emit('close');
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error creating task:', error);
+    errors.title = error.message || 'Failed to create task. Please try again.';
+  }
 };
 
 const resetForm = () => {
@@ -567,10 +601,26 @@ const removeTag = (tagToRemove) => {
     formData.tags.splice(index, 1);
   }
 };
+
+// Load data when component mounts
+onMounted(() => {
+  // loadDropdownData();
+});
+
+const props = defineProps({
+  isOpen: Boolean
+});
+
+// Watch for modal open to reload data if needed
+watch(() => props.isOpen, (newVal) => {
+  // if (newVal && (projects.value.length === 0 || assignees.value.length === 0)) {
+  //   loadDropdownData();
+  // }
+});
 </script>
 
 <style scoped>
-@import '../styles/CreateTaskModal.css';
+@import '../../styles/CreateTaskModal.css';
 
 /* Component-specific border overrides */
 .border-gray-300 {

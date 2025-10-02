@@ -5,8 +5,24 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import tasksRouter from './routes/tasks.js'
 import usersRouter from './routes/users.js'
+// import projectsRouter from './routes/projects.js'
 
 const app = express()
+
+// Add CORS middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 app.use(express.json())
 
 // const __filename = fileURLToPath(import.meta.url);
@@ -14,6 +30,7 @@ app.use(express.json())
 
 app.use('/api/tasks', tasksRouter)
 app.use('/api/users', usersRouter)
+// app.use('/api/projects', projectsRouter)
 // app.use('/api/deadlines', deadlinesRouter)
 
 // const bree = new Bree({
