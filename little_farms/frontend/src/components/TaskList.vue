@@ -57,10 +57,10 @@
           <!-- Project -->
           <td class="p-2 border">{{ task.project }}</td>
           <!-- Assignee -->
-          <td class="p-2 border">{{ task.assignee?.name || 'Unassigned' }}</td>
+          <td class="p-2 border">{{ task.assignedTo?.name || 'Unassigned' }}</td>
           <!-- Due Date -->
           <td class="p-2 border" :class="getDateClasses(task)">
-            {{ task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No due date' }}
+            {{ task.deadline ? task.deadline.toDate().toLocaleDateString(): "No due date"}}
           </td>
           <!-- Status -->
           <td class="p-2 border">
