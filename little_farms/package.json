@@ -8,29 +8,25 @@
     "dev:frontend": "npm -w frontend run dev",
     "dev:backend": "npm -w backend run dev"
   },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.0.14",
-    "@vitejs/plugin-vue": "^6.0.1",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.13",
-    "typescript": "^5.7.3",
-    "vite": "^7.1.2",
-    "vue-tsc": "^2.2.11"
-  },
   "engines": {
     "node": ">=18",
     "npm": ">=7"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
-    "@vueuse/core": "^11.1.0",
-    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.3.0",
     "lucide-vue-next": "^0.544.0",
-    "react": "^19.1.1",
     "tailwind-merge": "^2.5.4",
-    "vue": "^3.5.18"
+    "vue": "^3.5.18",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.14",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.13",
+    "vite": "^7.1.2"
   }
 }
