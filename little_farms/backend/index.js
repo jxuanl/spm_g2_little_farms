@@ -30,7 +30,6 @@ app.use(express.json())
 
 app.use('/api/tasks', tasksRouter)
 app.use('/api/users', usersRouter)
-// app.use('/api/projects', projectsRouter)
 // app.use('/api/deadlines', deadlinesRouter)
 
 // const bree = new Bree({
