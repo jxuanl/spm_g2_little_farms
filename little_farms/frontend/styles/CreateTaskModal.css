@@ -1,0 +1,48 @@
+/* CreateTaskModal.vue specific styles */
+
+.create-task-modal .border-gray-300 {
+  border-color: #d1d5db !important;
+  border-width: 1px !important;
+}
+
+.create-task-modal .border-gray-200 {
+  border-color: #e5e7eb !important;
+  border-width: 1px !important;
+}
+
+.create-task-modal input,
+.create-task-modal textarea,
+.create-task-modal button[type="button"] {
+  border-width: 1px !important;
+}
+
+.create-task-modal .focus\:ring-1:focus {
+  --tw-ring-shadow: 0 0 0 1px var(--ring) !important;
+  box-shadow: var(--tw-ring-shadow) !important;
+}
+
+/* Dark mode support */
+.dark .create-task-modal .border-gray-300 {
+  border-color: #6b7280 !important;
+}
+
+.dark .create-task-modal .border-gray-200 {
+  border-color: #4b5563 !important;
+}
+
+/* Dropdown hover states */
+.create-task-modal .dropdown-option:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Tag styles */
+.create-task-modal .tag-chip {
+  border: 1px solid #e5e7eb;
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.dark .create-task-modal .tag-chip {
+  border-color: #4b5563;
+}

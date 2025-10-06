@@ -1,21 +1,40 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
-    <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]">
+  <div v-if="isOpen" class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" @click="closeDropdowns">
+    <div 
+      class="create-task-modal fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]"
+      @click.stop
+    >
       <div class="flex flex-col space-y-1.5 text-center sm:text-left">
         <h2 class="text-lg font-semibold leading-none tracking-tight">Create New Task</h2>
       </div>
       
+      <div v-if="showSuccessMessage" class="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+        <div class="text-sm text-green-800">
+          ✓ Task created successfully!
+        </div>
+      </div>
+      
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <div class="space-y-2">
-          <label for="title" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Task Title *</label>
+          <div class="flex justify-between items-center">
+            <label for="title" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Task Title *</label>
+            <span class="text-xs text-muted-foreground">{{ formData.title.length }}/50</span>
+          </div>
           <input
             id="title"
             v-model="formData.title"
             type="text"
             placeholder="Enter task title..."
             required
-            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            :class="[
+              'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+              errors.title ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+            ]"
+            @input="validateTitle"
           />
+          <div v-if="errors.title" class="text-sm text-red-500 mt-1">
+            {{ errors.title }}
+          </div>
         </div>
 
         <div class="space-y-2">
@@ -25,113 +44,248 @@
             v-model="formData.description"
             placeholder="Describe the task..."
             rows="3"
-            class="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            class="flex min-h-[60px] w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Priority</label>
-            <select 
-              v-model="formData.priority"
-              class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+            <div class="relative">
+              <button
+                type="button"
+                @click="toggleDropdown('priority')"
+                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span :class="formData.priority ? 'text-foreground' : 'text-muted-foreground'">
+                  {{ getPriorityPlaceholder() }}
+                </span>
+                <ChevronDown class="h-4 w-4 opacity-50" />
+              </button>
+              <div 
+                v-if="dropdownStates.priority"
+                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+              >
+                <div class="p-1">
+                  <button
+                    type="button"
+                    @click="selectOption('priority', 'high')"
+                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  >
+                    High
+                  </button>
+                  <button
+                    type="button"
+                    @click="selectOption('priority', 'medium')"
+                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  >
+                    Medium
+                  </button>
+                  <button
+                    type="button"
+                    @click="selectOption('priority', 'low')"
+                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  >
+                    Low
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="space-y-2">
             <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Status</label>
-            <select 
-              v-model="formData.status"
-              class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="todo">To Do</option>
-              <option value="in-progress">In Progress</option>
-              <option value="review">In Review</option>
-              <option value="done">Done</option>
-            </select>
+            <div class="relative">
+              <button
+                type="button"
+                @click="toggleDropdown('status')"
+                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span :class="formData.status ? 'text-foreground' : 'text-muted-foreground'">
+                  {{ getStatusPlaceholder() }}
+                </span>
+                <ChevronDown class="h-4 w-4 opacity-50" />
+              </button>
+              <div 
+                v-if="dropdownStates.status"
+                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+              >
+                <div class="p-1">
+                  <button
+                    type="button"
+                    @click="selectOption('status', 'todo')"
+                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  >
+                    To Do
+                  </button>
+                  <button
+                    type="button"
+                    @click="selectOption('status', 'in-progress')"
+                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  >
+                    In Progress
+                  </button>
+                  <button
+                    type="button"
+                    @click="selectOption('status', 'review')"
+                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  >
+                    In Review
+                  </button>
+                  <button
+                    type="button"
+                    @click="selectOption('status', 'done')"
+                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Project</label>
-            <select 
-              v-model="formData.project"
-              class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option v-for="project in projects" :key="project.id" :value="project.id">
-                {{ project.name }}
-              </option>
-            </select>
+            <div class="relative">
+              <button
+                type="button"
+                @click="toggleDropdown('project')"
+                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span :class="formData.project ? 'text-foreground' : 'text-muted-foreground'">
+                  {{ getProjectPlaceholder() }}
+                </span>
+                <ChevronDown class="h-4 w-4 opacity-50" />
+              </button>
+              <div 
+                v-if="dropdownStates.project"
+                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+              >
+                <div class="p-1">
+                  <button
+                    type="button"
+                    v-for="project in projects" 
+                    :key="project.id"
+                    @click="selectOption('project', project.id)"
+                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  >
+                    {{ project.name }}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Assignee</label>
-            <select 
-              v-model="formData.assignee"
-              class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option v-for="assignee in assignees" :key="assignee.id" :value="assignee.id">
-                {{ assignee.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Due Date</label>
-          <div class="relative">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 w-full justify-start"
-              @click="showCalendar = !showCalendar"
-            >
-              <CalendarIcon class="mr-2 h-4 w-4" />
-              {{ formData.dueDate ? new Date(formData.dueDate).toLocaleDateString() : "Select date" }}
-            </button>
-            
-            <div 
-              v-if="showCalendar"
-              class="absolute top-full left-0 mt-1 z-50 w-auto p-0 border bg-popover text-popover-foreground shadow-md rounded-md p-3"
-            >
-              <input
-                v-model="formData.dueDate"
-                type="date"
-                class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                @change="showCalendar = false"
-              />
+            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Assignees</label>
+            <div class="relative">
+              <button
+                type="button"
+                @click="toggleDropdown('assignees')"
+                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-left"
+              >
+                <span 
+                  :class="formData.assignees.length > 0 ? 'text-foreground' : 'text-muted-foreground'"
+                  class="truncate"
+                >
+                  {{ getAssigneePlaceholder() }}
+                </span>
+                <ChevronDown class="h-4 w-4 opacity-50 flex-shrink-0" />
+              </button>
+              <div 
+                v-if="dropdownStates.assignees"
+                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-48 overflow-y-auto"
+              >
+                <div class="p-1">
+                  <div
+                    v-for="assignee in assignees" 
+                    :key="assignee.id"
+                    @click="selectAssignee(assignee.id)"
+                    class="flex items-center px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+                  >
+                    <input 
+                      type="checkbox" 
+                      :checked="formData.assignees.includes(assignee.id)"
+                      class="mr-2 rounded border-gray-300"
+                      @click.stop
+                    />
+                    <div class="flex items-center">
+                      <div class="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium mr-2">
+                        {{ assignee.initials }}
+                      </div>
+                      {{ assignee.name }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="space-y-2">
+          <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Due Date</label>
+          <input
+            v-model="formData.dueDate"
+            type="date"
+            :class="[
+              'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+              errors.dueDate ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+            ]"
+            @change="validateDueDate"
+          />
+          <div v-if="errors.dueDate" class="text-sm text-red-500 mt-1">
+            {{ errors.dueDate }}
+          </div>
+        </div>
+
+        <div class="space-y-2">
           <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Tags</label>
-          <div class="flex gap-2">
-            <input
-              v-model="newTag"
-              type="text"
-              placeholder="Add tag..."
-              class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              @keypress.enter.prevent="addTag"
-            />
-            <button
-              type="button"
-              @click="addTag"
-              class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+          <div class="relative">
+            <div class="flex gap-2">
+              <input
+                v-model="newTag"
+                type="text"
+                placeholder="Add tag..."
+                class="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                @input="updateTagSuggestions"
+                @keypress.enter.prevent="addTag"
+                @blur="() => setTimeout(() => showTagSuggestions = false, 150)"
+              />
+              <button
+                type="button"
+                @click="addTag"
+                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+              >
+                Add
+              </button>
+            </div>
+            
+            <!-- Tag suggestions dropdown -->
+            <div 
+              v-if="showTagSuggestions"
+              class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-32 overflow-y-auto"
             >
-              Add
-            </button>
+              <div class="p-1">
+                <button
+                  type="button"
+                  v-for="suggestion in tagSuggestions" 
+                  :key="suggestion"
+                  @click="selectTagSuggestion(suggestion)"
+                  class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                >
+                  {{ suggestion }}
+                </button>
+              </div>
+            </div>
           </div>
           
           <div v-if="formData.tags.length > 0" class="flex flex-wrap gap-2">
             <span 
               v-for="tag in formData.tags" 
               :key="tag"
-              class="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 gap-1"
+              class="inline-flex items-center rounded-md border border-gray-200 px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 gap-1"
             >
               {{ tag }}
               <button
@@ -148,14 +302,14 @@
         <div class="flex justify-end gap-2 pt-4">
           <button 
             type="button" 
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-            @click="$emit('close')"
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+            @click="() => { resetForm(); $emit('close'); }"
           >
             Cancel
           </button>
           <button 
             type="submit"
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 border border-primary h-9 px-4 py-2"
           >
             Create Task
           </button>
@@ -166,24 +320,68 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
-import { CalendarIcon, X } from 'lucide-vue-next';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { CalendarIcon, X, ChevronDown } from 'lucide-vue-next';
+import { auth } from '../../firebase.js';
 
-defineProps({
-  isOpen: Boolean
+const emit = defineEmits(['close', 'taskCreated']);
+
+// API function to create task
+const createTaskAPI = async (taskData) => {
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    const response = await fetch('http://localhost:3001/api/tasks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: JSON.stringify(taskData)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create task');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
+// Get current user from session
+const getCurrentUser = () => {
+  const userSession = sessionStorage.getItem('userSession');
+  return userSession ? JSON.parse(userSession) : null;
+};
+
+// Error and warning states
+const errors = reactive({
+  title: '',
+  dueDate: ''
 });
 
-const emit = defineEmits(['close', 'createTask']);
+const showSuccessMessage = ref(false);
 
 const formData = reactive({
   title: "",
   description: "",
-  priority: "medium",
-  status: "todo",
-  project: "website",
-  assignee: "john-doe",
+  priority: "",
+  status: "",
+  project: "",
+  assignees: [], // Changed to array for multi-select
   dueDate: "",
   tags: [],
+});
+
+// Dropdown states
+const dropdownStates = reactive({
+  priority: false,
+  status: false,
+  project: false,
+  assignees: false
 });
 
 const newTag = ref("");
@@ -201,52 +399,199 @@ const assignees = [
   { id: "mike-johnson", name: "Mike Johnson", initials: "MJ" },
 ];
 
-const handleSubmit = () => {
-  if (!formData.title.trim()) return;
+// Existing tags for auto-suggestion (would typically come from API)
+const existingTags = ref([
+  'Frontend', 'Backend', 'Bug Fix', 'Feature', 'Testing', 'Documentation', 'UI/UX', 'API', 'Database', 'Performance'
+]);
 
-  const assignee = assignees.find(a => a.id === formData.assignee);
+const tagSuggestions = ref([]);
+const showTagSuggestions = ref(false);
+
+// Validation functions
+const validateTitle = () => {
+  errors.title = '';
+  if (!formData.title.trim()) {
+    errors.title = 'Task title is required';
+  } else if (formData.title.length > 50) {
+    errors.title = 'Task title cannot exceed 50 characters';
+  }
+};
+
+const validateDueDate = () => {
+  errors.dueDate = '';
+  if (formData.dueDate.trim()) {
+    const inputDate = new Date(formData.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (isNaN(inputDate.getTime())) {
+      errors.dueDate = 'Please enter a valid date';
+    } else if (inputDate < today) {
+      errors.dueDate = 'Due date cannot be in the past';
+    }
+  }
+};
+
+const validateForm = () => {
+  validateTitle();
+  validateDueDate();
+  return !errors.title && !errors.dueDate;
+};
+
+// Dropdown helper functions
+const toggleDropdown = (dropdown) => {
+  Object.keys(dropdownStates).forEach(key => {
+    if (key !== dropdown) dropdownStates[key] = false;
+  });
+  dropdownStates[dropdown] = !dropdownStates[dropdown];
+};
+
+const selectOption = (dropdown, value) => {
+  formData[dropdown] = value;
+  dropdownStates[dropdown] = false;
+};
+
+const selectAssignee = (assigneeId) => {
+  if (formData.assignees.includes(assigneeId)) {
+    formData.assignees = formData.assignees.filter(id => id !== assigneeId);
+  } else {
+    formData.assignees.push(assigneeId);
+  }
+};
+
+const getSelectedAssigneeNames = () => {
+  return formData.assignees.map(id => {
+    const assignee = assignees.find(a => a.id === id);
+    return assignee ? assignee.name : '';
+  }).join(', ');
+};
+
+// Tag suggestion functions
+const updateTagSuggestions = () => {
+  if (newTag.value.trim().length > 0) {
+    tagSuggestions.value = existingTags.value.filter(tag => 
+      tag.toLowerCase().includes(newTag.value.toLowerCase()) &&
+      !formData.tags.includes(tag)
+    ).slice(0, 5);
+    showTagSuggestions.value = tagSuggestions.value.length > 0;
+  } else {
+    showTagSuggestions.value = false;
+    tagSuggestions.value = [];
+  }
+};
+
+const selectTagSuggestion = (tag) => {
+  formData.tags.push(tag);
+  newTag.value = '';
+  showTagSuggestions.value = false;
+  tagSuggestions.value = [];
+};
+
+const closeDropdowns = () => {
+  Object.keys(dropdownStates).forEach(key => {
+    dropdownStates[key] = false;
+  });
+  showTagSuggestions.value = false;
+};
+
+// Placeholder getters
+const getPriorityPlaceholder = () => {
+  const priorityMap = { high: 'High', medium: 'Medium', low: 'Low' };
+  return formData.priority ? priorityMap[formData.priority] : 'Select priority';
+};
+
+const getStatusPlaceholder = () => {
+  const statusMap = { todo: 'To Do', 'in-progress': 'In Progress', review: 'In Review', done: 'Done' };
+  return formData.status ? statusMap[formData.status] : 'Select status';
+};
+
+const getProjectPlaceholder = () => {
   const project = projects.find(p => p.id === formData.project);
+  return project ? project.name : 'Select project';
+};
 
-  const newTask = {
-    id: Date.now().toString(),
-    title: formData.title,
-    description: formData.description,
-    status: formData.status,
-    priority: formData.priority,
-    dueDate: formData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    assignee: {
-      name: assignee?.name || "John Doe",
-      initials: assignee?.initials || "JD",
-    },
-    project: project?.name || "Website Redesign",
-    progress: 0,
-    comments: 0,
-    attachments: 0,
-    tags: formData.tags,
-  };
+const getAssigneePlaceholder = () => {
+  return formData.assignees.length > 0 ? getSelectedAssigneeNames() : 'Select assignees';
+};
 
-  emit('createTask', newTask);
-  
-  // Reset form
+const handleSubmit = async () => {
+  if (!validateForm()) {
+    return;
+  }
+
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    errors.title = 'User session not found. Please log in again.';
+    return;
+  }
+
+  try {
+    // Clear any previous error messages
+    errors.title = '';
+    
+    // Map frontend form data to backend API format
+    const taskData = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      priority: formData.priority || 'medium',
+      status: formData.status || 'To Do',
+      deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
+      assigneeIds: formData.assignees.length > 0 ? formData.assignees : [currentUser.uid || 'default-user'],
+      projectId: formData.project || null,
+      createdBy: currentUser.uid || 'default-user',
+      tags: formData.tags || []
+    };
+
+    console.log('Creating task with data:', taskData);
+    
+    // Call the backend API
+    const createdTask = await createTaskAPI(taskData);
+    
+    console.log('Task created successfully:', createdTask);
+    
+    // Show success message
+    showSuccessMessage.value = true;
+    
+    // Emit the created task to parent component
+    emit('taskCreated', createdTask);
+    
+    // Hide success message after 2 seconds and close modal
+    setTimeout(() => {
+      showSuccessMessage.value = false;
+      resetForm();
+      emit('close');
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error creating task:', error);
+    errors.title = error.message || 'Failed to create task. Please try again.';
+  }
+};
+
+const resetForm = () => {
   Object.assign(formData, {
     title: "",
     description: "",
-    priority: "medium",
-    status: "todo",
-    project: "website",
-    assignee: "john-doe",
+    priority: "",
+    status: "",
+    project: "",
+    assignees: [],
     dueDate: "",
     tags: [],
   });
   newTag.value = "";
   showCalendar.value = false;
-  emit('close');
+  errors.title = '';
+  errors.dueDate = '';
+  closeDropdowns();
 };
 
 const addTag = () => {
   if (newTag.value.trim() && !formData.tags.includes(newTag.value.trim())) {
     formData.tags.push(newTag.value.trim());
     newTag.value = "";
+    showTagSuggestions.value = false;
+    tagSuggestions.value = [];
   }
 };
 
@@ -256,4 +601,61 @@ const removeTag = (tagToRemove) => {
     formData.tags.splice(index, 1);
   }
 };
+
+// Load data when component mounts
+onMounted(() => {
+  // loadDropdownData();
+});
+
+const props = defineProps({
+  isOpen: Boolean
+});
+
+// Watch for modal open to reload data if needed
+watch(() => props.isOpen, (newVal) => {
+  // if (newVal && (projects.value.length === 0 || assignees.value.length === 0)) {
+  //   loadDropdownData();
+  // }
+});
 </script>
+
+<style scoped>
+@import '../../styles/CreateTaskModal.css';
+
+/* Component-specific border overrides */
+.border-gray-300 {
+  border-color: #d1d5db !important;
+  border-width: 1px !important;
+}
+
+.border-gray-200 {
+  border-color: #e5e7eb !important;
+  border-width: 1px !important;
+}
+
+/* Ensure all input elements have visible borders */
+input, textarea, button[type="button"] {
+  border-width: 1px !important;
+}
+
+/* Dropdown hover effects */
+button:hover .dropdown-option {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Focus ring for better accessibility */
+.focus-visible\:ring-1:focus-visible {
+  --tw-ring-shadow: 0 0 0 1px var(--ring);
+  box-shadow: var(--tw-ring-shadow);
+}
+
+/* Dark mode border adjustments */
+.dark .border-gray-300 {
+  border-color: #6b7280 !important;
+}
+
+.dark .border-gray-200 {
+  border-color: #4b5563 !important;
+}
+</style>
