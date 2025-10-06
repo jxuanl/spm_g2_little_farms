@@ -22,9 +22,63 @@ export async function getTasksForUser(userId) {
     }
   }
 
-// export async function createTask(newTask) {
-//   await addDoc(collection(db, TASK_COLLECTION), newTask);
-// }
+export async function createTask(taskData) {
+  try {
+    // Convert assignee IDs to Firestore user references
+    const assignedToRefs = [];
+    if (taskData.assigneeIds) {
+      for (const userId of taskData.assigneeIds) {
+      const userDoc = await db.collection('Users').doc(userId).get();
+      if (userDoc.exists) {
+        assignedToRefs.push(db.collection('Users').doc(userId));
+      }
+      }
+    }
+    
+    // Convert project ID to Firestore project reference
+    let projectRef = null;
+    if (taskData.projectId) {
+      const projectDoc = await db.collection('Projects').doc(taskData.projectId).get();
+      if (projectDoc.exists) {
+      projectRef = db.collection('Projects').doc(taskData.projectId);
+      }
+    }
+    
+    // Convert creator ID to Firestore user reference
+    let taskCreatedByRef = null;
+    if (taskData.createdBy) {
+      const creatorDoc = await db.collection('Users').doc(taskData.createdBy).get();
+      if (creatorDoc.exists) {
+      taskCreatedByRef = db.collection('Users').doc(taskData.createdBy);
+      }
+    }
+    
+    // Convert date strings to Firestore timestamps
+    const createdDate = new Date();
+    const deadline = taskData.deadline ? new Date(taskData.deadline) : null;
+    
+    const newTask = {
+      assignedTo: assignedToRefs,
+      createdDate: createdDate,
+      deadline: deadline,
+      description: taskData.description || '',
+      isOverdue: false, // Initially false, will be updated by background jobs
+      modifiedDate: createdDate,
+      priority: taskData.priority || 'medium',
+      projectId: projectRef,
+      status: taskData.status || 'To Do',
+      tags: taskData.tags || [],
+      taskCreatedBy: taskCreatedByRef,
+      title: taskData.title
+    };
+    
+    const docRef = await db.collection(TASK_COLLECTION).add(newTask);
+    return { id: docRef.id, ...newTask };
+  } catch (err) {
+    console.error("Error creating task:", err);
+    throw err;
+  }
+}
 
 // export async function updateTask(taskId, updates) {
 //   const taskRef = doc(db, TASK_COLLECTION, taskId);
@@ -38,7 +92,9 @@ export async function getTasksForUser(userId) {
 
 export const taskService = {
   getTasksForUser,
-  // createTask,
+  createTask,
   // updateTask,
   // deleteTask,
 };
+
+

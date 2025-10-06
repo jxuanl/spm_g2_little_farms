@@ -25,7 +25,7 @@
     <CreateTaskModal
       :isOpen="isCreateModalOpen"
       @close="() => setIsCreateModalOpen(false)"
-      @createTask="handleCreateTask"
+      @taskCreated="handleTaskCreated"
     />
   </div>
 </template>
@@ -78,12 +78,10 @@ const setStatusFilter = (status) => statusFilter.value = status;
 const setPriorityFilter = (priority) => priorityFilter.value = priority;
 const setIsCreateModalOpen = (open) => isCreateModalOpen.value = open;
 
-const handleCreateTask = async (newTask) => {
-  await addDoc(collection(db, "tasks"), {
-    ...newTask,
-    taskCreatedBy: currentUserId.value,
-    createdDate: new Date(),
-  });
+const handleTaskCreated = (newTask) => {
+  console.log('Task created:', newTask);
+  // For now, we'll just log it. In a real app, you might want to refresh the tasks list
+  // or add the new task to the existing list with proper formatting
 };
 
 const handleTaskClick = (taskId) => {

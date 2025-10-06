@@ -34,7 +34,7 @@
     <CreateTaskModal
       :isOpen="isCreateModalOpen"
       @close="() => setIsCreateModalOpen(false)"
-      @createTask="handleCreateTask"
+      @taskCreated="handleTaskCreated"
     />
   </div>
 </template>
@@ -56,7 +56,9 @@ const setIsCreateModalOpen = (open) => {
   isCreateModalOpen.value = open;
 };
 
-const handleCreateTask = (newTask) => {
-  console.log("Create task:", newTask);
+const handleTaskCreated = (newTask) => {
+  console.log('Task created:', newTask);
+  // For now, we'll just log it. In a real app, you might want to refresh the tasks list
+  // or add the new task to the existing list with proper formatting
 };
 </script>
