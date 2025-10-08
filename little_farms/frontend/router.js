@@ -11,7 +11,7 @@ import login from './src/views/LoginPage.vue'
 
 
 const routes = [
-  { path: '/', redirect: '/dashboard' },
+  { path: '/', redirect: '/login' },
   { path: '/dashboard', component: Dashboard },
   { path: '/my-tasks', component: MyTasks },
   { path: '/calendar', component: Calendar },
