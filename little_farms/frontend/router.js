@@ -12,7 +12,7 @@ import login from './src/views/LoginPage.vue'
 
 
 const routes = [
-  { path: '/', redirect: '/dashboard' },
+  { path: '/', redirect: '/all-tasks' },
   { path: '/all-tasks', component: AllTasks },
   { path: '/my-tasks', component: MyTasks },
   { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail },
