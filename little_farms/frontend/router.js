@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from './src/views/Dashboard.vue'
+import AllTasks from './src/views/AllTasks.vue'
 import MyTasks from './src/views/MyTasks.vue'
 import Calendar from './src/views/Calendar.vue'
 import Reports from './src/views/Reports.vue'
@@ -12,7 +12,7 @@ import login from './src/views/LoginPage.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
-  { path: '/dashboard', component: Dashboard },
+  { path: '/all-tasks', component: AllTasks },
   { path: '/my-tasks', component: MyTasks },
   { path: '/calendar', component: Calendar },
   { path: '/reports', component: Reports },
