@@ -37,7 +37,7 @@
 
     <div class="h-px bg-border" />
 
-    <div class="p-6 flex-1">
+    <!-- <div class="p-6 flex-1">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-muted-foreground">Projects</h3>
         <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 rounded-md gap-1.5 px-3">
@@ -69,7 +69,7 @@
           </div>
         </button>
       </div>
-    </div>
+    </div> -->
 
     <div class="h-px bg-border" />
 
@@ -115,13 +115,13 @@ const menuItems = [
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
   { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
-  { id: "project", label: "Project", icon: LucideFolderKanban, path: "/project" },
+  { id: "projects", label: "All Projects", icon: LucideFolderKanban, path: "/projects" },
 ];
 
-const projects = [
-  { id: "all", name: "All Tasks", tasksCount: 24, color: "bg-blue-500" },
-  { id: "website", name: "Website Redesign", tasksCount: 8, color: "bg-green-500" },
-  { id: "mobile", name: "Mobile App", tasksCount: 12, color: "bg-purple-500" },
-  { id: "marketing", name: "Marketing Campaign", tasksCount: 4, color: "bg-orange-500" },
-];
+// const projects = [
+//   { id: "all", name: "All Tasks", tasksCount: 24, color: "bg-blue-500" },
+//   { id: "website", name: "Website Redesign", tasksCount: 8, color: "bg-green-500" },
+//   { id: "mobile", name: "Mobile App", tasksCount: 12, color: "bg-purple-500" },
+//   { id: "marketing", name: "Marketing Campaign", tasksCount: 4, color: "bg-orange-500" },
+// ];
 </script>

@@ -19,3 +19,7 @@ export async function fetchProjects() {
     return [];
   }
 }
+
+export const projectService = {
+  fetchProjects
+};

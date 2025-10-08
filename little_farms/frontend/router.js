@@ -7,7 +7,7 @@ import Settings from './src/views/Settings.vue'
 import Home from './src/views/Home.vue'
 import About from './src/views/About.vue'
 import login from './src/views/LoginPage.vue'
-// import Project from './src/views/Project.vue'
+import Project from './src/views/Project.vue'
 
 
 const routes = [
@@ -20,7 +20,7 @@ const routes = [
   { path: '/home', component: Home },
   { path: '/about', component: About },
   { path: '/login', component: login },
-  // { path: '/project', component: Project },
+  { path: '/projects', component: Project },
 ]
 
 const router = createRouter({

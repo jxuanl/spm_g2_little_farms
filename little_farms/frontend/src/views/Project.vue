@@ -7,9 +7,9 @@
       <div class="bg-card border-b border-border p-6">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-2xl font-semibold">Settings</h2>
+            <h2 class="text-2xl font-semibold">All Projects</h2>
             <p class="text-sm text-muted-foreground mt-1">
-              Configure your workspace and preferences
+              View and manage your projects
             </p>
           </div>
           <button @click="handleNewProjectClick" :disabled="!isLoggedIn"
@@ -61,7 +61,7 @@
                 class="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <!-- <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium mb-2">
                   Start Date
@@ -77,7 +77,7 @@
                 <input v-model="formData.endDate" type="date"
                   class="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
-            </div>
+            </div> -->
 
             <div v-if="error" class="text-red-500 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
               {{ error }}
@@ -129,22 +129,25 @@
               <p class="text-sm text-muted-foreground mb-3 line-clamp-2">
                 {{ project.desc || 'No description' }}
               </p>
-              <div class="text-xs text-muted-foreground space-y-1">
+              <!-- <div class="text-xs text-muted-foreground space-y-1">
                 <div v-if="project.startDate">
                   Start: {{ formatDate(project.startDate) }}
                 </div>
                 <div v-if="project.endDate">
                   End: {{ formatDate(project.endDate) }}
                 </div>
-              </div>
+              </div> -->
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <CreateTaskModal :isOpen="isCreateModalOpen" @close="() => setIsCreateModalOpen(false)"
-      @createTask="handleCreateTask" />
+    <CreateTaskModal 
+    :isOpen="isCreateModalOpen" 
+    @close="() => setIsCreateModalOpen(false)"
+    @createTask="handleCreateTask" 
+    />
   </div>
 </template>
 
@@ -153,7 +156,6 @@ import { ref, onMounted } from 'vue';
 import { Settings as SettingsIcon, Plus as PlusIcon } from 'lucide-vue-next';
 import TaskSidebar from '../components/TaskSidebar.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
-import { projectService } from '../projects';
 
 const activeProject = ref("all");
 const isCreateModalOpen = ref(false);
@@ -219,9 +221,7 @@ const handleNewProjectClick = () => {
 const resetForm = () => {
   formData.value = {
     title: '',
-    desc: '',
-    startDate: '',
-    endDate: ''
+    desc: ''
   };
   error.value = '';
   successMessage.value = '';
@@ -232,22 +232,22 @@ const cancelForm = () => {
   resetForm();
 };
 
-const formatDate = (date) => {
-  if (!date) return '';
+// const formatDate = (date) => {
+//   if (!date) return '';
 
-  let dateObj = date;
-  if (date.toDate) {
-    dateObj = date.toDate();
-  } else if (typeof date === 'string') {
-    dateObj = new Date(date);
-  }
+//   let dateObj = date;
+//   if (date.toDate) {
+//     dateObj = date.toDate();
+//   } else if (typeof date === 'string') {
+//     dateObj = new Date(date);
+//   }
 
-  return dateObj.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-};
+//   return dateObj.toLocaleDateString('en-US', {
+//     year: 'numeric',
+//     month: 'short',
+//     day: 'numeric'
+//   });
+// };
 
 const loadProjects = async () => {
   if (!checkAuth()) {
@@ -256,7 +256,9 @@ const loadProjects = async () => {
 
   loadingProjects.value = true;
   try {
-    const userProjects = await projectService.getUserProjects();
+    const res = await fetch('/api/projects');
+    if (!res.ok) throw new Error('Failed to fetch projects');
+    const userProjects = await res.json();
     projects.value = userProjects;
   } catch (err) {
     console.error('Error loading projects:', err);

@@ -2,6 +2,7 @@
   <div class="h-screen bg-background flex">
     <TaskSidebar
       :activeProject="activeProject"
+      :projects="projects"
       @projectChange="setActiveProject"
       @createTask="() => setIsCreateModalOpen(true)"
     />
