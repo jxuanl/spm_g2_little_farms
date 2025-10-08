@@ -8,12 +8,12 @@
         <h1 class="text-lg font-semibold">TaskManager</h1>
       </div>
 
-      <button
+      <!-- <button 
         class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full mb-8"
         @click="$emit('createTask')">
         <Plus class="w-4 h-4 mr-2" />
         New Task
-      </button>
+      </button> -->
 
       <nav class="space-y-2">
         <router-link v-for="item in menuItems" :key="item.id" :to="item.path" :class="[
@@ -178,8 +178,8 @@ const menuItems = [
   { id: "my-tasks", label: "My Tasks", icon: Users, path: "/my-tasks" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
-  { id: "project", label: "Project", icon: LucideFolderKanban, path: "/project" },
   { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+  { id: "projects", label: "All Projects", icon: LucideFolderKanban, path: "/projects" },
 ];
 
 // const projects = [
