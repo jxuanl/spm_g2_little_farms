@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AllTasks from './src/views/AllTasks.vue'
+import TaskDetail from './src/views/TaskDetail.vue';
 import MyTasks from './src/views/MyTasks.vue'
 import Calendar from './src/views/Calendar.vue'
 import Reports from './src/views/Reports.vue'
@@ -14,6 +15,7 @@ const routes = [
   { path: '/', redirect: '/dashboard' },
   { path: '/all-tasks', component: AllTasks },
   { path: '/my-tasks', component: MyTasks },
+  { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail },
   { path: '/calendar', component: Calendar },
   { path: '/reports', component: Reports },
   { path: '/settings', component: Settings },

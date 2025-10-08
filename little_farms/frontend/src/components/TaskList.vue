@@ -115,7 +115,6 @@ watch(
         let projectTitle = 'No project';
         let creatorName = 'No creator';
 
-        // Resolve project reference
         // Resolve project by ID
         if (task.projectId) {
           try {

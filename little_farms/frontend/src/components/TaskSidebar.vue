@@ -68,7 +68,7 @@ defineProps({
 defineEmits(['projectChange', 'createTask']);
 
 const menuItems = [
-  { id: "dashboard", label: "All Tasks", icon: Home, path: "/all-tasks" },
+  { id: "all-tasks", label: "All Tasks", icon: Home, path: "/all-tasks" },
   { id: "project", label: "All Projects", icon: LucideFolderKanban, path: "/project" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
 ];
