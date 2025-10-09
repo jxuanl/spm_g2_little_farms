@@ -74,7 +74,7 @@
               <div 
                 class="h-full w-full flex-1 bg-primary transition-all rounded-full"
                 :style="{ transform: `translateX(-${100 - completionRate}%)` }"
-              />
+              ></div>
             </div>
             <p v-if="overdueTasks > 0" class="text-xs font-medium text-destructive">
               {{ overdueTasks }} overdue
@@ -277,7 +277,7 @@
                       <div 
                         class="h-full w-full flex-1 bg-primary transition-all"
                         :style="{ transform: `translateX(-${100 - task.progress}%)` }"
-                      />
+                      ></div>
                     </div>
                   </div>
                   <span v-else class="text-xs text-muted-foreground">Not started</span>
