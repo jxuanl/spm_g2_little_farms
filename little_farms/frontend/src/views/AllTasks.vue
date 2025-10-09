@@ -12,7 +12,7 @@
 
       <TaskList
         :tasks="filteredTasks"
-        @taskClick="handleTaskClick"
+        @taskClick="id => router.push({ name: 'TaskDetail', params: { id } })"
         @createTask="() => setIsCreateModalOpen(true)"
         :searchQuery="searchQuery"
         @searchChange="setSearchQuery"
@@ -33,6 +33,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { auth, db } from '../../firebase';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 import TaskSidebar from '../components/TaskSidebar.vue';
@@ -40,6 +41,7 @@ import TaskHeader from '../components/TaskHeader.vue';
 import TaskList from '../components/TaskList.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
 
+const router = useRouter(); //
 const tasks = ref([]);
 const activeProject = ref("all");
 const searchQuery = ref("");

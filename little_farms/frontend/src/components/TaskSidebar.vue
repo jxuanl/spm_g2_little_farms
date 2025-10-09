@@ -16,64 +16,27 @@
         New Task
       </button> -->
 
+      <!-- Menu Items -->
       <nav class="space-y-2">
         <router-link
           v-for="item in menuItems"
           :key="item.id"
           :to="item.path"
-          :class="[
-            'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50',
-            'w-full justify-start h-10 px-4 py-2',
+          :class="[ 
+            'inline-flex items-center justify-start gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all w-full h-10 px-4 py-2',
             $route.path === item.path
-              ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' 
+              ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
               : 'hover:bg-accent hover:text-accent-foreground'
           ]"
         >
-          <component :is="item.icon" class="w-4 h-4 mr-3" />
+          <component :is="item.icon" class="w-4 h-4 mr-2" />
           {{ item.label }}
         </router-link>
       </nav>
     </div>
 
-    <div class="h-px bg-border" />
-
-    <!-- <div class="p-6 flex-1">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-medium text-muted-foreground">Projects</h3>
-        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 rounded-md gap-1.5 px-3">
-          <Plus class="w-3 h-3" />
-        </button>
-      </div>
-
-      <div class="space-y-2">
-        <button
-          v-for="project in projects"
-          :key="project.id"
-          :class="[
-            'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50',
-            'w-full justify-start h-auto p-3',
-            activeProject === project.id 
-              ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' 
-              : 'hover:bg-accent hover:text-accent-foreground'
-          ]"
-          @click="$emit('projectChange', project.id)"
-        >
-          <div class="flex items-center gap-3 w-full">
-            <div :class="['w-3 h-3 rounded-full', project.color]" />
-            <div class="flex-1 text-left">
-              <div class="text-sm">{{ project.name }}</div>
-            </div>
-            <span class="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-secondary text-secondary-foreground hover:bg-secondary/80">
-              {{ project.tasksCount }}
-            </span>
-          </div>
-        </button>
-      </div>
-    </div> -->
-
-    <div class="h-px bg-border" />
-
-    <div class="p-6">
+    <!-- === Bottom User Card (sticks to bottom) === -->
+    <div class="p-6 border-t">
       <div class="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
@@ -90,17 +53,14 @@
   </div>
 </template>
 
+
 <script setup>
 import { 
   Home, 
-  Folder, 
-  Users, 
-  Calendar, 
   BarChart3, 
-  Settings,
-  Plus,
-  ChevronDown,
-  LucideFolderKanban
+  Plus, 
+  ChevronDown, 
+  LucideFolderKanban 
 } from 'lucide-vue-next';
 
 defineProps({
@@ -110,9 +70,8 @@ defineProps({
 defineEmits(['projectChange', 'createTask']);
 
 const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
-  { id: "my-tasks", label: "My Tasks", icon: Users, path: "/my-tasks" },
-  { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
+  { id: "all-tasks", label: "All Tasks", icon: Home, path: "/all-tasks" },
+  { id: "project", label: "All Projects", icon: LucideFolderKanban, path: "/project" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
   { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
   { id: "projects", label: "All Projects", icon: LucideFolderKanban, path: "/projects" },
@@ -124,4 +83,5 @@ const menuItems = [
 //   { id: "mobile", name: "Mobile App", tasksCount: 12, color: "bg-purple-500" },
 //   { id: "marketing", name: "Marketing Campaign", tasksCount: 4, color: "bg-orange-500" },
 // ];
+];
 </script>
