@@ -13,8 +13,8 @@ router.get('/', async (req, res) => {
     const tasks = await getTasksForUser(userId)
     res.json(tasks)
   } catch (error) {
-    console.error('Error fetching tasks:', error)
-    res.status(500).json({ error: 'Internal Server Error' })
+    console.error('Backend error fetching tasks:', error);
+    res.status(500).json({ error: error.message });
   }
 })
 
