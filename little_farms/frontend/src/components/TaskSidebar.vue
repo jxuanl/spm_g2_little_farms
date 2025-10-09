@@ -77,11 +77,4 @@ const menuItems = [
   { id: "projects", label: "All Projects", icon: LucideFolderKanban, path: "/projects" },
 ];
 
-// const projects = [
-//   { id: "all", name: "All Tasks", tasksCount: 24, color: "bg-blue-500" },
-//   { id: "website", name: "Website Redesign", tasksCount: 8, color: "bg-green-500" },
-//   { id: "mobile", name: "Mobile App", tasksCount: 12, color: "bg-purple-500" },
-//   { id: "marketing", name: "Marketing Campaign", tasksCount: 4, color: "bg-orange-500" },
-// ];
-];
 </script>
