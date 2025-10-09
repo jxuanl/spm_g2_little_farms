@@ -83,7 +83,7 @@ export default {
 
         // Step 4: Store session data
         const sessionData = {
-          uid: user.uid,
+          uid: "/Users/"+user.uid,
           email: user.email,
           name: data.user.name,
           role: data.user.role,
