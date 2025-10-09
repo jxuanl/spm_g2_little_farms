@@ -65,8 +65,7 @@
 
     <!-- User Profile Section -->
     <div class="p-4 position-relative mt-auto">
-      <button 
-        @click="toggleDropdown"
+      <button @click="toggleDropdown"
         class="btn btn-light border text-start rounded-3 p-3 w-100 shadow-sm hover-bg-gray-200 transition-all">
         <div class="d-flex align-items-center gap-3">
           <div class="w-8 h-8 bg-dark rounded-circle d-flex align-items-center justify-content-center">
@@ -94,14 +93,15 @@
       </div>
     </div>
 
-      <div v-if="showSuccessMessage" class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 9999;">
-    <div class="alert alert-success d-flex align-items-center gap-2 rounded-3 shadow-sm mx-auto" style="max-width: 400px;" role="alert">
-      <CheckCircle class="w-4 h-4 text-muted"/>
-      <span class="small fw-medium">
-        Logged out successfully
-      </span>
+    <div v-if="showSuccessMessage" class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 9999;">
+      <div class="alert alert-success d-flex align-items-center gap-2 rounded-3 shadow-sm mx-auto"
+        style="max-width: 400px;" role="alert">
+        <CheckCircle class="w-4 h-4 text-muted" />
+        <span class="small fw-medium">
+          Logged out successfully
+        </span>
+      </div>
     </div>
-  </div>
   </div>
 </template>
 
@@ -122,6 +122,8 @@ import {
   UserRound,
 } from 'lucide-vue-next';
 import { ref, watch } from 'vue'; // Import ref for reactivity
+// import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '../../firebase'
 
 const userSession = JSON.parse(sessionStorage.getItem('userSession'));
 const username = userSession.name;
@@ -135,19 +137,17 @@ function toggleDropdown() {
   console.log("Drop down is working")
 }
 
-
 async function handleLogout() {
   console.log("Logging out...");
-
-  // Show success message
-  showSuccessMessage.value = true;
-
-  // Wait a moment for user to see the message
-  await new Promise(resolve => setTimeout(resolve, 1500));
-
-  // Perform logout actions
-  sessionStorage.removeItem('userSession');
-  window.location.href = '/login';
+  try {
+    await auth.signOut()
+    sessionStorage.removeItem('userSession')
+    showSuccessMessage.value = true;
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    window.location.href = '/login';
+  } catch (error) {
+    console.error('Logout error:', error)
+  }
 }
 
 // Auto-hide success message after 3 seconds

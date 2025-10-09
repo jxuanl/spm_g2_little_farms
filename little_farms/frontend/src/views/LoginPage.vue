@@ -1,4 +1,5 @@
 <template>
+
   <div class="login-page">
     <div class="login-container">
       <h1>Sign In</h1>
@@ -18,38 +19,20 @@
       <form @submit.prevent="handleLogin">
         <div class="form-group">
           <label for="email">Email Address</label>
-          <input
-            type="email"
-            id="email"
-            v-model="email"
-            placeholder="Enter your email"
-            required
-            :disabled="loading"
-          />
+          <input type="email" id="email" v-model="email" placeholder="Enter your email" required :disabled="loading" />
         </div>
 
         <div class="form-group">
           <label for="password">Password</label>
-          <input
-            type="password"
-            id="password"
-            v-model="password"
-            placeholder="Enter your password"
-            required
-            :disabled="loading"
-          />
+          <input type="password" id="password" v-model="password" placeholder="Enter your password" required
+            :disabled="loading" />
         </div>
 
         <button type="submit" :disabled="loading" class="login-button">
           {{ loading ? 'Signing in...' : 'Sign In' }}
         </button>
 
-        <button
-          type="button"
-          @click="handleForgotPassword"
-          :disabled="loading"
-          class="forgot-password-button"
-        >
+        <button type="button" @click="handleForgotPassword" :disabled="loading" class="forgot-password-button">
           Forgot Password?
         </button>
       </form>
@@ -58,7 +41,7 @@
 </template>
 
 <script>
-import { signInWithCustomToken } from 'firebase/auth'
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../firebase'
 
 export default {
@@ -79,56 +62,59 @@ export default {
       this.successMessage = ''
 
       try {
-        // Call backend API to authenticate
-        const response = await fetch('http://localhost:3001/api/users/login', {
+        // Step 1: Sign in with Firebase Auth directly
+        const userCredential = await signInWithEmailAndPassword(auth, this.email, this.password)
+        const user = userCredential.user
+
+        // Step 2: Get the ID token
+        const idToken = await user.getIdToken()
+
+        // Step 3: Send ID token to backend for verification
+        const response = await fetch('http://localhost:3001/api/users/verify', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            email: this.email,
-            password: this.password
-          })
+          body: JSON.stringify({ token: idToken })
         })
 
         const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'Login verification failed')
 
-        if (!response.ok) {
-          throw new Error(data.message || 'Login failed')
-        }
-
-        // Sign in with the custom token returned from backend
-        await signInWithCustomToken(auth, data.token)
-
-        // Store user session data
+        // Step 4: Store session data
         const sessionData = {
-          uid: data.user.uid,
-          email: data.user.email,
+          uid: user.uid,
+          email: user.email,
           name: data.user.name,
           role: data.user.role,
           department: data.user.department,
-          loginTime: data.user.loginTime
+          loginTime: new Date().toISOString()
         }
 
-        // Store in sessionStorage
         sessionStorage.setItem('userSession', JSON.stringify(sessionData))
 
-        // Emit login event
-        this.$emit('login-success', sessionData)
+        // Step 5: Redirect to dashboard
+        this.successMessage = 'Login successful!'
+        alert(`Welcome back, ${data.user.name || user.email}! 👋`)
+        console.log('Verified user:', sessionData)
 
-        console.log('Login successful:', sessionData)
-
-        // Redirect to dashboard
         if (this.$router) {
           this.$router.push('/dashboard')
         }
       } catch (error) {
-        console.error('Login error:', error)
-        this.error = error.message || 'Login failed. Please try again'
+        console.log('Login error:', error)
+        if (error.code === 'auth/invalid-credential') {
+          this.error = 'Login failed. Please try again.'
+          this.email = ''
+          this.password=''
+        } else {
+          this.error = error.message || 'Login failed. Please try again.'
+        }
       } finally {
         this.loading = false
       }
     },
+
 
     async handleForgotPassword() {
       if (!this.email) {
@@ -141,24 +127,9 @@ export default {
       this.successMessage = ''
 
       try {
-        const response = await fetch('http://localhost:3001/api/users/forgot-password', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: this.email
-          })
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.message || 'Failed to send reset email')
-        }
-
+        const auth = getAuth()
+        await auth.sendPasswordResetEmail(this.email)
         this.successMessage = 'Password reset email sent! Check your inbox.'
-        this.error = ''
       } catch (error) {
         console.error('Password reset error:', error)
         this.error = error.message || 'Failed to send password reset email'
@@ -167,45 +138,12 @@ export default {
       }
     },
 
-    // Get session data
     getUserSession() {
       const sessionData = sessionStorage.getItem('userSession')
       return sessionData ? JSON.parse(sessionData) : null
     },
-
-    // Logout method
-    async logout() {
-      try {
-        const token = await auth.currentUser?.getIdToken()
-
-        if (token) {
-          // Call backend logout endpoint
-          await fetch('http://localhost:3001/api/users/logout', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          })
-        }
-
-        // Clear session storage
-        sessionStorage.removeItem('userSession')
-
-        // Sign out from Firebase
-        await auth.signOut()
-
-        // Redirect to login
-        if (this.$router) {
-          this.$router.push('/login')
-        }
-      } catch (error) {
-        console.error('Logout error:', error)
-      }
-    }
   },
 
-  // Check if user is already logged in
   mounted() {
     const existingSession = this.getUserSession()
     if (existingSession && this.$router) {
@@ -214,6 +152,7 @@ export default {
   }
 }
 </script>
+
 
 <style scoped>
 .login-page {
@@ -280,7 +219,8 @@ input {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
-  box-sizing: border-box;}
+  box-sizing: border-box;
+}
 
 input:focus {
   outline: none;
