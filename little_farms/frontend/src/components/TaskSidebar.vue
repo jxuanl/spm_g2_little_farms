@@ -15,18 +15,21 @@
         New Task
       </button> -->
 
-      <nav class="flex flex-col gap-2">
-        <router-link 
-          v-for="item in menuItems" 
-          :key="item.id" 
+      <!-- Menu Items -->
+      <nav class="space-y-2">
+        <router-link
+          v-for="item in menuItems"
+          :key="item.id"
           :to="item.path"
-          class="text-gray-700 text-start rounded-xl py-2 px-3 border-0 flex items-center no-underline transition-colors"
-          :class="{
-            'bg-gray-800 text-white': $route.path === item.path,
-            'hover:bg-gray-100': $route.path !== item.path
-          }">
-          <component :is="item.icon" class="w-4 h-4 mr-3" />
-          <span class="font-medium">{{ item.label }}</span>
+          :class="[ 
+            'inline-flex items-center justify-start gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all w-full h-10 px-4 py-2',
+            $route.path === item.path
+              ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              : 'hover:bg-accent hover:text-accent-foreground'
+          ]"
+        >
+          <component :is="item.icon" class="w-4 h-4 mr-2" />
+          {{ item.label }}
         </router-link>
       </nav>
     </div>
@@ -114,14 +117,12 @@
   </div>
 </template>
 
+
 <script setup>
 import {
   Home,
   Folder,
-  Users,
-  Calendar,
   BarChart3,
-  Settings,
   LucideFolderKanban,
   CheckCircle,
   ChevronUpIcon,
@@ -172,12 +173,10 @@ defineProps({
 defineEmits(['projectChange', 'createTask']);
 
 const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
-  { id: "my-tasks", label: "My Tasks", icon: Users, path: "/my-tasks" },
-  { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
-  { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
-  { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+  { id: "all-tasks", label: "All Tasks", icon: Home, path: "/all-tasks" },
   { id: "projects", label: "All Projects", icon: LucideFolderKanban, path: "/projects" },
+  { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
+  // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 </script>
 

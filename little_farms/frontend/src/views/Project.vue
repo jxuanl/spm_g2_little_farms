@@ -129,7 +129,7 @@
             >
               <h4 class="font-semibold text-lg mb-2">{{ project.title }}</h4>
               <p class="text-sm text-muted-foreground mb-3 line-clamp-2">
-                {{ project.desc || 'No description' }}
+                {{ project.description || 'No description' }}
               </p>
             </div>
           </div>
