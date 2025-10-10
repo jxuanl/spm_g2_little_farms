@@ -40,9 +40,9 @@ router.post('/', async (req, res) => {
       });
     }
 
-    if (!assigneeIds || !Array.isArray(assigneeIds) || assigneeIds.length === 0) {
+    if (assigneeIds && !Array.isArray(assigneeIds)) {
       return res.status(400).json({ 
-        error: 'At least one assignee is required' 
+        error: 'assigneeIds must be an array' 
       });
     }
 
