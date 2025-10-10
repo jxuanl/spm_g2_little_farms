@@ -19,7 +19,7 @@
           </button>
         </div>
       </div>
-<div class="flex-1 p-6 overflow-auto">
+    <div class="flex-1 p-6 overflow-auto">
         <!-- Authentication Error -->
         <div v-if="authError && !isLoggedIn"
           class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
@@ -80,7 +80,8 @@
             </div>
           </form>
         </div>
-<!-- Projects List -->
+
+        <!-- Projects List -->
         <div v-if="loadingProjects" class="flex items-center justify-center h-96">
           <div class="text-muted-foreground">Loading projects...</div>
         </div>
