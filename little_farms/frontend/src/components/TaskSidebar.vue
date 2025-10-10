@@ -22,7 +22,7 @@
           :to="item.path"
           class="text-gray-700 text-start rounded-xl py-2 px-3 border-0 flex items-center no-underline transition-colors"
           :class="{
-            'bg-gray-800 text-white': $route.path === item.path,
+            'bg-gray-800 text-black': $route.path === item.path,
             'hover:bg-gray-100': $route.path !== item.path
           }">
           <component :is="item.icon" class="w-4 h-4 mr-3" />
