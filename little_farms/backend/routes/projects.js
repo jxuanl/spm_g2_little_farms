@@ -1,27 +1,19 @@
 import express from 'express';
 // import { getFirestore, collection, addDo c, getDocs, query, where } from 'firebase/firestore';import { fetchProjects } from '../services/projectService.js';
 import admin from '../adminFirebase.js';
-import projectService from '../services/projectService.js';
 
 const router = express.Router();
 
 // GET /api/projects
 router.get('/', async (req, res) => {
   try {
-    console.log("hit backend")
-    // const userId = req.user?.uid;
-    const userId = req.query.userId || req.user?.uid;
-    console.log("Request received for user:", userId);
-    const result = await projectService.getProjectsForUser(userId);
-    console.log("Projects result:", result);
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to fetch projects in route:", error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch projects',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    const projects = await fetchProjects();
+    console.log("Trying to fetch projects");
+    console.log("Projects returned from service:", projects);
+    res.json(projects);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch projects' });
   }
 });
 
