@@ -9,6 +9,7 @@ import login from './src/views/LoginPage.vue'
 import Project from './src/views/Project.vue'
 import AllTasks from './src/views/AllTasks.vue'
 import TaskDetail from './src/views/TaskDetail.vue';
+import ProjectDetail from './src/views/ProjectDetail.vue'
 
 
 const routes = [
@@ -23,6 +24,7 @@ const routes = [
   { path: '/about', component: About },
   { path: '/login', component: login },
   { path: '/projects', component: Project },
+  { path: '/projects/:id', component: ProjectDetail, props: true },
 ]
 
 const router = createRouter({
