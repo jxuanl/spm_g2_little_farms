@@ -105,8 +105,6 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <router-link 
             v-for="project in projects" 
-            :key="project.id" 
-            :to="`/projects/${project.id}`"
             class="block bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
             >
               <h4 class="font-semibold text-lg mb-2">{{ project.title }}</h4>
@@ -149,30 +147,30 @@ const formData = ref({
   description: ''
 });
 
-// // Check if user is logged in
-// const checkAuth = () => {
-//   try {
-//     const userSessionStr = sessionStorage.getItem('userSession');
-//     if (!userSessionStr) {
-//       isLoggedIn.value = false;
-//       authError.value = 'You must be logged in to create projects';
-//       return false;
-//     }
-//     const userSession = JSON.parse(userSessionStr);
-//     if (!userSession.uid) {
-//       isLoggedIn.value = false;
-//       authError.value = 'Invalid user session. Please log in again.';
-//       return false;
-//     }
-//     isLoggedIn.value = true;
-//     authError.value = '';
-//     return true;
-//   } catch (err) {
-//     isLoggedIn.value = false;
-//     authError.value = 'Authentication error. Please log in again.';
-//     return false;
-//   }
-// };
+// Check if user is logged in
+const checkAuth = () => {
+  try {
+    const userSessionStr = sessionStorage.getItem('userSession');
+    if (!userSessionStr) {
+      isLoggedIn.value = false;
+      authError.value = 'You must be logged in to create projects';
+      return false;
+    }
+    const userSession = JSON.parse(userSessionStr);
+    if (!userSession.uid) {
+      isLoggedIn.value = false;
+      authError.value = 'Invalid user session. Please log in again.';
+      return false;
+    }
+    isLoggedIn.value = true;
+    authError.value = '';
+    return true;
+  } catch (err) {
+    isLoggedIn.value = false;
+    authError.value = 'Authentication error. Please log in again.';
+    return false;
+  }
+};
 const setActiveProject = (project) => {
   activeProject.value = project;
 };
@@ -245,40 +243,42 @@ const handleCreateProject = async () => {
   }
 
   if (!formData.value.title.trim()) {
-    error.value = 'Project title is required';
+    error.value = 'Project title is required.';
     return;
-  }
-
-  if (formData.value.startDate && formData.value.endDate) {
-    const start = new Date(formData.value.startDate);
-    const end = new Date(formData.value.endDate);
-
-    if (end < start) {
-      error.value = 'End date cannot be before start date';
-      return;
-    }
   }
 
   loading.value = true;
 
   try {
-    const newProject = await projectService.createProject({ ...formData.value });
-    projects.value.push(newProject);
+    const sessionStr = sessionStorage.getItem('userSession');
+    const session = JSON.parse(sessionStr);
+    console.log(formData.value.desc)
+
+    const response = await fetch('/api/projects/createProject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: formData.value.title,
+        desc: formData.value.desc,
+        userId: session.uid
+      })
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to create project');
+    }
+
     successMessage.value = 'Project created successfully!';
+    projects.value.push(result.project); // Update UI immediately
 
     setTimeout(() => {
       showCreateForm.value = false;
       resetForm();
-    }, 1500);
+    }, 1000);
   } catch (err) {
     console.error('Error creating project:', err);
-    if (err.message === 'No user session found') {
-      authError.value = 'Session expired. Please log in again.';
-      isLoggedIn.value = false;
-      error.value = 'Your session has expired. Please log in again.';
-    } else {
-      error.value = err.message || 'Failed to create project. Please try again.';
-    }
+    error.value = err.message;
   } finally {
     loading.value = false;
   }
@@ -286,10 +286,11 @@ const handleCreateProject = async () => {
 
 const handleCreateTask = (newTask) => {
   console.log("Create task:", newTask);
-  setIsCreateModalOpen(false);
+  // setIsCreateModalOpen(false);
+  isCreateModalOpen.value = false;
 };
 
 onMounted(() => {
-    loadProjects();
+  if (checkAuth()) loadProjects();
 });
 </script>
