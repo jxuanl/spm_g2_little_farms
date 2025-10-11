@@ -106,6 +106,8 @@
             <router-link 
             v-for="project in projects" 
             class="block bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+            :key="project.id" 
+            :to="`/projects/${project.id}`"
             >
               <h4 class="font-semibold text-lg mb-2">{{ project.title }}</h4>
               <p class="text-sm text-muted-foreground mb-3 line-clamp-2">

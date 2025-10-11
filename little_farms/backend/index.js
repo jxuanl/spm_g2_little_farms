@@ -7,8 +7,8 @@ import cors from 'cors';
 
 // Imported Routes
 import tasksRouter from './routes/tasks.js'
-// import usersRouter from './routes/users.js'
-import usersRouter from './routes/authentication.js'
+import usersRouter from './routes/users.js'
+import authRouter from './routes/authentication.js'
 import projectsRouter from './routes/projects.js'
 
 const app = express()
@@ -41,6 +41,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/tasks', tasksRouter)
 app.use('/api/users', usersRouter)
+app.use('/api/auth', authRouter)
 app.use('/api/projects', projectsRouter);
 
 // const bree = new Bree({

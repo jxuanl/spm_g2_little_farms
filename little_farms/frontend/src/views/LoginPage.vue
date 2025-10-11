@@ -70,7 +70,7 @@ export default {
         const idToken = await user.getIdToken()
 
         // Step 3: Send ID token to backend for verification
-        const response = await fetch('http://localhost:3001/api/users/verify', {
+        const response = await fetch('http://localhost:3001/api/auth/verify', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

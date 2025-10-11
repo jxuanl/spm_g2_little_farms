@@ -50,6 +50,8 @@ router.post('/createProject', async (req, res) => {
             error: error.message || 'Internal server error'
         });
     }
+});
+
 // GET /api/projects/:id
 router.get('/:projectId', async (req, res) => {
   try {
@@ -67,5 +69,6 @@ router.get('/:projectId', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch project' });
   }
 });
+
 
 export default router;

@@ -173,7 +173,7 @@ defineEmits(['projectChange', 'createTask']);
 
 const menuItems = [
   // { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
-  { id: "my-tasks", label: "Tasks", icon: Users, path: "/my-tasks" },
+  { id: "my-tasks", label: "Tasks", icon: Users, path: "/all-tasks" },
   { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
   { id: "calendar", label: "Timeline", icon: Calendar, path: "/calendar" },
