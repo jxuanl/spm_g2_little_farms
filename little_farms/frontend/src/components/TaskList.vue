@@ -41,6 +41,7 @@
             <th class="p-2 border">Task</th>
             <th class="p-2 border">Project</th>
             <th class="p-2 border">Creator</th>
+            <th class="p-2 border">Assignees</th>
             <th class="p-2 border">Due Date</th>
             <th class="p-2 border">Status</th>
             <th class="p-2 border">Priority</th>
@@ -59,6 +60,18 @@
             <td class="p-2 border">{{ task.projectTitle }}</td>
             <!-- Creator -->
             <td class="p-2 border">{{ task.creatorName }}</td>
+            <!-- Assignees -->
+            <td class="p-2 border">
+              <template v-if="task.assigneeNames && task.assigneeNames.length">
+                <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
+                  {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
+                </span>
+                <span v-if="task.assigneeNames.length > 3">...</span>
+              </template>
+              <template v-else>
+                No assignees
+              </template>
+            </td>
             <!-- Due Date -->
             <td class="p-2 border" :class="getDateClasses(task)">
               {{ task.deadline ? task.deadline.toDate().toLocaleDateString(): "No due date"}}
@@ -74,12 +87,7 @@
             </td>
             <!-- Priority -->
             <td class="p-2 border">
-              <span 
-                class="px-2 py-1 rounded text-xs border"
-                :class="getPriorityClasses(task.priority)"
-              >
-                {{ getPriorityConfig(task.priority).label }}
-              </span>
+                {{ task.priority }}
             </td>
           </tr>
         </tbody>
@@ -94,17 +102,15 @@ import { Plus } from 'lucide-vue-next';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
-// === Props & Emits ===
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
   currentUserId: { type: [String, Number], default: 1 }
 });
 defineEmits(['taskClick', 'createTask']);
 
-// === Local state for enriched tasks ===
 const tasks = ref([]);
 
-// === Watch incoming tasks and enrich project/creator info ===
+// === Watch incoming tasks and enrich project, creator, assignees ===
 watch(
   () => props.tasks,
   async (newTasks) => {
@@ -117,20 +123,30 @@ watch(
       newTasks.map(async (task) => {
         let projectTitle = 'No project';
         let creatorName = 'No creator';
+        let assigneeNames = [];
 
-        // Resolve project by ID
+        // === Resolve Project Title ===
         if (task.projectId) {
           try {
-            const projectSnap = await getDoc(doc(db, task.projectId.path));
-            if (projectSnap.exists()) {
-              projectTitle = projectSnap.data().title || 'Untitled Project';
+            const projectRef =
+              typeof task.projectId === 'string'
+                ? doc(db, 'Projects', task.projectId)
+                : task.projectId?.path
+                ? doc(db, task.projectId.path)
+                : null;
+
+            if (projectRef) {
+              const projectSnap = await getDoc(projectRef);
+              if (projectSnap.exists()) {
+                projectTitle = projectSnap.data().title || 'Untitled Project';
+              }
             }
           } catch (err) {
-            console.error("Error loading project:", err);
+            console.error('Error loading project:', err);
           }
         }
 
-        // Resolve creator reference
+        // === Resolve Creator ===
         if (task.taskCreatedBy?.path) {
           try {
             const userSnap = await getDoc(doc(db, task.taskCreatedBy.path));
@@ -140,7 +156,25 @@ watch(
           }
         }
 
-        return { ...task, projectTitle, creatorName };
+        // === Resolve Assignees ===
+        if (Array.isArray(task.assignedTo) && task.assignedTo.length > 0) {
+          try {
+            const names = [];
+            for (const assignee of task.assignedTo) {
+              if (typeof assignee === 'string') {
+                names.push(assignee);
+              } else if (assignee?.path) {
+                const userSnap = await getDoc(doc(db, assignee.path));
+                if (userSnap.exists()) names.push(userSnap.data().name || 'Unnamed');
+              }
+            }
+            assigneeNames = names;
+          } catch (err) {
+            console.error('Error loading assignees:', err);
+          }
+        }
+
+        return { ...task, projectTitle, creatorName, assigneeNames };
       })
     );
 
@@ -151,26 +185,28 @@ watch(
 
 // === Stats ===
 const totalTasks = computed(() => tasks.value.length);
-const completedTasks = computed(() => tasks.value.filter(t => t.status === "done").length);
-const inProgressTasks = computed(() => tasks.value.filter(t => t.status === "in-progress").length);
+const completedTasks = computed(() => tasks.value.filter(t => t.status === 'done').length);
+const inProgressTasks = computed(() => tasks.value.filter(t => t.status === 'in-progress').length);
 const overdueTasks = computed(() =>
-  tasks.value.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "done").length
+  tasks.value.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done').length
 );
-const completionRate = computed(() => totalTasks.value ? (completedTasks.value / totalTasks.value) * 100 : 0);
+const completionRate = computed(() =>
+  totalTasks.value ? (completedTasks.value / totalTasks.value) * 100 : 0
+);
 
-// === Helpers ===
+// === Date helpers ===
 const formatDate = (date) => {
   if (date?.toDate) return date.toDate().toLocaleDateString();
   if (date instanceof Date) return date.toLocaleDateString();
   return new Date(date).toLocaleDateString();
 };
 
-const isTaskOverdue = (task) => task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "done";
+const isTaskOverdue = (task) => task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
 const isTaskDueSoon = (task) =>
   task.dueDate &&
   new Date(task.dueDate) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) &&
   new Date(task.dueDate) > new Date() &&
-  task.status !== "done";
+  task.status !== 'done';
 
 const getDateClasses = (task) => {
   if (isTaskOverdue(task)) return 'text-red-600 font-semibold';
@@ -178,27 +214,13 @@ const getDateClasses = (task) => {
   return '';
 };
 
-// === Status & Priority Config ===
+// === Configs ===
 const statusConfig = {
-  todo: { label: "To Do", color: "bg-gray-500" },
-  "in-progress": { label: "In Progress", color: "bg-blue-500" },
-  review: { label: "In Review", color: "bg-yellow-500" },
-  done: { label: "Done", color: "bg-green-500" }
+  todo: { label: 'To Do', color: 'bg-gray-500' },
+  'in-progress': { label: 'In Progress', color: 'bg-blue-500' },
+  review: { label: 'In Review', color: 'bg-yellow-500' },
+  done: { label: 'Done', color: 'bg-green-500' }
 };
 
-const priorityConfig = {
-  high: { label: "High", variant: "destructive" },
-  medium: { label: "Medium", variant: "secondary" },
-  low: { label: "Low", variant: "outline" }
-};
-
-const getStatusConfig = (status) => statusConfig[status] || { label: "To Do", color: "bg-gray-500" };
-const getPriorityConfig = (priority) => priorityConfig[priority] || { label: "Low", variant: "outline" };
-
-const getPriorityClasses = (priority) => {
-  const variant = getPriorityConfig(priority).variant;
-  if (variant === 'destructive') return 'bg-red-100 text-red-800 border-red-300';
-  if (variant === 'secondary') return 'bg-gray-200 text-gray-800 border-gray-300';
-  return 'border-gray-300';
-};
+const getStatusConfig = (status) => statusConfig[status] || { label: 'To Do', color: 'bg-gray-500' };
 </script>
