@@ -23,4 +23,22 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/projects/:id
+router.get('/:projectId', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.query.userId || req.user?.uid;
+
+    const project = await projectService.getProjectDetailForUser(projectId, userId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found or no tasks assigned to user' });
+    }
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch project' });
+  }
+});
+
 export default router;
