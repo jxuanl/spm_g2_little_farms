@@ -50,6 +50,8 @@ router.post('/createProject', async (req, res) => {
             error: error.message || 'Internal server error'
         });
     }
+});
+
 // GET /api/projects/:id
 router.get('/:projectId', async (req, res) => {
   try {
