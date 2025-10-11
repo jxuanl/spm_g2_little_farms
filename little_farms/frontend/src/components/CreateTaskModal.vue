@@ -50,46 +50,22 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Priority</label>
-            <div class="relative">
-              <button
-                type="button"
-                @click="toggleDropdown('priority')"
-                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span :class="formData.priority ? 'text-foreground' : 'text-muted-foreground'">
-                  {{ getPriorityPlaceholder() }}
-                </span>
-                <ChevronDown class="h-4 w-4 opacity-50" />
-              </button>
-              <div 
-                v-if="dropdownStates.priority"
-                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
-              >
-                <div class="p-1">
-                  <button
-                    type="button"
-                    @click="selectOption('priority', 'high')"
-                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                  >
-                    High
-                  </button>
-                  <button
-                    type="button"
-                    @click="selectOption('priority', 'medium')"
-                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                  >
-                    Medium
-                  </button>
-                  <button
-                    type="button"
-                    @click="selectOption('priority', 'low')"
-                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                  >
-                    Low
-                  </button>
-                </div>
-              </div>
+            <label for="priority" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Priority (1-10)</label>
+            <input
+              id="priority"
+              v-model.number="formData.priority"
+              type="number"
+              min="1"
+              max="10"
+              placeholder="Enter priority (1-10)"
+              :class="[
+                'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+                errors.priority ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+              ]"
+              @input="validatePriority"
+            />
+            <div v-if="errors.priority" class="text-sm text-red-500 mt-1">
+              {{ errors.priority }}
             </div>
           </div>
 
@@ -102,7 +78,7 @@
                 class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span :class="formData.status ? 'text-foreground' : 'text-muted-foreground'">
-                  {{ getStatusPlaceholder() }}
+                  {{ getStatusOptions() }}
                 </span>
                 <ChevronDown class="h-4 w-4 opacity-50" />
               </button>
@@ -147,27 +123,40 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Project</label>
+            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Project *
+            </label>
             <div class="relative">
               <button
                 type="button"
                 @click="toggleDropdown('project')"
-                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                :class="[
+                  'flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-left',
+                  errors.projectId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                ]"
+                :disabled="loadingStates.projects"
               >
-                <span :class="formData.project ? 'text-foreground' : 'text-muted-foreground'">
+                <span :class="[
+                  formData.projectId ? 'text-foreground' : 'text-muted-foreground',
+                  'truncate'
+                ]">
                   {{ getProjectPlaceholder() }}
                 </span>
-                <ChevronDown class="h-4 w-4 opacity-50" />
+                <ChevronDown v-if="!loadingStates.projects" class="h-4 w-4 opacity-50" />
+                <div v-else class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
               </button>
               <div 
-                v-if="dropdownStates.project"
-                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+                v-if="dropdownStates.project && !loadingStates.projects"
+                class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
               >
-                <div class="p-1">
+                <div v-if="projects.length === 0" class="p-3 text-sm text-muted-foreground text-center">
+                  No projects available
+                </div>
+                <div v-else class="p-1">
                   <button
-                    type="button"
-                    v-for="project in projects" 
+                    v-for="project in projects"
                     :key="project.id"
+                    type="button"
                     @click="selectOption('project', project.id)"
                     class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
                   >
@@ -176,48 +165,53 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <div class="space-y-2">
+            <div v-if="errors.projectId" class="text-sm text-red-500 mt-1">
+              {{ errors.projectId }}
+            </div>
+          </div>          <div class="space-y-2">
             <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Assignees</label>
             <div class="relative">
               <button
                 type="button"
                 @click="toggleDropdown('assignees')"
-                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-left"
+                :class="[
+                  'flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-left',
+                  'border-gray-300'
+                ]"
+                :disabled="loadingStates.users"
               >
-                <span 
-                  :class="formData.assignees.length > 0 ? 'text-foreground' : 'text-muted-foreground'"
-                  class="truncate"
-                >
-                  {{ getAssigneePlaceholder() }}
+                <span :class="[
+                  formData.assigneeIds.length > 0 ? 'text-foreground' : 'text-muted-foreground',
+                  'truncate'
+                ]">
+                  {{ getAssigneesPlaceholder() }}
                 </span>
-                <ChevronDown class="h-4 w-4 opacity-50 flex-shrink-0" />
+                <ChevronDown v-if="!loadingStates.users" class="h-4 w-4 opacity-50" />
+                <div v-else class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
               </button>
               <div 
-                v-if="dropdownStates.assignees"
-                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-48 overflow-y-auto"
+                v-if="dropdownStates.assignees && !loadingStates.users"
+                class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
               >
-                <div class="p-1">
-                  <div
-                    v-for="assignee in assignees" 
-                    :key="assignee.id"
-                    @click="selectAssignee(assignee.id)"
-                    class="flex items-center px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+                <div v-if="users.length === 0" class="p-3 text-sm text-muted-foreground text-center">
+                  No users available
+                </div>
+                <div v-else class="p-1">
+                  <button
+                    v-for="user in users"
+                    :key="user.id"
+                    type="button"
+                    @click="toggleAssignee(user.id)"
+                    :class="[
+                      'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                      formData.assigneeIds.includes(user.id) 
+                        ? 'bg-accent text-accent-foreground' 
+                        : 'hover:bg-accent hover:text-accent-foreground'
+                    ]"
                   >
-                    <input 
-                      type="checkbox" 
-                      :checked="formData.assignees.includes(assignee.id)"
-                      class="mr-2 rounded border-gray-300"
-                      @click.stop
-                    />
-                    <div class="flex items-center">
-                      <div class="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium mr-2">
-                        {{ assignee.initials }}
-                      </div>
-                      {{ assignee.name }}
-                    </div>
-                  </div>
+                    <span>{{ user.name }}</span>
+                    <Check v-if="formData.assigneeIds.includes(user.id)" class="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -321,12 +315,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
-import { CalendarIcon, X, ChevronDown } from 'lucide-vue-next';
+import { CalendarIcon, X, ChevronDown, Check } from 'lucide-vue-next';
 import { auth } from '../../firebase.js';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const emit = defineEmits(['close', 'taskCreated']);
 
-// API function to create task
+// API functions
 const createTaskAPI = async (taskData) => {
   try {
     const token = await auth.currentUser?.getIdToken();
@@ -351,6 +346,88 @@ const createTaskAPI = async (taskData) => {
   }
 };
 
+const fetchProjects = async () => {
+  try {
+    // Wait for auth state to be ready
+    if (!auth.currentUser) {
+      console.log('No authenticated user found');
+      return [];
+    }
+    
+    const token = await auth.currentUser.getIdToken();
+    console.log('Auth token for projects:', token ? 'Token exists' : 'No token');
+    
+    const response = await fetch('http://localhost:3001/api/allProjects', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Projects API error:', response.status, errorText);
+      throw new Error(`Failed to fetch projects: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    return [];
+  }
+};
+
+const fetchUsers = async () => {
+  try {
+    // Wait for auth state to be ready
+    if (!auth.currentUser) {
+      console.log('No authenticated user found');
+      return [];
+    }
+    
+    const token = await auth.currentUser.getIdToken();
+    console.log('Auth token for users:', token ? 'Token exists' : 'No token');
+    console.log('Making request to: http://localhost:3001/api/users/users');
+    
+    const response = await fetch('http://localhost:3001/api/users/users', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    console.log('Users API response status:', response.status);
+    console.log('Users API response headers:', response.headers);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Users API error:', response.status, errorText);
+      throw new Error(`Failed to fetch users: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Users API response data:', data);
+    
+    // Handle different response structures
+    if (data.success && data.data) {
+      return data.data;
+    } else if (Array.isArray(data)) {
+      return data;
+    } else if (data.users) {
+      return data.users;
+    } else {
+      console.warn('Unexpected users API response structure:', data);
+      return [];
+    }
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return [];
+  }
+};
+
 // Get current user from session
 const getCurrentUser = () => {
   const userSession = sessionStorage.getItem('userSession');
@@ -360,7 +437,9 @@ const getCurrentUser = () => {
 // Error and warning states
 const errors = reactive({
   title: '',
-  dueDate: ''
+  dueDate: '',
+  projectId: '',
+  priority: ''
 });
 
 const showSuccessMessage = ref(false);
@@ -368,10 +447,10 @@ const showSuccessMessage = ref(false);
 const formData = reactive({
   title: "",
   description: "",
-  priority: "",
+  priority: null, // Changed to number (1-10)
   status: "",
-  project: "",
-  assignees: [], // Changed to array for multi-select
+  projectId: "",
+  assigneeIds: [], // Array for multi-select assignees
   dueDate: "",
   tags: [],
 });
@@ -387,17 +466,13 @@ const dropdownStates = reactive({
 const newTag = ref("");
 const showCalendar = ref(false);
 
-const projects = [
-  { id: "website", name: "Website Redesign" },
-  { id: "mobile", name: "Mobile App" },
-  { id: "marketing", name: "Marketing Campaign" },
-];
-
-const assignees = [
-  { id: "john-doe", name: "John Doe", initials: "JD" },
-  { id: "jane-smith", name: "Jane Smith", initials: "JS" },
-  { id: "mike-johnson", name: "Mike Johnson", initials: "MJ" },
-];
+// Dynamic data from API
+const projects = ref([]);
+const users = ref([]);
+const loadingStates = reactive({
+  projects: false,
+  users: false
+});
 
 // Existing tags for auto-suggestion (would typically come from API)
 const existingTags = ref([
@@ -432,10 +507,27 @@ const validateDueDate = () => {
   }
 };
 
+const validateProject = () => {
+  errors.projectId = '';
+  if (!formData.projectId) {
+    errors.projectId = 'Project is required';
+  }
+};
+
+const validatePriority = () => {
+  errors.priority = '';
+  const priority = Number(formData.priority);
+  if ((priority && priority < 1) || (priority && priority > 10)) {
+    errors.priority = 'Priority must be a number between 1 and 10';
+  }
+};
+
 const validateForm = () => {
   validateTitle();
   validateDueDate();
-  return !errors.title && !errors.dueDate;
+  validateProject();
+  validatePriority();
+  return !errors.title && !errors.dueDate && !errors.projectId && !errors.priority;
 };
 
 // Dropdown helper functions
@@ -447,23 +539,27 @@ const toggleDropdown = (dropdown) => {
 };
 
 const selectOption = (dropdown, value) => {
-  formData[dropdown] = value;
+  if (dropdown === 'project') {
+    formData.projectId = value;
+  } else {
+    formData[dropdown] = value;
+  }
   dropdownStates[dropdown] = false;
 };
 
-const selectAssignee = (assigneeId) => {
-  if (formData.assignees.includes(assigneeId)) {
-    formData.assignees = formData.assignees.filter(id => id !== assigneeId);
+const toggleAssignee = (assigneeId) => {
+  if (formData.assigneeIds.includes(assigneeId)) {
+    formData.assigneeIds = formData.assigneeIds.filter(id => id !== assigneeId);
   } else {
-    formData.assignees.push(assigneeId);
+    formData.assigneeIds.push(assigneeId);
   }
 };
 
 const getSelectedAssigneeNames = () => {
-  return formData.assignees.map(id => {
-    const assignee = assignees.find(a => a.id === id);
-    return assignee ? assignee.name : '';
-  }).join(', ');
+  return formData.assigneeIds.map(id => {
+    const user = users.value.find(u => u.id === id);
+    return user ? user.name : '';
+  }).filter(name => name).join(', ');
 };
 
 // Tag suggestion functions
@@ -495,23 +591,58 @@ const closeDropdowns = () => {
 };
 
 // Placeholder getters
-const getPriorityPlaceholder = () => {
-  const priorityMap = { high: 'High', medium: 'Medium', low: 'Low' };
-  return formData.priority ? priorityMap[formData.priority] : 'Select priority';
-};
-
-const getStatusPlaceholder = () => {
+const getStatusOptions = () => {
   const statusMap = { todo: 'To Do', 'in-progress': 'In Progress', review: 'In Review', done: 'Done' };
   return formData.status ? statusMap[formData.status] : 'Select status';
 };
 
 const getProjectPlaceholder = () => {
-  const project = projects.find(p => p.id === formData.project);
-  return project ? project.name : 'Select project';
+  if (loadingStates.projects) return 'Loading projects...';
+  const project = projects.value.find(p => p.id === formData.projectId);
+  return project ? project.name : 'Select project *';
 };
 
-const getAssigneePlaceholder = () => {
-  return formData.assignees.length > 0 ? getSelectedAssigneeNames() : 'Select assignees';
+const getAssigneesPlaceholder = () => {
+  if (loadingStates.users) return 'Loading users...';
+  return formData.assigneeIds.length > 0 ? getSelectedAssigneeNames() : 'Select assignees';
+};
+
+// Load data functions
+const loadDropdownData = async () => {
+  try {
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      console.log('User not authenticated, skipping data load');
+      return;
+    }
+    
+    loadingStates.projects = true;
+    loadingStates.users = true;
+    
+    const [projectsData, usersData] = await Promise.all([
+      fetchProjects(),
+      fetchUsers()
+    ]);
+    
+    projects.value = projectsData.map(project => ({
+      id: project.id,
+      name: project.name || project.title || 'Unnamed Project'
+    }));
+    
+    users.value = usersData.map(user => ({
+      id: user.uid || user.id,
+      name: user.name || 'Unknown User'
+    }));
+    
+  } catch (error) {
+    console.error('Error loading dropdown data:', error);
+    // Fallback to empty arrays if API fails
+    projects.value = [];
+    users.value = [];
+  } finally {
+    loadingStates.projects = false;
+    loadingStates.users = false;
+  }
 };
 
 const handleSubmit = async () => {
@@ -533,11 +664,11 @@ const handleSubmit = async () => {
     const taskData = {
       title: formData.title.trim(),
       description: formData.description.trim(),
-      priority: formData.priority || 'medium',
-      status: formData.status || 'To Do',
+      priority: Number(formData.priority),
+      status: formData.status || null,
       deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-      assigneeIds: formData.assignees.length > 0 ? formData.assignees : [currentUser.uid || 'default-user'],
-      projectId: formData.project || null,
+      assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [null],
+      projectId: formData.projectId,
       createdBy: currentUser.uid || 'default-user',
       tags: formData.tags || []
     };
@@ -572,10 +703,10 @@ const resetForm = () => {
   Object.assign(formData, {
     title: "",
     description: "",
-    priority: "",
+    priority: null,
     status: "",
-    project: "",
-    assignees: [],
+    projectId: "",
+    assigneeIds: [],
     dueDate: "",
     tags: [],
   });
@@ -583,6 +714,8 @@ const resetForm = () => {
   showCalendar.value = false;
   errors.title = '';
   errors.dueDate = '';
+  errors.projectId = '';
+  errors.priority = '';
   closeDropdowns();
 };
 
@@ -602,9 +735,13 @@ const removeTag = (tagToRemove) => {
   }
 };
 
-// Load data when component mounts
+// Load data when component mounts and user is authenticated
 onMounted(() => {
-  // loadDropdownData();
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      loadDropdownData();
+    }
+  });
 });
 
 const props = defineProps({
@@ -613,9 +750,9 @@ const props = defineProps({
 
 // Watch for modal open to reload data if needed
 watch(() => props.isOpen, (newVal) => {
-  // if (newVal && (projects.value.length === 0 || assignees.value.length === 0)) {
-  //   loadDropdownData();
-  // }
+  if (newVal && (projects.value.length === 0 || users.value.length === 0)) {
+    loadDropdownData();
+  }
 });
 </script>
 
@@ -657,5 +794,14 @@ button:hover .dropdown-option {
 
 .dark .border-gray-200 {
   border-color: #4b5563 !important;
+}
+
+/* Text truncation for dropdown buttons */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 </style>

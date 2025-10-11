@@ -10,6 +10,7 @@ import tasksRouter from './routes/tasks.js'
 // import usersRouter from './routes/users.js'
 import usersRouter from './routes/authentication.js'
 import projectsRouter from './routes/projects.js'
+import allProjectsRouter from './routes/allProjects.js'
 
 const app = express()
 
@@ -27,7 +28,7 @@ app.use((req, res, next) => {
   }
 });
 
-app.use(express.json())
+app.use(express.json());
 
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -39,9 +40,10 @@ app.use(express.urlencoded({ extended: true }));
 // const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename);
 
-app.use('/api/tasks', tasksRouter)
-app.use('/api/users', usersRouter)
+app.use('/api/tasks', tasksRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/projects', projectsRouter);
+app.use('/api/allProjects', allProjectsRouter);
 
 // const bree = new Bree({
 //   jobs: [
