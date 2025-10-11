@@ -7,9 +7,9 @@
       <div class="bg-card border-b border-border p-6">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-2xl font-semibold">Settings</h2>
+            <h2 class="text-2xl font-semibold">All Projects</h2>
             <p class="text-sm text-muted-foreground mt-1">
-              Configure your workspace and preferences
+              View and manage your projects
             </p>
           </div>
           <button @click="handleNewProjectClick" :disabled="!isLoggedIn"
@@ -19,8 +19,7 @@
           </button>
         </div>
       </div>
-
-      <div class="flex-1 p-6 overflow-auto">
+<div class="flex-1 p-6 overflow-auto">
         <!-- Authentication Error -->
         <div v-if="authError && !isLoggedIn"
           class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
@@ -61,24 +60,6 @@
                 class="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium mb-2">
-                  Start Date
-                </label>
-                <input v-model="formData.startDate" type="date"
-                  class="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium mb-2">
-                  End Date
-                </label>
-                <input v-model="formData.endDate" type="date"
-                  class="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-              </div>
-            </div>
-
             <div v-if="error" class="text-red-500 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
               {{ error }}
             </div>
@@ -99,8 +80,7 @@
             </div>
           </form>
         </div>
-
-        <!-- Projects List -->
+<!-- Projects List -->
         <div v-if="loadingProjects" class="flex items-center justify-center h-96">
           <div class="text-muted-foreground">Loading projects...</div>
         </div>
@@ -121,30 +101,28 @@
         </div>
 
         <div v-else-if="projects.length > 0" class="space-y-4">
-          <h3 class="text-lg font-semibold mb-4">Your Projects</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div v-for="project in projects" :key="project.id"
-              class="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
+            <router-link 
+            v-for="project in projects" 
+            :key="project.id" 
+            :to="`/projects/${project.id}`"
+            class="block bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+            >
               <h4 class="font-semibold text-lg mb-2">{{ project.title }}</h4>
               <p class="text-sm text-muted-foreground mb-3 line-clamp-2">
-                {{ project.desc || 'No description' }}
+                {{ project.description || 'No description' }}
               </p>
-              <div class="text-xs text-muted-foreground space-y-1">
-                <div v-if="project.startDate">
-                  Start: {{ formatDate(project.startDate) }}
-                </div>
-                <div v-if="project.endDate">
-                  End: {{ formatDate(project.endDate) }}
-                </div>
-              </div>
-            </div>
+            </router-link>
           </div>
         </div>
       </div>
     </div>
 
-    <CreateTaskModal :isOpen="isCreateModalOpen" @close="() => setIsCreateModalOpen(false)"
-      @createTask="handleCreateTask" />
+    <CreateTaskModal 
+    :isOpen="isCreateModalOpen" 
+    @close="() => setIsCreateModalOpen(false)"
+    @createTask="handleCreateTask" 
+    />
   </div>
 </template>
 
@@ -153,7 +131,6 @@ import { ref, onMounted } from 'vue';
 import { Settings as SettingsIcon, Plus as PlusIcon } from 'lucide-vue-next';
 import TaskSidebar from '../components/TaskSidebar.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
-import { projectService } from '../projects';
 
 const activeProject = ref("all");
 const isCreateModalOpen = ref(false);
@@ -168,36 +145,33 @@ const authError = ref('');
 
 const formData = ref({
   title: '',
-  desc: '',
-  startDate: '',
-  endDate: ''
+  description: ''
 });
 
-// Check if user is logged in
-const checkAuth = () => {
-  try {
-    const userSessionStr = sessionStorage.getItem('userSession');
-    if (!userSessionStr) {
-      isLoggedIn.value = false;
-      authError.value = 'You must be logged in to create projects';
-      return false;
-    }
-    const userSession = JSON.parse(userSessionStr);
-    if (!userSession.uid) {
-      isLoggedIn.value = false;
-      authError.value = 'Invalid user session. Please log in again.';
-      return false;
-    }
-    isLoggedIn.value = true;
-    authError.value = '';
-    return true;
-  } catch (err) {
-    isLoggedIn.value = false;
-    authError.value = 'Authentication error. Please log in again.';
-    return false;
-  }
-};
-
+// // Check if user is logged in
+// const checkAuth = () => {
+//   try {
+//     const userSessionStr = sessionStorage.getItem('userSession');
+//     if (!userSessionStr) {
+//       isLoggedIn.value = false;
+//       authError.value = 'You must be logged in to create projects';
+//       return false;
+//     }
+//     const userSession = JSON.parse(userSessionStr);
+//     if (!userSession.uid) {
+//       isLoggedIn.value = false;
+//       authError.value = 'Invalid user session. Please log in again.';
+//       return false;
+//     }
+//     isLoggedIn.value = true;
+//     authError.value = '';
+//     return true;
+//   } catch (err) {
+//     isLoggedIn.value = false;
+//     authError.value = 'Authentication error. Please log in again.';
+//     return false;
+//   }
+// };
 const setActiveProject = (project) => {
   activeProject.value = project;
 };
@@ -219,9 +193,7 @@ const handleNewProjectClick = () => {
 const resetForm = () => {
   formData.value = {
     title: '',
-    desc: '',
-    startDate: '',
-    endDate: ''
+    desc: ''
   };
   error.value = '';
   successMessage.value = '';
@@ -232,40 +204,31 @@ const cancelForm = () => {
   resetForm();
 };
 
-const formatDate = (date) => {
-  if (!date) return '';
-
-  let dateObj = date;
-  if (date.toDate) {
-    dateObj = date.toDate();
-  } else if (typeof date === 'string') {
-    dateObj = new Date(date);
-  }
-
-  return dateObj.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-};
-
 const loadProjects = async () => {
-  if (!checkAuth()) {
-    return;
-  }
-
   loadingProjects.value = true;
-  try {
-    const userProjects = await projectService.getUserProjects();
+    try {
+    const userSession = JSON.parse(sessionStorage.getItem('userSession') || '{}');
+    console.log("User session:", userSession)
+
+    if (!userSession.uid) {
+      throw new Error("User not logged in or session missing UID");
+    }
+    
+    const res = await fetch(`http://localhost:3001/api/projects?userId=${userSession.uid}`);
+    console.log(res)
+    
+    // Check if response is OK
+    if (!res.ok) {
+      throw new Error(`Failed to fetch projects: ${res.statusText}`);
+    }
+
+    // Parse JSON only if response is OK
+    const userProjects = await res.json();
     projects.value = userProjects;
+
   } catch (err) {
     console.error('Error loading projects:', err);
-    if (err.message === 'No user session found') {
-      authError.value = 'Session expired. Please log in again.';
-      isLoggedIn.value = false;
-    } else {
-      error.value = 'Failed to load projects. Please try again.';
-    }
+    error.value = 'Failed to load projects. Please try again.';
   } finally {
     loadingProjects.value = false;
   }
@@ -326,9 +289,6 @@ const handleCreateTask = (newTask) => {
 };
 
 onMounted(() => {
-  checkAuth();
-  if (isLoggedIn.value) {
     loadProjects();
-  }
 });
 </script>

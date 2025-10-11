@@ -71,7 +71,9 @@ defineEmits(['projectChange', 'createTask']);
 
 const menuItems = [
   { id: "all-tasks", label: "All Tasks", icon: Home, path: "/all-tasks" },
-  { id: "project", label: "All Projects", icon: LucideFolderKanban, path: "/project" },
+  { id: "projects", label: "All Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
+  // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
+
 </script>

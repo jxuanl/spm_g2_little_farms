@@ -26,7 +26,7 @@ app.use((req, res, next) => {
   }
 });
 
-app.use(express.json())
+app.use(express.json());
 
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -38,9 +38,9 @@ app.use(express.urlencoded({ extended: true }));
 // const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename);
 
-app.use('/api/tasks', tasksRouter)
-app.use('/api/users', usersRouter)
-app.use('/api/projects', projectsRouter)
+app.use('/api/tasks', tasksRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/projects', projectsRouter);
 
 // const bree = new Bree({
 //   jobs: [

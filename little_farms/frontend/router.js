@@ -6,7 +6,7 @@ import Calendar from './src/views/Calendar.vue'
 import Reports from './src/views/Reports.vue'
 import Settings from './src/views/Settings.vue'
 import login from './src/views/LoginPage.vue'
-// import Project from './src/views/Project.vue'
+import Project from './src/views/Project.vue'
 
 
 const routes = [
@@ -18,7 +18,7 @@ const routes = [
   { path: '/reports', component: Reports },
   { path: '/settings', component: Settings },
   { path: '/login', component: login },
-  // { path: '/project', component: Project },
+  { path: '/projects', component: Project },
 ]
 
 const router = createRouter({
