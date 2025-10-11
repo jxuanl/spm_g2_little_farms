@@ -1,16 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import AllTasks from './src/views/AllTasks.vue'
-import TaskDetail from './src/views/TaskDetail.vue';
 import MyTasks from './src/views/MyTasks.vue'
 import Calendar from './src/views/Calendar.vue'
 import Reports from './src/views/Reports.vue'
 import Settings from './src/views/Settings.vue'
 import login from './src/views/LoginPage.vue'
 import Project from './src/views/Project.vue'
+import AllTasks from './src/views/AllTasks.vue'
+import TaskDetail from './src/views/TaskDetail.vue';
+import ProjectDetail from './src/views/ProjectDetail.vue'
 
 
 const routes = [
-  { path: '/', redirect: '/all-tasks' },
+  { path: '/', redirect: '/login' },
   { path: '/all-tasks', component: AllTasks },
   { path: '/my-tasks', component: MyTasks },
   { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail },
@@ -19,6 +20,7 @@ const routes = [
   { path: '/settings', component: Settings },
   { path: '/login', component: login },
   { path: '/projects', component: Project },
+  { path: '/projects/:id', component: ProjectDetail, props: true },
 ]
 
 const router = createRouter({
