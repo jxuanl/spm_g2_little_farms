@@ -357,7 +357,7 @@ const fetchProjects = async () => {
     const token = await auth.currentUser.getIdToken();
     console.log('Auth token for projects:', token ? 'Token exists' : 'No token');
     
-    const response = await fetch('http://localhost:3001/api/projects', {
+    const response = await fetch('http://localhost:3001/api/allProjects', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
