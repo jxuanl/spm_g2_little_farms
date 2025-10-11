@@ -26,12 +26,14 @@ export async function createTask(taskData) {
   try {
     // Convert assignee IDs to Firestore user references
     const assignedToRefs = [];
-    if (taskData.assigneeIds) {
+    if (taskData.assigneeIds && taskData.assigneeIds.length > 0) {
       for (const userId of taskData.assigneeIds) {
-      const userDoc = await db.collection('Users').doc(userId).get();
-      if (userDoc.exists) {
-        assignedToRefs.push(db.collection('Users').doc(userId));
-      }
+        if (userId) { // ✅ Check if userId is not null
+          const userDoc = await db.collection('Users').doc(userId).get();
+          if (userDoc.exists) {
+            assignedToRefs.push(db.collection('Users').doc(userId));
+          }
+        }
       }
     }
     

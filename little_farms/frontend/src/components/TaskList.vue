@@ -1,17 +1,5 @@
 <template>
   <div class="p-6">
-    <!-- === Header Section === -->
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold">Task List</h2>
-      <button 
-        class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        @click="$emit('createTask')"
-      >
-        <Plus class="w-4 h-4" />
-        New Task
-      </button>
-    </div>
-
     <!-- === Statistics Overview === -->
     <div class="grid grid-cols-4 gap-4 mb-6">
       <div class="p-4 border rounded-lg shadow-sm">
@@ -33,55 +21,70 @@
     </div>
 
     <!-- === Task Table === -->
-    <table class="w-full border-collapse border text-sm">
-      <thead>
-        <tr class="bg-gray-100 text-left">
-          <th class="p-2 border">Task</th>
-          <th class="p-2 border">Project</th>
-          <th class="p-2 border">Creator</th>
-          <th class="p-2 border">Due Date</th>
-          <th class="p-2 border">Status</th>
-          <th class="p-2 border">Priority</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr 
-          v-for="task in tasks"
-          :key="task.id"
-          class="hover:bg-gray-50 cursor-pointer"
-          @click="$emit('taskClick', task.id)"
-        >
-          <!-- Task Title -->
-          <td class="p-2 border font-medium">{{ task.title }}</td>
-          <!-- Project -->
-          <td class="p-2 border">{{ task.projectTitle }}</td>
-          <!-- Creator -->
-          <td class="p-2 border">{{ task.creatorName }}</td>
-          <!-- Due Date -->
-          <td class="p-2 border" :class="getDateClasses(task)">
-            {{ task.deadline ? task.deadline.toDate().toLocaleDateString(): "No due date"}}
-          </td>
-          <!-- Status -->
-          <td class="p-2 border">
-            <span 
-              class="px-2 py-1 rounded text-white text-xs"
-              :class="getStatusConfig(task.status).color"
-            >
-              {{ getStatusConfig(task.status).label }}
-            </span>
-          </td>
-          <!-- Priority -->
-          <td class="p-2 border">
-            <span 
-              class="px-2 py-1 rounded text-xs border"
-              :class="getPriorityClasses(task.priority)"
-            >
-              {{ getPriorityConfig(task.priority).label }}
-            </span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div class="flex flex-col space-y-1.5 p-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-2xl font-semibold leading-none tracking-tight">Tasks</h3>
+          <button 
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+            @click="$emit('createTask')"
+          >
+            <Plus class="w-4 h-4 mr-2" />
+            New Task
+          </button>
+        </div>
+      </div>
+  
+      <table class="w-full border-collapse border text-sm">
+        <thead>
+          <tr class="bg-gray-100 text-left">
+            <th class="p-2 border">Task</th>
+            <th class="p-2 border">Project</th>
+            <th class="p-2 border">Creator</th>
+            <th class="p-2 border">Due Date</th>
+            <th class="p-2 border">Status</th>
+            <th class="p-2 border">Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr 
+            v-for="task in tasks"
+            :key="task.id"
+            class="hover:bg-gray-50 cursor-pointer"
+            @click="$emit('taskClick', task.id)"
+          >
+            <!-- Task Title -->
+            <td class="p-2 border font-medium">{{ task.title }}</td>
+            <!-- Project -->
+            <td class="p-2 border">{{ task.projectTitle }}</td>
+            <!-- Creator -->
+            <td class="p-2 border">{{ task.creatorName }}</td>
+            <!-- Due Date -->
+            <td class="p-2 border" :class="getDateClasses(task)">
+              {{ task.deadline ? task.deadline.toDate().toLocaleDateString(): "No due date"}}
+            </td>
+            <!-- Status -->
+            <td class="p-2 border">
+              <span 
+                class="px-2 py-1 rounded text-white text-xs"
+                :class="getStatusConfig(task.status).color"
+              >
+                {{ getStatusConfig(task.status).label }}
+              </span>
+            </td>
+            <!-- Priority -->
+            <td class="p-2 border">
+              <span 
+                class="px-2 py-1 rounded text-xs border"
+                :class="getPriorityClasses(task.priority)"
+              >
+                {{ getPriorityConfig(task.priority).label }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 

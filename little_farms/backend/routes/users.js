@@ -1,4 +1,3 @@
-
 import express from 'express';
 import AuthService from '../services/userService.js'
 
@@ -244,17 +243,18 @@ router.post('/verify-token', async (req, res) => {
   }
 });
 
-
-
 /**
  * GET /api/auth/users
- * Get all users (protected route - admin only)
+ * Get all users (temporarily without authentication for testing)
  */
-router.get('/users', authenticate, async (req, res) => {
+router.get('/users', async (req, res) => {
   try {
+    console.log('Fetching all users...');
     const result = await AuthService.getAllUsers();
+    console.log('Users result:', result);
     res.status(200).json(result);
   } catch (error) {
+    console.error('Error fetching users:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch users',
