@@ -60,7 +60,9 @@ import {
   BarChart3, 
   Plus, 
   ChevronDown, 
-  LucideFolderKanban 
+  LucideFolderKanban, 
+  GanttChart,
+  GanttChartIcon
 } from 'lucide-vue-next';
 
 defineProps({
@@ -73,6 +75,7 @@ const menuItems = [
   { id: "all-tasks", label: "All Tasks", icon: Home, path: "/all-tasks" },
   { id: "projects", label: "All Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
+  { id: "timeline", label: "Timeline", icon: GanttChartIcon, path: "/timeline" },
   // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 

@@ -7,6 +7,7 @@ import Reports from './src/views/Reports.vue'
 import Settings from './src/views/Settings.vue'
 import login from './src/views/LoginPage.vue'
 import Project from './src/views/Project.vue'
+import Timeline from './src/views/Timeline.vue';
 
 
 const routes = [
@@ -19,6 +20,7 @@ const routes = [
   { path: '/settings', component: Settings },
   { path: '/login', component: login },
   { path: '/projects', component: Project },
+  { path: '/timeline', component: Timeline },
 ]
 
 const router = createRouter({
