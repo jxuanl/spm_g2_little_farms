@@ -8,6 +8,7 @@ import cors from 'cors';
 // Imported Routes
 import tasksRouter from './routes/tasks.js'
 import usersRouter from './routes/users.js'
+import authRouter from './routes/authentication.js'
 import projectsRouter from './routes/projects.js'
 import allProjectsRouter from './routes/allProjects.js'
 
@@ -39,8 +40,9 @@ app.use(express.urlencoded({ extended: true }));
 // const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename);
 
-app.use('/api/tasks', tasksRouter);
-app.use('/api/users', usersRouter);
+app.use('/api/tasks', tasksRouter)
+app.use('/api/users', usersRouter)
+app.use('/api/auth', authRouter)
 app.use('/api/projects', projectsRouter);
 app.use('/api/allProjects', allProjectsRouter);
 

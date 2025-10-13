@@ -62,6 +62,40 @@ export async function getProjectsForUser(userId) {
   }
 }
 
+export async function getProjectDetailForUser(projectId, userId) {
+  const projectDoc = await db.collection('Projects').doc(projectId).get();
+  if (!projectDoc.exists) return null;
+
+  const projectData = projectDoc.data();
+  const taskList = projectData.taskList || [];
+
+  // Fetch task documents
+  const taskSnapshots = await Promise.all(
+    taskList.map(async (taskRef) => {
+      const taskSnap = await taskRef.get();
+      if (!taskSnap.exists) return null;
+      const taskData = taskSnap.data();
+
+      // Only include tasks assigned to this user
+      const isAssigned = Array.isArray(taskData.assignedTo) &&
+        taskData.assignedTo.some(ref => ref.path === `Users/${userId}`);
+      return isAssigned ? { id: taskSnap.id, ...taskData } : null;
+    })
+  );
+
+  // Filter out nulls
+  const userTasks = taskSnapshots.filter(t => t !== null);
+
+  return {
+    id: projectDoc.id,
+    title: projectData.title || '',
+    description: projectData.description || '',
+    owner: projectData.owner || '',
+    tasks: userTasks
+  };
+}
+
 export default {
-  getProjectsForUser
+  getProjectsForUser,
+  getProjectDetailForUser
 };
