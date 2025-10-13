@@ -119,7 +119,7 @@ import {
   Home,
   Folder,
   Users,
-  Calendar,
+  GanttChartIcon,
   BarChart3,
   Settings,
   LucideFolderKanban,
@@ -176,7 +176,7 @@ const menuItems = [
   { id: "my-tasks", label: "Tasks", icon: Users, path: "/all-tasks" },
   { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
-  { id: "calendar", label: "Timeline", icon: Calendar, path: "/calendar" },
+  { id: "timeline", label: "Timeline", icon: GanttChartIcon, path: "/timeline" },
   // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 </script>
