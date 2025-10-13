@@ -12,7 +12,7 @@
               View and manage your projects
             </p>
           </div>
-          <button @click="handleNewProjectClick" :disabled="!isLoggedIn"
+          <button @click="handleNewProjectClick" v-if="canCreateProject"
             class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
             <PlusIcon class="w-4 h-4" />
             {{ showCreateForm ? 'Cancel' : 'New Project' }}
@@ -93,9 +93,9 @@
           </div>
           <h3 class="text-lg font-medium mb-2">No Projects Yet</h3>
           <p class="text-muted-foreground mb-4">
-            Create your first project to get started.
+            {{ canCreateProject ? 'Create your first project to get started.' : 'You do not have permission to create projects.' }}
           </p>
-          <button @click="showCreateForm = true"
+          <button v-if="canCreateProject" @click="showCreateForm = true"
             class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
             Create Project
           </button>
@@ -128,7 +128,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { Settings as SettingsIcon, Plus as PlusIcon } from 'lucide-vue-next';
 import TaskSidebar from '../components/TaskSidebar.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
@@ -143,36 +143,51 @@ const error = ref('');
 const successMessage = ref('');
 const isLoggedIn = ref(false);
 const authError = ref('');
+// const permissionError = ref('');
+const userRole = ref('');
 
 const formData = ref({
   title: '',
   description: ''
 });
 
-// Check if user is logged in
+// Check if user is logged in and get their role
 const checkAuth = () => {
   try {
     const userSessionStr = sessionStorage.getItem('userSession');
     if (!userSessionStr) {
       isLoggedIn.value = false;
       authError.value = 'You must be logged in to create projects';
+      userRole.value = '';
       return false;
     }
     const userSession = JSON.parse(userSessionStr);
     if (!userSession.uid) {
       isLoggedIn.value = false;
       authError.value = 'Invalid user session. Please log in again.';
+      userRole.value = '';
       return false;
     }
+    
     isLoggedIn.value = true;
     authError.value = '';
+    userRole.value = userSession.role || '';
+    
+    
     return true;
   } catch (err) {
     isLoggedIn.value = false;
     authError.value = 'Authentication error. Please log in again.';
+    userRole.value = '';
     return false;
   }
 };
+
+// Computed property to check if user can create projects
+const canCreateProject = computed(() => {
+  return isLoggedIn.value && userRole.value !== 'staff';
+});
+
 const setActiveProject = (project) => {
   activeProject.value = project;
 };
@@ -185,6 +200,8 @@ const handleNewProjectClick = () => {
   if (!checkAuth()) {
     return;
   }
+  
+  
   showCreateForm.value = !showCreateForm.value;
   if (showCreateForm.value) {
     resetForm();
@@ -244,6 +261,11 @@ const handleCreateProject = async () => {
     return;
   }
 
+  if (!canCreateProject.value) {
+    error.value = 'Staff members are not allowed to create projects.';
+    return;
+  }
+
   if (!formData.value.title.trim()) {
     error.value = 'Project title is required.';
     return;
@@ -288,7 +310,6 @@ const handleCreateProject = async () => {
 
 const handleCreateTask = (newTask) => {
   console.log("Create task:", newTask);
-  // setIsCreateModalOpen(false);
   isCreateModalOpen.value = false;
 };
 
