@@ -1,28 +1,36 @@
-// import express from 'express';
-// import { getFirestore } from 'firebase-admin/firestore';
+import express from 'express'
+import timelineService from '../services/timelineService.js'
 
-// const router = express.Router();
-// const db = getFirestore();
+const router = express.Router()
 
-// // GET all tasks for Gantt
-// router.get('/', async (req, res) => {
-//   try {
-//     const snapshot = await db.collection('Tasks').get();
-//     const tasks = snapshot.docs.map(doc => {
-//       const data = doc.data();
-//       return {
-//         id: doc.id,
-//         name: data.title || 'Untitled Task',
-//         start: data.createdDate?.toDate?.()?.toISOString().split('T')[0],
-//         end: data.deadline?.toDate?.()?.toISOString().split('T')[0],
-//         priority: data.priority || 'no priority',
-//       };
-//     });
-//     res.json({ success: true, data: tasks });
-//   } catch (err) {
-//     console.error('Error fetching timeline data:', err);
-//     res.status(500).json({ success: false, error: err.message });
-//   }
-// });
+// ✅ GET /api/timeline?userId=abc123
+router.get('/', async (req, res) => {
+  try {
+    console.log('🎯 [Timeline] Fetching tasks...')
+    const userId = req.query.userId || req.user?.uid
 
-// export default router;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing userId in request',
+      })
+    }
+
+    const tasks = await timelineService.getTasksForUser(userId)
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      tasks,
+    })
+  } catch (error) {
+    console.error('❌ [Timeline] Failed to fetch timeline:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch timeline data',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    })
+  }
+})
+
+export default router

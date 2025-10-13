@@ -8,19 +8,21 @@ import Project from './src/views/Project.vue'
 import AllTasks from './src/views/AllTasks.vue'
 import TaskDetail from './src/views/TaskDetail.vue';
 import ProjectDetail from './src/views/ProjectDetail.vue'
+import Timeline from './src/views/Timeline.vue';
 
 
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/all-tasks', component: AllTasks },
   { path: '/my-tasks', component: MyTasks },
-  { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail },
+  { path: '/all-tasks/:id', component: TaskDetail },
   { path: '/calendar', component: Calendar },
   { path: '/reports', component: Reports },
   { path: '/settings', component: Settings },
   { path: '/login', component: login },
   { path: '/projects', component: Project },
   { path: '/projects/:id', component: ProjectDetail, props: true },
+  { path: '/timeline/', component: Timeline, props: true },
 ]
 
 const router = createRouter({
