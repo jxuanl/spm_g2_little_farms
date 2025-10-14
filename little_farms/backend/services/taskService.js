@@ -307,12 +307,207 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
   }
 }
 
+// === Notes Functions ===
+export async function getNotesForTask(taskId, subtaskId = null) {
+  try {
+    let notesRef;
+    
+    if (subtaskId) {
+      // Get notes for a subtask
+      notesRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Notes');
+    } else {
+      // Get notes for a regular task
+      notesRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Notes');
+    }
+    
+    const snapshot = await notesRef.orderBy('createdDate', 'desc').get();
+    
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // Serialize the author reference
+      const serializedData = { ...data };
+      if (data.author && data.author._path && data.author._path.segments) {
+        const pathString = data.author._path.segments.join('/');
+        serializedData.author = { path: pathString };
+      } else if (data.author && data.author.path) {
+        serializedData.author = { path: data.author.path };
+      }
+      
+      return {
+        id: doc.id,
+        ...serializedData,
+        createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
+        modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
+      };
+    });
+  } catch (err) {
+    console.error("Error fetching notes:", err);
+    return [];
+  }
+}
+
+export async function createNote(taskId, noteData, subtaskId = null) {
+  try {
+    // Validate required fields
+    if (!noteData.content || !noteData.authorId) {
+      throw new Error('Content and authorId are required');
+    }
+    
+    // Convert author ID to Firestore user reference
+    let authorRef = null;
+    if (noteData.authorId) {
+      const authorDoc = await db.collection('Users').doc(noteData.authorId).get();
+      if (authorDoc.exists) {
+        authorRef = db.collection('Users').doc(noteData.authorId);
+      } else {
+        throw new Error('Author not found');
+      }
+    }
+    
+    const now = new Date();
+    const newNote = {
+      content: noteData.content.trim(),
+      author: authorRef,
+      createdDate: now,
+      modifiedDate: now
+    };
+    
+    let notesRef;
+    if (subtaskId) {
+      // Create note for a subtask
+      notesRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Notes');
+    } else {
+      // Create note for a regular task
+      notesRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Notes');
+    }
+    
+    const docRef = await notesRef.add(newNote);
+    
+    return {
+      id: docRef.id,
+      ...newNote,
+      author: { path: authorRef.path },
+      createdDate: now,
+      modifiedDate: now
+    };
+  } catch (err) {
+    console.error("Error creating note:", err);
+    throw err;
+  }
+}
+
+export async function updateNote(taskId, noteId, updateData, subtaskId = null) {
+  try {
+    let noteRef;
+    if (subtaskId) {
+      // Update note for a subtask
+      noteRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Notes')
+        .doc(noteId);
+    } else {
+      // Update note for a regular task
+      noteRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Notes')
+        .doc(noteId);
+    }
+    
+    // Check if note exists
+    const noteDoc = await noteRef.get();
+    if (!noteDoc.exists) {
+      return null;
+    }
+    
+    const updatedFields = {
+      content: updateData.content.trim(),
+      modifiedDate: new Date()
+    };
+    
+    await noteRef.update(updatedFields);
+    
+    // Return the updated note
+    const updatedDoc = await noteRef.get();
+    const data = updatedDoc.data();
+    
+    return {
+      id: updatedDoc.id,
+      ...data,
+      createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
+      modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
+    };
+  } catch (err) {
+    console.error("Error updating note:", err);
+    throw err;
+  }
+}
+
+export async function deleteNote(taskId, noteId, subtaskId = null) {
+  try {
+    let noteRef;
+    if (subtaskId) {
+      // Delete note for a subtask
+      noteRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Notes')
+        .doc(noteId);
+    } else {
+      // Delete note for a regular task
+      noteRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Notes')
+        .doc(noteId);
+    }
+    
+    // Check if note exists
+    const noteDoc = await noteRef.get();
+    if (!noteDoc.exists) {
+      return false;
+    }
+    
+    await noteRef.delete();
+    return true;
+  } catch (err) {
+    console.error("Error deleting note:", err);
+    throw err;
+  }
+}
+
 export const taskService = {
   getTasksForUser,
   createTask,
   getSubtasksForTask,
   getSubtaskById,
   updateSubtask,
+  getNotesForTask,
+  createNote,
+  updateNote,
+  deleteNote,
   // updateTask,
   // deleteTask,
 };

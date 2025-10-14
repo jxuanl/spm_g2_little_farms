@@ -79,8 +79,6 @@
 
     <div v-else class="text-gray-500">Loading task details...</div>
 
-    
-
     <div v-if="!isSubtaskView" class="flex-1 flex flex-col">
       <TaskList 
         :tasks="subtasks" 
@@ -98,6 +96,15 @@
       @close="() => isCreateModalOpen = false"
       @taskCreated="handleSubtaskCreated"
     />
+    
+    <!-- === Notes Section === -->
+    <NotesSection 
+      v-if="task && currentUser"
+      :taskId="taskId"
+      :subtaskId="isSubtaskView ? subtaskId : null"
+      :currentUserId="currentUser.uid"
+      @notesUpdated="handleNotesUpdated"
+    />
 
   </div>
 
@@ -111,6 +118,7 @@ import { db } from '../../firebase';
 import EditTaskModal from '../components/EditTaskModal.vue';
 import TaskList from '../components/TaskList.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
+import NotesSection from '../components/NotesSection.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -263,6 +271,59 @@ const handleSubtaskCreated = (newSubtask) => {
 // === Handle Subtask Click ===
 const handleSubtaskClick = (subtaskId) => {
   router.push({ name: 'SubtaskDetail', params: { id: taskId.value, subtaskId } });
+};
+
+// === Get Current User ID ===
+const getCurrentUserId = () => {
+  try {
+    const userSession = sessionStorage.getItem('userSession');
+    if (userSession) {
+      const userData = JSON.parse(userSession);
+      return userData.uid || null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user ID from session:', error);
+    return null;
+  }
+};
+
+// Add user state management
+const currentUser = ref(null);
+
+// Add function to get full user data
+const getCurrentUser = () => {
+  try {
+    const userSession = sessionStorage.getItem('userSession');
+    if (userSession) {
+      return JSON.parse(userSession);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user from session:', error);
+    return null;
+  }
+};
+
+// Update onMounted to check user session
+onMounted(() => {
+  currentUser.value = getCurrentUser();
+  
+  if (!currentUser.value) {
+    console.warn('No user session found');
+    // Optionally redirect to login
+    // router.push({ name: 'Login' });
+    return;
+  }
+  
+  fetchTask();
+  fetchSubtasks();
+});
+
+// === Handle Notes Updated ===
+const handleNotesUpdated = () => {
+  // Optional: refresh task data or perform other actions when notes are updated
+  console.log('Notes updated');
 };
 
 onMounted(() => {
