@@ -9,6 +9,7 @@ import cors from 'cors';
 import tasksRouter from './routes/tasks.js'
 import usersRouter from './routes/users.js'
 import projectsRouter from './routes/projects.js'
+import updateRouter from './routes/update.js'
 
 const app = express()
 
@@ -41,6 +42,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/tasks', tasksRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/projects', projectsRouter);
+app.use('/api/update', updateRouter);
 
 // const bree = new Bree({
 //   jobs: [

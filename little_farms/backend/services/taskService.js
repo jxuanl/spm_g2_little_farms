@@ -90,9 +90,23 @@ export async function createTask(taskData) {
 //   await deleteDoc(taskRef);
 // }
 
+export async function getTaskById(taskId) {
+  try {
+    const taskDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
+    if (!taskDoc.exists) {
+      throw new Error(`Task with ID ${taskId} not found`);
+    }
+    return { id: taskDoc.id, ...taskDoc.data() };
+  } catch (err) {
+    console.error("Error fetching task by ID:", err);
+    throw err;
+  }
+}
+
 export const taskService = {
   getTasksForUser,
   createTask,
+  getTaskById,
   // updateTask,
   // deleteTask,
 };

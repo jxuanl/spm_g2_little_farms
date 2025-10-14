@@ -8,6 +8,7 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "bree": "^9.2.4",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
