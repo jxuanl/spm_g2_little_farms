@@ -1,4 +1,3 @@
-
 import { auth, db } from '../adminFirebase.js';
 
 class UserService {
@@ -166,13 +165,17 @@ class UserService {
       usersSnapshot.forEach(doc => {
         users.push({
           uid: doc.id,
+          id: doc.id,
           ...doc.data()
         });
       });
 
+      console.log('getAllUsers result:', users);
+
       return {
         success: true,
-        users,
+        data: users,
+        users: users, // Also include this for compatibility
         count: users.length
       };
     } catch (error) {
