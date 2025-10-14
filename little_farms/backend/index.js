@@ -10,6 +10,7 @@ import tasksRouter from './routes/tasks.js'
 import usersRouter from './routes/users.js'
 import authRouter from './routes/authentication.js'
 import projectsRouter from './routes/projects.js'
+import updateRouter from './routes/update.js'
 import allProjectsRouter from './routes/allProjects.js'
 import timelineRouter from "./routes/timeline.js";
 
@@ -45,6 +46,7 @@ app.use('/api/tasks', tasksRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/projects', projectsRouter);
+app.use('/api/update', updateRouter);
 app.use('/api/allProjects', allProjectsRouter);
 app.use("/api/timeline", timelineRouter);
 

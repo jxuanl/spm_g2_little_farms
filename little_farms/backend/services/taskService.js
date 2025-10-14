@@ -117,6 +117,18 @@ export async function createTask(taskData) {
 //   await deleteDoc(taskRef);
 // }
 
+export async function getTaskById(taskId) {
+  try {
+    const taskDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
+    if (!taskDoc.exists) {
+      throw new Error(`Task with ID ${taskId} not found`);
+    }
+    return { id: taskDoc.id, ...taskDoc.data() };
+  } catch (err) {
+    console.error("Error fetching task by ID:", err);
+    throw err;
+  }
+}
 export async function getSubtasksForTask(taskId) {
   try {
     const snapshot = await db
@@ -310,6 +322,7 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
 export const taskService = {
   getTasksForUser,
   createTask,
+  getTaskById,
   getSubtasksForTask,
   getSubtaskById,
   updateSubtask,
