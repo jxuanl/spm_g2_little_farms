@@ -1,30 +1,42 @@
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" @click="closeDropdowns">
     <div 
-      class="create-task-modal fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]"
+      class="create-task-modal fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:s    // Map frontend form data to backend API format
+    const taskData = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      priority: Number(formData.priority) || null,
+      status: formData.status || 'To Do',
+      deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
+      assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [currentUser.uid],
+      projectId: formData.projectId,
+      createdBy: currentUser.uid || 'default-user',
+      tags: formData.tags || [],
+      ...(props.parentTaskId && { parentTaskId: props.parentTaskId })
+    };top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]"
       @click.stop
     >
       <div class="flex flex-col space-y-1.5 text-center sm:text-left">
-        <h2 class="text-lg font-semibold leading-none tracking-tight">Create New Task</h2>
+        <h2 class="text-lg font-semibold leading-none tracking-tight">{{ props.parentTaskId ? 'Create New Subtask' : 'Create New Task' }}</h2>
       </div>
       
       <div v-if="showSuccessMessage" class="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
         <div class="text-sm text-green-800">
-          ✓ Task created successfully!
+          {{ props.parentTaskId ? '✓ Subtask created successfully!' : '✓ Task created successfully!' }}
         </div>
       </div>
       
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <div class="space-y-2">
           <div class="flex justify-between items-center">
-            <label for="title" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Task Title *</label>
+            <label for="title" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{{ props.parentTaskId ? 'Subtask Title *' : 'Task Title *' }}</label>
             <span class="text-xs text-muted-foreground">{{ formData.title.length }}/50</span>
           </div>
           <input
             id="title"
             v-model="formData.title"
             type="text"
-            placeholder="Enter task title..."
+            :placeholder="indvTask ? 'Enter task title...' : 'Enter subtask title...'"
             required
             :class="[
               'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
@@ -129,12 +141,13 @@
             <div class="relative">
               <button
                 type="button"
-                @click="toggleDropdown('project')"
+                @click="!props.parentTaskId ? toggleDropdown('project') : null"
                 :class="[
                   'flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-left',
-                  errors.projectId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  errors.projectId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300',
+                  props.parentTaskId ? 'cursor-not-allowed opacity-50' : ''
                 ]"
-                :disabled="loadingStates.projects"
+                :disabled="loadingStates.projects || !!props.parentTaskId"
               >
                 <span :class="[
                   formData.projectId ? 'text-foreground' : 'text-muted-foreground',
@@ -146,7 +159,7 @@
                 <div v-else class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
               </button>
               <div 
-                v-if="dropdownStates.project && !loadingStates.projects"
+                v-if="dropdownStates.project && !loadingStates.projects && !props.parentTaskId"
                 class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
               >
                 <div v-if="projects.length === 0" class="p-3 text-sm text-muted-foreground text-center">
@@ -305,7 +318,7 @@
             type="submit"
             class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 border border-primary h-9 px-4 py-2"
           >
-            Create Task
+            {{ props.parentTaskId ? 'Create Subtask' : 'Create Task' }}
           </button>
         </div>
       </form>
@@ -509,6 +522,10 @@ const validateDueDate = () => {
 
 const validateProject = () => {
   errors.projectId = '';
+  // Skip validation for subtasks if parent project is available
+  if (props.parentTaskId && props.parentProject && props.parentProject.id) {
+    return;
+  }
   if (!formData.projectId) {
     errors.projectId = 'Project is required';
   }
@@ -597,6 +614,9 @@ const getStatusOptions = () => {
 };
 
 const getProjectPlaceholder = () => {
+  if (props.parentTaskId && props.parentProject) {
+    return props.parentProject.name || 'Parent Project';
+  }
   if (loadingStates.projects) return 'Loading projects...';
   const project = projects.value.find(p => p.id === formData.projectId);
   return project ? project.name : 'Select project *';
@@ -670,15 +690,16 @@ const handleSubmit = async () => {
       assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [null],
       projectId: formData.projectId,
       createdBy: currentUser.uid || 'default-user',
-      tags: formData.tags || []
+      tags: formData.tags || [],
+      ...(props.parentTaskId && { parentTaskId: props.parentTaskId })
     };
 
-    console.log('Creating task with data:', taskData);
+    console.log(`Creating ${props.parentTaskId ? 'subtask' : 'task'} with data:`, taskData);
     
     // Call the backend API
     const createdTask = await createTaskAPI(taskData);
     
-    console.log('Task created successfully:', createdTask);
+    console.log(`${props.parentTaskId ? 'Subtask' : 'Task'} created successfully:`, createdTask);
     
     // Show success message
     showSuccessMessage.value = true;
@@ -695,7 +716,7 @@ const handleSubmit = async () => {
     
   } catch (error) {
     console.error('Error creating task:', error);
-    errors.title = error.message || 'Failed to create task. Please try again.';
+    errors.title = error.message || `Failed to create ${props.parentTaskId ? 'subtask' : 'task'}. Please try again.`;
   }
 };
 
@@ -705,7 +726,7 @@ const resetForm = () => {
     description: "",
     priority: null,
     status: "",
-    projectId: "",
+    projectId: props.parentTaskId && props.parentProject ? props.parentProject.id : "",
     assigneeIds: [],
     dueDate: "",
     tags: [],
@@ -745,7 +766,10 @@ onMounted(() => {
 });
 
 const props = defineProps({
-  isOpen: Boolean
+  isOpen: Boolean,
+  indvTask: { type: Boolean, default: false },
+  parentTaskId: { type: String, default: null },
+  parentProject: { type: Object, default: null }
 });
 
 // Watch for modal open to reload data if needed
@@ -754,6 +778,13 @@ watch(() => props.isOpen, (newVal) => {
     loadDropdownData();
   }
 });
+
+// Watch for parent project changes and auto-populate project field for subtasks
+watch(() => props.parentProject, (newParentProject) => {
+  if (props.parentTaskId && newParentProject && newParentProject.id) {
+    formData.projectId = newParentProject.id;
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>
