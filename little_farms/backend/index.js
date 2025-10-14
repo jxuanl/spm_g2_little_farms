@@ -13,6 +13,7 @@ import projectsRouter from './routes/projects.js'
 import updateRouter from './routes/update.js'
 import allProjectsRouter from './routes/allProjects.js'
 import timelineRouter from "./routes/timeline.js";
+import generateReport from './routes/reportGeneration.js'
 
 const app = express()
 
@@ -42,13 +43,14 @@ app.use(express.urlencoded({ extended: true }));
 // const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename);
 
-app.use('/api/tasks', tasksRouter)
-app.use('/api/users', usersRouter)
-app.use('/api/auth', authRouter)
+app.use('/api/tasks', tasksRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/update', updateRouter);
 app.use('/api/allProjects', allProjectsRouter);
 app.use("/api/timeline", timelineRouter);
+app.use('/api/report', generateReport);
 
 // const bree = new Bree({
 //   jobs: [
