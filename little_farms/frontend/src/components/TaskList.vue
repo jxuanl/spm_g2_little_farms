@@ -3,7 +3,7 @@
     <!-- === Statistics Overview === -->
     <div class="grid grid-cols-4 gap-4 mb-6">
       <div class="p-4 border rounded-lg shadow-sm">
-        <div class="text-sm text-gray-500">Total Tasks</div>
+        <div class="text-sm text-gray-500">{{ indvTask ? 'Total Subtasks' : 'Total Tasks' }}</div>
         <div class="text-2xl font-semibold">{{ totalTasks }}</div>
       </div>
       <div class="p-4 border rounded-lg shadow-sm">
@@ -24,13 +24,13 @@
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
       <div class="flex flex-col space-y-1.5 p-6">
         <div class="flex items-center justify-between">
-          <h3 class="text-2xl font-semibold leading-none tracking-tight">Tasks</h3>
+          <h3 class="text-2xl font-semibold leading-none tracking-tight">{{ indvTask ? 'Subtasks' : 'Tasks' }}</h3>
           <button 
             class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
             @click="$emit('createTask')"
           >
             <Plus class="w-4 h-4 mr-2" />
-            New Task
+            {{ indvTask ? 'New Subtask' : 'New Task' }}
           </button>
         </div>
       </div>
@@ -38,7 +38,7 @@
       <table class="w-full border-collapse border text-sm">
         <thead>
           <tr class="bg-gray-100 text-left">
-            <th class="p-2 border">Task</th>
+            <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
             <th class="p-2 border">Project</th>
             <th class="p-2 border">Creator</th>
             <th class="p-2 border">Assignees</th>
@@ -74,7 +74,7 @@
             </td>
             <!-- Due Date -->
             <td class="p-2 border" :class="getDateClasses(task)">
-              {{ task.deadline ? task.deadline.toDate().toLocaleDateString(): "No due date"}}
+              {{ task.deadline ? formatDate(task.deadline) : "No due date"}}
             </td>
             <!-- Status -->
             <td class="p-2 border">
@@ -104,7 +104,8 @@ import { db } from '../../firebase';
 
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
-  currentUserId: { type: [String, Number], default: 1 }
+  currentUserId: { type: [String, Number], default: 1 },
+  indvTask: { type: Boolean, default: false }
 });
 defineEmits(['taskClick', 'createTask']);
 
@@ -147,10 +148,26 @@ watch(
         }
 
         // === Resolve Creator ===
-        if (task.taskCreatedBy?.path) {
+        if (task.taskCreatedBy) {
           try {
-            const userSnap = await getDoc(doc(db, task.taskCreatedBy.path));
-            if (userSnap.exists()) creatorName = userSnap.data().name;
+            let creatorRef;
+            if (typeof task.taskCreatedBy === 'string') {
+              // Direct user ID
+              creatorRef = doc(db, 'Users', task.taskCreatedBy);
+            } else if (task.taskCreatedBy?.path) {
+              // API response format with path
+              creatorRef = doc(db, task.taskCreatedBy.path);
+            } else if (task.taskCreatedBy?.id) {
+              // Firestore reference format with id
+              creatorRef = doc(db, 'Users', task.taskCreatedBy.id);
+            }
+
+            if (creatorRef) {
+              const userSnap = await getDoc(creatorRef);
+              if (userSnap.exists()) {
+                creatorName = userSnap.data().name || 'Unnamed User';
+              }
+            }
           } catch (err) {
             console.error('Error loading creator:', err);
           }
@@ -188,7 +205,7 @@ const totalTasks = computed(() => tasks.value.length);
 const completedTasks = computed(() => tasks.value.filter(t => t.status === 'done').length);
 const inProgressTasks = computed(() => tasks.value.filter(t => t.status === 'in-progress').length);
 const overdueTasks = computed(() =>
-  tasks.value.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done').length
+  tasks.value.filter(t => isTaskOverdue(t)).length
 );
 const completionRate = computed(() =>
   totalTasks.value ? (completedTasks.value / totalTasks.value) * 100 : 0
@@ -201,12 +218,17 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString();
 };
 
-const isTaskOverdue = (task) => task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
-const isTaskDueSoon = (task) =>
-  task.dueDate &&
-  new Date(task.dueDate) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) &&
-  new Date(task.dueDate) > new Date() &&
-  task.status !== 'done';
+const isTaskOverdue = (task) => {
+  if (!task.deadline) return false;
+  const taskDate = task.deadline?.toDate ? task.deadline.toDate() : new Date(task.deadline);
+  return taskDate < new Date() && task.status !== 'done';
+};
+const isTaskDueSoon = (task) => {
+  if (!task.deadline) return false;
+  const taskDate = task.deadline?.toDate ? task.deadline.toDate() : new Date(task.deadline);
+  const twoDaysFromNow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+  return taskDate <= twoDaysFromNow && taskDate > new Date() && task.status !== 'done';
+};
 
 const getDateClasses = (task) => {
   if (isTaskOverdue(task)) return 'text-red-600 font-semibold';
