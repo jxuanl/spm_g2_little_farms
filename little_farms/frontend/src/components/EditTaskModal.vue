@@ -285,9 +285,9 @@
 
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue';
-import { doc, updateDoc, getDocs, collection } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { ChevronDown, Check, X } from 'lucide-vue-next';
+// import { doc, updateDoc, getDocs, collection } from 'firebase/firestore';
+// import { db } from '../../firebase';
 
 const emit = defineEmits(['close', 'updated']);
 const props = defineProps({ 
@@ -329,13 +329,85 @@ const existingTags = ref([
 ]);
 
 // Load dropdown data
-onMounted(async () => {
-  const projectSnap = await getDocs(collection(db, 'Projects'));
-  projects.value = projectSnap.docs.map((d) => ({ id: d.id, name: d.data().title }));
+// --- Fetch project and user lists from backend ---
+import { getAuth } from 'firebase/auth';
 
-  const userSnap = await getDocs(collection(db, 'Users'));
-  users.value = userSnap.docs.map((d) => ({ id: d.id, name: d.data().name }));
+onMounted(async () => {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return console.warn('⚠️ User not logged in');
+    const token = await user.getIdToken();
+
+    const [projectRes, userRes] = await Promise.all([
+      fetch('http://localhost:3001/api/allProjects', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+      fetch('http://localhost:3001/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+    ]);
+
+    const projectData = await projectRes.json();
+    const userData = await userRes.json();
+
+    projects.value = Array.isArray(projectData.data)
+      ? projectData.data
+      : projectData.projects || [];
+
+    users.value = Array.isArray(userData.data)
+      ? userData.data
+      : userData.users || [];
+
+  } catch (err) {
+    console.error('❌ Error fetching dropdown data:', err);
+  }
 });
+
+
+// --- Handle update through backend ---
+// const handleUpdate = async () => {
+//   if (!formData.title.trim()) {
+//     errors.title = 'Title is required'
+//     return
+//   }
+
+//   const tagsArray = formData.tags
+//     .split(',')
+//     .map((t) => t.trim())
+//     .filter(Boolean)
+
+//   const updatePayload = {
+//     title: formData.title,
+//     description: formData.description,
+//     priority: formData.priority,
+//     status: formData.status,
+//     projectId: formData.projectId || null,
+//     assignedTo: formData.assignedTo,
+//     deadline: formData.deadline || null,
+//     tags: tagsArray,
+//   }
+
+//   try {
+//     const res = await fetch(`/api/tasks/${props.task.id}`, {
+//       method: 'PUT',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify(updatePayload),
+//     })
+
+//     const data = await res.json()
+//     if (!data.success) throw new Error(data.message || 'Failed to update task')
+
+//     showSuccessMessage.value = true
+//     setTimeout(() => {
+//       showSuccessMessage.value = false
+//       emit('updated')
+//       emit('close')
+//     }, 1500)
+//   } catch (err) {
+//     console.error('❌ Error updating task:', err)
+//   }
+// }
 
 // Prefill form from props
 watch(
@@ -385,11 +457,9 @@ watch(
       }
       
       formData.deadline = task.deadline
-        ? new Date(task.deadline.toDate ? task.deadline.toDate() : task.deadline)
-            .toISOString()
-            .split('T')[0]
-        : '';
-      formData.tags = Array.isArray(task.tags) ? [...task.tags] : [];
+      ? new Date(task.deadline).toISOString().split('T')[0]
+      : '';
+      formData.tags = Array.isArray(task.tags) ? task.tags.join(', ') : '';
     }
   },
   { immediate: true }
@@ -441,7 +511,7 @@ const statusOptions = [
   { value: 'done', label: 'Done' }
 ];
 
-// === Validation functions ===
+// // === Validation functions ===
 const validateTitle = () => {
   errors.title = '';
   if (!formData.title.trim()) {
@@ -513,54 +583,53 @@ const removeTag = (tagToRemove) => {
 
 // === Handle Update ===
 const handleUpdate = async () => {
-  // Validate all fields
   validateTitle();
   validatePriority();
   validateDueDate();
-  
+
   if (errors.title || errors.priority || errors.deadline) {
     return;
   }
 
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      errors.title = 'User not logged in.';
+      return;
+    }
+    const token = await user.getIdToken();
+
     const tagsArray = Array.isArray(formData.tags) ? formData.tags : [];
 
-    if (props.isSubtask) {
-      // Update subtask via API
-      // Note: For subtasks, we don't update the projectId as it's inherited from parent task
-      const response = await fetch(`http://localhost:3001/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          description: formData.description,
-          priority: formData.priority,
-          status: formData.status,
-          assignedTo: formData.assignedTo,
-          deadline: formData.deadline || null,
-          tags: tagsArray
-        })
-      });
+    const updateData = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      priority: Number(formData.priority) || null,
+      status: formData.status || 'todo',
+      assignedTo: formData.assignedTo || [],
+      projectId: formData.projectId || null,
+      deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+      tags: tagsArray,
+      userId: user.uid // for backend access control
+    };
 
-      if (!response.ok) {
-        throw new Error('Failed to update subtask');
-      }
-    } else {
-      // Update regular task via Firestore
-      const taskRef = doc(db, 'Tasks', props.task.id);
-      await updateDoc(taskRef, {
-        title: formData.title,
-        description: formData.description,
-        priority: formData.priority,
-        status: formData.status,
-        projectId: formData.projectId ? doc(db, 'Projects', formData.projectId) : null,
-        assignedTo: formData.assignedTo.map((id) => doc(db, 'Users', id)),
-        deadline: formData.deadline ? new Date(formData.deadline) : null,
-        tags: tagsArray,
-        modifiedDate: new Date()
-      });
+    const endpoint = props.isSubtask
+      ? `http://localhost:3001/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`
+      : `http://localhost:3001/api/tasks/${props.task.id}`;
+
+    const res = await fetch(endpoint, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(updateData),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to update: ${res.status} ${text}`);
     }
 
     showSuccessMessage.value = true;
@@ -569,11 +638,13 @@ const handleUpdate = async () => {
       emit('updated');
       emit('close');
     }, 1500);
+
   } catch (error) {
-    console.error('Error updating:', error);
+    console.error('❌ Error updating task:', error);
     errors.title = `Failed to update ${props.isSubtask ? 'subtask' : 'task'}. Please try again.`;
   }
 };
+
 </script>
 
 <style scoped>

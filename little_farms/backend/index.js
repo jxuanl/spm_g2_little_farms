@@ -43,7 +43,7 @@ app.use(express.urlencoded({ extended: true }));
 // const __dirname = path.dirname(__filename);
 
 app.use('/api/tasks', tasksRouter)
-app.use('/api/users', usersRouter)
+app.use('/api', usersRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/projects', projectsRouter);
 app.use('/api/update', updateRouter);

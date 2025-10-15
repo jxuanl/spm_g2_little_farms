@@ -32,62 +32,88 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { auth, db } from '../../firebase';
-import { collection, onSnapshot, addDoc } from 'firebase/firestore';
-import TaskSidebar from '../components/TaskSidebar.vue';
-import TaskHeader from '../components/TaskHeader.vue';
-import TaskList from '../components/TaskList.vue';
-import CreateTaskModal from '../components/CreateTaskModal.vue';
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import TaskSidebar from '../components/TaskSidebar.vue'
+import TaskHeader from '../components/TaskHeader.vue'
+import TaskList from '../components/TaskList.vue'
+import CreateTaskModal from '../components/CreateTaskModal.vue'
 
-const router = useRouter(); //
-const tasks = ref([]);
-const activeProject = ref("all");
-const searchQuery = ref("");
-const statusFilter = ref("all");
-const priorityFilter = ref("all");
-const isCreateModalOpen = ref(false);
+const router = useRouter()
 
-// track current user
-const currentUserId = ref(auth.currentUser?.uid || null);
+// --- State ---
+const tasks = ref([])
+const projects = ref([])
+const activeProject = ref('all')
+const searchQuery = ref('')
+const statusFilter = ref('all')
+const priorityFilter = ref('all')
+const isCreateModalOpen = ref(false)
+const currentUserId = ref(null)
 
-// Fetch tasks from Firestore
-onSnapshot(collection(db, "Tasks"), (snapshot) => {
-  tasks.value = snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
-});
+// --- Fetch tasks from backend ---
+const fetchTasks = async (userId) => {
+  try {
+    console.log('📡 Fetching tasks for user:', userId)
+    const res = await fetch(`/api/tasks?userId=${userId}`)
+    const data = await res.json()
+    console.log('📦 Raw response:', data) // 👈 add this
 
-// Filters
+    if (!data.success) throw new Error(data.message || 'Failed to fetch tasks')
+
+    tasks.value = data.tasks || []
+    console.log('✅ Loaded tasks:', tasks.value)
+  } catch (err) {
+    console.error('❌ Failed to load tasks:', err)
+  }
+}
+
+
+// --- Filters ---
 const filteredTasks = computed(() => {
   return tasks.value.filter(task => {
-    const matchesProject = activeProject.value === "all" || task.project?.toLowerCase().includes(activeProject.value);
-    const matchesSearch = task.title?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          task.description?.toLowerCase().includes(searchQuery.value.toLowerCase());
-    const matchesStatus = statusFilter.value === "all" || task.status === statusFilter.value;
-    const matchesPriority = priorityFilter.value === "all" || task.priority === priorityFilter.value;
-    
-    // no assignee filter here → everyone sees all tasks
-    return matchesProject && matchesSearch && matchesStatus && matchesPriority;
-  });
-});
+    const matchesProject =
+      activeProject.value === 'all' ||
+      task.projectId?.id?.toLowerCase?.().includes(activeProject.value)
 
+    const matchesSearch =
+      task.title?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      task.description?.toLowerCase().includes(searchQuery.value.toLowerCase())
 
-const setActiveProject = (project) => activeProject.value = project;
-const setSearchQuery = (query) => searchQuery.value = query;
-const setStatusFilter = (status) => statusFilter.value = status;
-const setPriorityFilter = (priority) => priorityFilter.value = priority;
-const setIsCreateModalOpen = (open) => isCreateModalOpen.value = open;
+    const matchesStatus =
+      statusFilter.value === 'all' || task.status === statusFilter.value
 
-const handleTaskCreated = (newTask) => {
-  console.log('Task created:', newTask);
-  // For now, we'll just log it. In a real app, you might want to refresh the tasks list
-  // or add the new task to the existing list with proper formatting
-};
+    const matchesPriority =
+      priorityFilter.value === 'all' || task.priority === priorityFilter.value
 
-const handleTaskClick = (taskId) => {
-  console.log("Edit task:", taskId);
-};
+    return matchesProject && matchesSearch && matchesStatus && matchesPriority
+  })
+})
+
+// --- Setters ---
+const setActiveProject = (project) => activeProject.value = project
+const setSearchQuery = (query) => searchQuery.value = query
+const setStatusFilter = (status) => statusFilter.value = status
+const setPriorityFilter = (priority) => priorityFilter.value = priority
+const setIsCreateModalOpen = (open) => isCreateModalOpen.value = open
+
+const handleTaskCreated = () => {
+  console.log('🔄 Task created — reloading list')
+  if (currentUserId.value) fetchTasks(currentUserId.value)
+}
+
+// --- On mount: wait for Firebase Auth and load tasks ---
+onMounted(() => {
+  const auth = getAuth()
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUserId.value = user.uid
+      await fetchTasks(user.uid)
+    } else {
+      console.warn('⚠️ No user logged in, redirecting to login...')
+      window.location.href = '/login'
+    }
+  })
+})
 </script>
