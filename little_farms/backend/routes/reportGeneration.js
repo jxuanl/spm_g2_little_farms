@@ -11,17 +11,17 @@ const __dirname = path.dirname(__filename);
 
 // Helper to create a unique temp filename
 function getTempFileName() {
-  return path.join(os.tmpdir(), `schedule_report_${Date.now()}.pdf`);
+  return path.join(os.tmpdir(), `task_report_${Date.now()}.pdf`);
 }
 
 const router = express.Router();
 
-router.get('/generate-schedule-report', (req, res) => {
+router.get('/generate-report', (req, res) => {
   const tempFile = getTempFileName();
   
   const pythonScriptPath = path.join(__dirname, '../services/reportGenerationService.py');
   
-  console.log('Generating schedule report...');
+  console.log('Generating task report...');
   console.log('Python script path:', pythonScriptPath);
   console.log('Output file:', tempFile);
 
@@ -57,9 +57,10 @@ router.get('/generate-schedule-report', (req, res) => {
       const stats = fs.statSync(tempFile);
       console.log('Generated PDF file size:', stats.size, 'bytes');
       
-      // Set headers for PDF download
+      // Set headers to open in browser instead of download
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename=schedule_report.pdf');
+      res.setHeader('Content-Disposition', 'inline; filename="task_report.pdf"');
+      res.setHeader('Content-Length', stats.size);
       
       // Stream the file
       const fileStream = fs.createReadStream(tempFile);
@@ -85,7 +86,7 @@ router.get('/generate-schedule-report', (req, res) => {
       console.error('Python error output:', pythonError);
       
       res.status(500).json({ 
-        error: 'Failed to generate schedule report',
+        error: 'Failed to generate task report',
         details: pythonError || 'Unknown error during PDF generation'
       });
     }
@@ -100,14 +101,27 @@ router.get('/generate-schedule-report', (req, res) => {
   });
 });
 
-// Additional endpoint for quick status check
-router.get('/report-status', (req, res) => {
-  res.json({
-    service: 'Schedule Report Generator',
-    status: 'Active',
-    endpoints: {
-      generateReport: '/generate-schedule-report',
-      description: 'Generates a comprehensive schedule report with task status overview'
+// Alternative endpoint if you want to keep both options
+router.get('/download-task-report', (req, res) => {
+  const tempFile = getTempFileName();
+  const pythonScriptPath = path.join(__dirname, '../services/reportGenerationService.py');
+
+  const pythonProcess = spawn('python', [pythonScriptPath, tempFile]);
+
+  pythonProcess.on('close', (code) => {
+    if (code === 0 && fs.existsSync(tempFile)) {
+      // This will force download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="task_report.pdf"');
+      
+      const fileStream = fs.createReadStream(tempFile);
+      fileStream.pipe(res);
+      
+      fileStream.on('end', () => {
+        fs.unlink(tempFile, () => {});
+      });
+    } else {
+      res.status(500).send('Failed to generate PDF');
     }
   });
 });
