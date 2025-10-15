@@ -1,7 +1,7 @@
 import express from 'express';
 import { getTaskById } from '../services/taskService.js';
 import { sendEmail } from '../services/emailService.js';
-import { getUserById } from '../services/userService.js';
+import userService from '../services/userService.js';
 
 const router = express.Router();
 const senderEmail = process.env.SENDER_EMAIL
@@ -10,6 +10,8 @@ console.log("Sender email is " + senderEmail);
 router.post('/tasks/manager', async (req, res) => {
     const updatedFields = req.body;
     const id = updatedFields.id;
+
+    const user = await userService.getUserById(uid);
 
     const oldTaskData = await getTaskById(id);
     const changes = {};
