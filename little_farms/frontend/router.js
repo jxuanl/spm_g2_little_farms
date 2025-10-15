@@ -14,7 +14,7 @@ const routes = [
   { path: '/', redirect: '/login' },
   { path: '/all-tasks', name: 'AllTasks', component: AllTasks }, 
   { path: '/my-tasks', name: 'MyTasks', component: MyTasks }, 
-  { path: '/all-tasks/:id', name: 'TaskDetail', name: TaskDetail, component: TaskDetail, props: true },
+  { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail, props: true },
   { path: '/all-tasks/:id/:subtaskId', name: 'SubtaskDetail', component: TaskDetail },
   { path: '/calendar', name: 'Calendar', component: Calendar }, 
   { path: '/reports', name: 'Reports', component: Reports }, 

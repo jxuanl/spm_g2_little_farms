@@ -115,6 +115,7 @@
       <TaskList 
         :tasks="subtasks" 
         :indvTask="true"
+        :parentTaskId="taskId"
         @createTask="() => isCreateModalOpen = true"
         @taskClick="handleSubtaskClick"
       />
@@ -168,56 +169,51 @@ const fetchTask = async () => {
   const auth = getAuth();
   const user = auth.currentUser;
   if (!user) {
-    console.warn('⚠️ User not logged in');
     router.push('/login');
     return;
   }
 
-  currentUserId.value = user.uid;
+  const token = await user.getIdToken();
+  const userId = user.uid;
 
   try {
-    // ✅ Get Firebase ID token
-    const token = await user.getIdToken();
-
-    // --- Fetch user role securely ---
-    const userRes = await fetch(`/api/users/${user.uid}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    if (!userRes.ok) {
-      console.error('❌ Failed to fetch user:', await userRes.text());
-      return;
+    // --- determine if subtask or main task ---
+    let res;
+    if (isSubtaskView.value) {
+      // ✅ subtask endpoint
+      res = await fetch(`/api/tasks/${taskId.value}/subtasks/${subtaskId.value}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } else {
+      // ✅ regular task endpoint
+      res = await fetch(`/api/tasks/${taskId.value}?userId=${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     }
 
-    const userData = await userRes.json();
-    userRole.value = (userData.user?.role || 'staff').toLowerCase();
-
-    // --- Fetch task details ---
-    const res = await fetch(`/api/tasks/${route.params.id}?userId=${user.uid}`);
     if (!res.ok) {
-      console.error('❌ Task not found or access denied');
+      console.error('❌ Task/Subtask not found or access denied');
       return;
     }
 
     const data = await res.json();
-    task.value = data.task;
-    projectTitle.value = data.task.projectTitle;
-    creatorName.value = data.task.creatorName;
-    assigneeNames.value = data.task.assigneeNames || [];
 
-    const isCreator = data.task.creatorId === user.uid;
-    // Managers and creators can edit; HR cannot edit anything
-    if (userRole.value === 'hr') {
-      canEdit.value = false;
+    if (isSubtaskView.value) {
+      task.value = data;  // backend returns the subtask directly
+      projectTitle.value = data.projectTitle || 'No project';
+      creatorName.value = data.creatorName || 'No creator';
+      assigneeNames.value = data.assigneeNames || [];
     } else {
-      canEdit.value = userRole.value === 'manager' || isCreator;
+      task.value = data.task;
+      projectTitle.value = data.task.projectTitle;
+      creatorName.value = data.task.creatorName;
+      assigneeNames.value = data.task.assigneeNames || [];
     }
 
   } catch (err) {
-    console.error('❌ Error fetching task details:', err);
+    console.error('❌ Error fetching task/subtask details:', err);
   }
 };
-
 
 /* === Fetch Subtasks === */
 const fetchSubtasks = async () => {

@@ -136,14 +136,22 @@ import { Plus } from 'lucide-vue-next'
 
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
-  indvTask: { type: Boolean, default: false }
+  indvTask: { type: Boolean, default: false },
+  parentTaskId: { type: String, default: null }
 })
 defineEmits(['createTask'])
 
 const router = useRouter()
 const goToTaskDetail = (taskId) => {
-  router.push('/all-tasks/'+taskId)
-}
+  if (props.indvTask && props.parentTaskId) {
+    // ✅ For subtasks
+    router.push({ name: 'SubtaskDetail', params: { id: props.parentTaskId, subtaskId: taskId } });
+    
+  } else {
+    // ✅ For top-level tasks
+    router.push({ name: 'TaskDetail', params: { id: taskId } });
+  }
+};
 
 // === Stats ===
 const totalTasks = computed(() => props.tasks.length)
