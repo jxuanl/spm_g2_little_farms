@@ -10,12 +10,11 @@ import TaskDetail from './src/views/TaskDetail.vue';
 import ProjectDetail from './src/views/ProjectDetail.vue'
 import Timeline from './src/views/Timeline.vue';
 
-
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/all-tasks', component: AllTasks },
   { path: '/my-tasks', component: MyTasks },
-  { path: '/all-tasks/:id', component: TaskDetail },
+  { path: '/all-tasks/:id', name: TaskDetail, component: TaskDetail, props: true },
   { path: '/calendar', component: Calendar },
   { path: '/reports', component: Reports },
   { path: '/settings', component: Settings },

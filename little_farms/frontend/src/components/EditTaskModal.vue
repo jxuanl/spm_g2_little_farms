@@ -245,8 +245,6 @@
 
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue';
-import { doc, updateDoc, getDocs, collection } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { ChevronDown, Check } from 'lucide-vue-next';
 
 const emit = defineEmits(['close', 'updated']);
@@ -270,13 +268,70 @@ const formData = reactive({
 });
 
 // Load dropdown data
+// --- Fetch project and user lists from backend ---
 onMounted(async () => {
-  const projectSnap = await getDocs(collection(db, 'Projects'));
-  projects.value = projectSnap.docs.map((d) => ({ id: d.id, name: d.data().title }));
+  try {
+    const [projectRes, userRes] = await Promise.all([
+      fetch('/api/projects'),
+      fetch('/api/users/users'),
+    ])
+    const projectData = await projectRes.json()
+    const userData = await userRes.json()
 
-  const userSnap = await getDocs(collection(db, 'Users'));
-  users.value = userSnap.docs.map((d) => ({ id: d.id, name: d.data().name }));
-});
+    projects.value = Array.isArray(projectData)
+      ? projectData
+      : projectData.projects || []
+    users.value = Array.isArray(userData)
+      ? userData
+      : userData.users || []
+  } catch (err) {
+    console.error('❌ Error fetching dropdown data:', err)
+  }
+})
+
+// --- Handle update through backend ---
+const handleUpdate = async () => {
+  if (!formData.title.trim()) {
+    errors.title = 'Title is required'
+    return
+  }
+
+  const tagsArray = formData.tags
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
+
+  const updatePayload = {
+    title: formData.title,
+    description: formData.description,
+    priority: formData.priority,
+    status: formData.status,
+    projectId: formData.projectId || null,
+    assignedTo: formData.assignedTo,
+    deadline: formData.deadline || null,
+    tags: tagsArray,
+  }
+
+  try {
+    const res = await fetch(`/api/tasks/${props.task.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatePayload),
+    })
+
+    const data = await res.json()
+    if (!data.success) throw new Error(data.message || 'Failed to update task')
+
+    showSuccessMessage.value = true
+    setTimeout(() => {
+      showSuccessMessage.value = false
+      emit('updated')
+      emit('close')
+    }, 1500)
+  } catch (err) {
+    console.error('❌ Error updating task:', err)
+  }
+}
 
 // Prefill form from props
 watch(
@@ -290,10 +345,8 @@ watch(
       formData.projectId = task.projectId?.id || '';
       formData.assignedTo = task.assignedTo?.map((a) => a.id || a) || [];
       formData.deadline = task.deadline
-        ? new Date(task.deadline.toDate ? task.deadline.toDate() : task.deadline)
-            .toISOString()
-            .split('T')[0]
-        : '';
+      ? new Date(task.deadline).toISOString().split('T')[0]
+      : '';
       formData.tags = Array.isArray(task.tags) ? task.tags.join(', ') : '';
     }
   },
@@ -345,38 +398,38 @@ const statusOptions = [
   { value: 'done', label: 'Done' }
 ];
 
-// === Handle Update ===
-const handleUpdate = async () => {
-  if (!formData.title.trim()) {
-    errors.title = 'Title is required';
-    return;
-  }
+// // === Handle Update ===
+// const handleUpdate = async () => {
+//   if (!formData.title.trim()) {
+//     errors.title = 'Title is required';
+//     return;
+//   }
 
-  const taskRef = doc(db, 'Tasks', props.task.id);
-  const tagsArray = formData.tags
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
+//   const taskRef = doc(db, 'Tasks', props.task.id);
+//   const tagsArray = formData.tags
+//     .split(',')
+//     .map((t) => t.trim())
+//     .filter(Boolean);
 
-  await updateDoc(taskRef, {
-    title: formData.title,
-    description: formData.description,
-    priority: formData.priority,
-    status: formData.status,
-    projectId: formData.projectId ? doc(db, 'Projects', formData.projectId) : null,
-    assignedTo: formData.assignedTo.map((id) => doc(db, 'Users', id)),
-    deadline: formData.deadline ? new Date(formData.deadline) : null,
-    tags: tagsArray,
-    modifiedDate: new Date()
-  });
+//   await updateDoc(taskRef, {
+//     title: formData.title,
+//     description: formData.description,
+//     priority: formData.priority,
+//     status: formData.status,
+//     projectId: formData.projectId ? doc(db, 'Projects', formData.projectId) : null,
+//     assignedTo: formData.assignedTo.map((id) => doc(db, 'Users', id)),
+//     deadline: formData.deadline ? new Date(formData.deadline) : null,
+//     tags: tagsArray,
+//     modifiedDate: new Date()
+//   });
 
-  showSuccessMessage.value = true;
-  setTimeout(() => {
-    showSuccessMessage.value = false;
-    emit('updated');
-    emit('close');
-  }, 1500);
-};
+//   showSuccessMessage.value = true;
+//   setTimeout(() => {
+//     showSuccessMessage.value = false;
+//     emit('updated');
+//     emit('close');
+//   }, 1500);
+// };
 
 const validateTitle = () => (errors.title = !formData.title ? 'Title is required' : '');
 </script>

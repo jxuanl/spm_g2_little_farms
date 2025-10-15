@@ -46,12 +46,20 @@
     <!-- === Edit button === -->
     <div class="mt-10 flex justify-end">
       <button
-        class="px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary/90 cursor-pointer"
-        @click="openEditModal"
+        class="px-4 py-2 font-medium rounded-md h-9 transition-all"
+        :class="[
+          canEdit
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer opacity-100'
+            : 'bg-gray-300 text-gray-600 cursor-default opacity-60'
+        ]"
+        :disabled="!canEdit"
+        @click="canEdit && openEditModal()"
       >
         Edit Task
       </button>
     </div>
+
+
 
     <!-- === Edit Modal === -->
     <EditTaskModal
@@ -66,8 +74,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { defineProps } from 'vue';
+import { getAuth } from 'firebase/auth';
 import EditTaskModal from '../components/EditTaskModal.vue';
 
 const route = useRoute();
@@ -76,84 +84,61 @@ const projectTitle = ref('');
 const assigneeNames = ref([]);
 const creatorName = ref('');
 const isEditModalOpen = ref(false);
+const currentUserId = ref('');
+const userRole = ref('');
+const canEdit = ref(false);
+const props = defineProps({
+  id: String, // comes from route   -> id should be a reference
+})
 
 // === Fetch Task, Project, Creator, and Assignees ===
 const fetchTask = async () => {
-  const taskId = route.params.id;
-  const taskRef = doc(db, 'Tasks', taskId);
-  const snapshot = await getDoc(taskRef);
-
-  if (!snapshot.exists()) return;
-  task.value = { id: taskId, ...snapshot.data() };
-
-  // ✅ --- Fetch Project Title ---
-  try {
-    if (task.value.projectId) {
-      let projectRef;
-      if (typeof task.value.projectId === 'string') {
-        projectRef = doc(db, 'Projects', task.value.projectId);
-      } else if (task.value.projectId?.path) {
-        projectRef = doc(db, task.value.projectId.path);
-      } else if (task.value.projectId?.id) {
-        projectRef = doc(db, 'Projects', task.value.projectId.id);
-      }
-
-      if (projectRef) {
-        const projectSnap = await getDoc(projectRef);
-        projectTitle.value = projectSnap.exists()
-          ? projectSnap.data().title || 'Untitled Project'
-          : 'Unknown Project';
-      } else {
-        projectTitle.value = 'No project';
-      }
-    } else {
-      projectTitle.value = 'No project';
-    }
-  } catch (err) {
-    console.error('Error fetching project:', err);
-    projectTitle.value = 'Error loading project';
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) {
+    console.warn('⚠️ User not logged in')
+    window.location.href = '/login'
+    return
   }
 
-  // ✅ --- Fetch Creator Name ---
+  currentUserId.value = user.uid
+
+  // 🧠 Fetch user role
   try {
-    if (task.value.taskCreatedBy?.path) {
-      const creatorSnap = await getDoc(doc(db, task.value.taskCreatedBy.path));
-      if (creatorSnap.exists()) {
-        creatorName.value = creatorSnap.data().name || 'Unnamed User';
-      } else {
-        creatorName.value = 'Unknown';
-      }
-    } else {
-      creatorName.value = 'No creator';
-    }
+    // const userRes = await fetch(`/api/users/${user.uid}`)
+    const userRes = await fetch(`/api/auth/users/${user.uid}`)
+    const userData = await userRes.json()
+    userRole.value = (userData.user?.role || 'staff').toLowerCase()
   } catch (err) {
-    console.error('Error fetching creator:', err);
-    creatorName.value = 'Error loading creator';
+    console.error('❌ Failed to load user role:', err)
+    userRole.value = 'staff'
   }
 
-  // ✅ --- Fetch Assignee Names ---
+  const taskId = route.params.id
   try {
-    if (Array.isArray(task.value.assignedTo) && task.value.assignedTo.length > 0) {
-      const names = [];
-      for (const assignee of task.value.assignedTo) {
-        if (typeof assignee === 'string') {
-          names.push(assignee);
-        } else if (assignee?.path) {
-          const assigneeSnap = await getDoc(doc(db, assignee.path));
-          if (assigneeSnap.exists()) {
-            names.push(assigneeSnap.data().name || 'Unnamed User');
-          }
-        }
-      }
-      assigneeNames.value = names;
-    } else {
-      assigneeNames.value = [];
+    const res = await fetch(`/api/tasks/${taskId}?userId=${user.uid}`)
+    const data = await res.json()
+
+    if (!data.success || !data.task) {
+      console.warn('❌ Task not found or access denied')
+      task.value = null
+      return
     }
+
+    task.value = data.task
+    projectTitle.value = data.task.projectTitle
+    creatorName.value = data.task.creatorName
+    assigneeNames.value = data.task.assigneeNames || []
+
+    // ✅ Determine if user can edit
+    const isCreator = data.task.creatorId === user.uid
+    canEdit.value = userRole.value === 'manager' || isCreator
+
+    console.log('🧩 Role:', userRole.value, '| Creator:', isCreator, '| canEdit:', canEdit.value)
   } catch (err) {
-    console.error('Error fetching assignees:', err);
-    assigneeNames.value = ['Error loading assignees'];
+    console.error('❌ Error fetching task:', err)
   }
-};
+}
 
 onMounted(fetchTask);
 
@@ -161,6 +146,27 @@ const refreshTask = () => fetchTask();
 const openEditModal = () => (isEditModalOpen.value = true);
 
 // === Format Firestore Dates ===
+// === Safe date converter ===
+const toJsDate = (value) => {
+  if (!value) return null
+  // Firestore Timestamp object
+  if (typeof value?.toDate === 'function') return value.toDate()
+  // Admin SDK timestamp ({ seconds / nanoseconds } or {_seconds/_nanoseconds})
+  if (typeof value === 'object') {
+    const s = value.seconds ?? value._seconds
+    const ns = value.nanoseconds ?? value._nanoseconds
+    if (typeof s === 'number') return new Date(s * 1000 + Math.floor((ns ?? 0) / 1e6))
+  }
+  // ISO string or number
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value)
+    return isNaN(d) ? null : d
+  }
+  // Already a Date
+  if (value instanceof Date) return value
+  return null
+}
+
 const formatDate = (date) => {
   if (date?.toDate) return date.toDate().toLocaleString(); // show both date & time
   return new Date(date).toLocaleString();
