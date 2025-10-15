@@ -88,11 +88,23 @@ export async function getTasksForUser(userId) {
     const role = (userData.role || "staff").toLowerCase()
     console.log(`👤 User ${userId} role: ${role}`)
 
+    // === 🟢 HR → can see all tasks across all projects ===
+    if (role === "hr") {
+      console.log("🔹 HR access: fetching all tasks across all projects")
+
+      const allTasksSnap = await db.collection("Tasks").get()
+      const allTasks = allTasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+      // ✅ Enrich tasks (project, creator, assignees)
+      const enriched = await Promise.all(allTasks.map((t) => enrichTaskData(t)))
+      console.log(`✅ Returning ${enriched.length} tasks for HR ${userId}`)
+      return enriched
+    }
+
     // === Manager → can see all tasks in projects they created ===
     if (role === "manager") {
       console.log(`🔹 Manager access: fetching tasks for projects created by ${userId}`)
 
-      // 1️⃣ Find projects created by this manager
       const projectSnap = await db
         .collection("Projects")
         .where("owner", "==", userDocRef)
@@ -106,25 +118,22 @@ export async function getTasksForUser(userId) {
       const projectIds = projectSnap.docs.map((d) => d.ref)
       console.log(`📁 Found ${projectIds.length} projects for manager.`)
 
-      // 2️⃣ Fetch tasks linked to those projects
       const tasksSnap = await db
         .collection("Tasks")
         .where("projectId", "in", projectIds)
         .get()
 
-      // 3️⃣ Also include tasks they personally created (just in case)
       const createdSnap = await db
         .collection("Tasks")
         .where("taskCreatedBy", "==", userDocRef)
         .get()
 
-      // Merge and deduplicate
       const taskMap = new Map()
       tasksSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
       createdSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
 
       const tasks = Array.from(taskMap.values())
-      const enriched = await Promise.all(tasks.map(t => enrichTaskData(t)))
+      const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
 
       console.log(`✅ Returning ${enriched.length} tasks for manager ${userId}`)
       return enriched
@@ -143,14 +152,12 @@ export async function getTasksForUser(userId) {
       .where("taskCreatedBy", "==", userDocRef)
       .get()
 
-    // --- Merge both query results ---
     const taskMap = new Map()
     assignedSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
     createdSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
 
-    // ✅ Here's where your new lines go:
     const tasks = Array.from(taskMap.values())
-    const enriched = await Promise.all(tasks.map(t => enrichTaskData(t)))
+    const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
     console.log(`✅ Returning ${enriched.length} staff tasks for user ${userId}`)
     return enriched
 
@@ -291,12 +298,18 @@ export async function updateTask(taskId, updates) {
       const userData = userSnap.data()
       const role = (userData.role || 'staff').toLowerCase()
 
+      if (role === 'hr') {
+        throw new Error('Access denied: HR users cannot edit tasks')
+      }
+
       if (role === 'staff') {
         const isCreator = existingTask.taskCreatedBy?.path === userRef.path
         if (!isCreator) {
           throw new Error('Access denied: only the creator can edit this task')
         }
       }
+
+      // Managers are allowed to edit — no restriction here
     } else {
       console.warn('⚠️ No userId provided in update request — skipping role check')
     }
@@ -320,7 +333,7 @@ export async function updateTask(taskId, updates) {
     // --- Assigned users (array of references) ---
     if (Array.isArray(updates.assignedTo)) {
       updateData.assignedTo = updates.assignedTo
-        .filter((uid) => !!uid)
+        .filter((uid) => typeof uid === 'string' && uid.trim() !== '')
         .map((uid) => db.collection('Users').doc(uid))
     }
 

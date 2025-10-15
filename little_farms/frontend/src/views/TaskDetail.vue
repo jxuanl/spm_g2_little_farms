@@ -20,13 +20,19 @@
 
     <!-- === Edit button === -->
     <div class="mt-10 flex justify-end">
-      <button
-        class="px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary/90 cursor-pointer"
-        @click="openEditModal"
-      >
-        {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
-      </button>
-    </div>
+    <button
+      class="px-4 py-2 font-medium rounded-md h-9 transition-all"
+      :class="[
+        canEdit
+          ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer border-transparent opacity-100'
+          : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60 border-black'
+      ]"
+      :disabled="!canEdit"
+      @click="canEdit && openEditModal()"
+    >
+      {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
+    </button>
+  </div>
 
     <!-- === Edit Modal === -->
     <EditTaskModal
@@ -79,7 +85,7 @@
 
     <div v-else class="text-gray-500">Loading task details...</div>
 
-    <!-- === Edit button === -->
+    <!-- === Edit button ===
     <div class="mt-10 flex justify-end">
       <button
         class="px-4 py-2 font-medium rounded-md h-9 transition-all"
@@ -93,7 +99,7 @@
       >
         Edit Task
       </button>
-    </div>
+    </div> -->
 
 
 
@@ -159,160 +165,142 @@ const subtaskId = computed(() => route.params.subtaskId);
 
 // === Fetch Task, Project, Creator, and Assignees ===
 const fetchTask = async () => {
-  const auth = getAuth()
-  const user = auth.currentUser
+  const auth = getAuth();
+  const user = auth.currentUser;
   if (!user) {
-    console.warn('⚠️ User not logged in')
-    window.location.href = '/login'
-    return
+    console.warn('⚠️ User not logged in');
+    router.push('/login');
+    return;
   }
 
-  currentUserId.value = user.uid
+  currentUserId.value = user.uid;
 
-  // 🧠 Fetch user role
   try {
-    // const userRes = await fetch(`/api/users/${user.uid}`)
-    const userRes = await fetch(`/api/auth/users/${user.uid}`)
-    const userData = await userRes.json()
-    userRole.value = (userData.user?.role || 'staff').toLowerCase()
+    // ✅ Get Firebase ID token
+    const token = await user.getIdToken();
 
-    let taskData = null;
-    
-    if (isSubtaskView.value) {
-      // Fetch subtask via API
-      const response = await fetch(`http://localhost:3001/api/tasks/${taskId.value}/subtasks/${subtaskId.value}`);
-      if (response.ok) {
-        taskData = await response.json();
-        task.value = taskData;
-      } else {
-        console.error('Failed to fetch subtask');
-        return;
-      }
+    // --- Fetch user role securely ---
+    const userRes = await fetch(`/api/users/${user.uid}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!userRes.ok) {
+      console.error('❌ Failed to fetch user:', await userRes.text());
+      return;
+    }
+
+    const userData = await userRes.json();
+    userRole.value = (userData.user?.role || 'staff').toLowerCase();
+
+    // --- Fetch task details ---
+    const res = await fetch(`/api/tasks/${route.params.id}?userId=${user.uid}`);
+    if (!res.ok) {
+      console.error('❌ Task not found or access denied');
+      return;
+    }
+
+    const data = await res.json();
+    task.value = data.task;
+    projectTitle.value = data.task.projectTitle;
+    creatorName.value = data.task.creatorName;
+    assigneeNames.value = data.task.assigneeNames || [];
+
+    const isCreator = data.task.creatorId === user.uid;
+    // Managers and creators can edit; HR cannot edit anything
+    if (userRole.value === 'hr') {
+      canEdit.value = false;
     } else {
-      // Fetch regular task from Firestore
-      const taskRef = doc(db, 'Tasks', taskId.value);
-      const snapshot = await getDoc(taskRef);
-      
-      if (!snapshot.exists()) return;
-      task.value = { id: taskId.value, ...snapshot.data() };
-      taskData = task.value;
+      canEdit.value = userRole.value === 'manager' || isCreator;
     }
 
-    // ✅ --- Fetch Project Title ---
-    if (taskData.projectId) {
-      let projectRef;
-      if (typeof taskData.projectId === 'string') {
-        projectRef = doc(db, 'Projects', taskData.projectId);
-      } else if (taskData.projectId?.path) {
-        projectRef = doc(db, taskData.projectId.path);
-      } else if (taskData.projectId?.id) {
-        projectRef = doc(db, 'Projects', taskData.projectId.id);
-      }
-
-      if (projectRef) {
-        const projectSnap = await getDoc(projectRef);
-        projectTitle.value = projectSnap.exists()
-          ? projectSnap.data().title || projectSnap.data().name || 'Untitled Project'
-          : 'Unknown Project';
-      } else {
-        projectTitle.value = 'No project';
-      }
-    } else {
-      projectTitle.value = 'No project';
-    }
-
-    // ✅ --- Fetch Creator Name ---
-    console.log('taskCreatedBy structure:', taskData.taskCreatedBy);
-    if (taskData.taskCreatedBy) {
-      let creatorRef;
-      if (typeof taskData.taskCreatedBy === 'string') {
-        // Direct user ID
-        creatorRef = doc(db, 'Users', taskData.taskCreatedBy);
-      } else if (taskData.taskCreatedBy?.path) {
-        // API response format with path
-        creatorRef = doc(db, taskData.taskCreatedBy.path);
-      } else if (taskData.taskCreatedBy?.id) {
-        // Firestore reference format with id  
-        creatorRef = doc(db, 'Users', taskData.taskCreatedBy.id);
-      }
-
-      if (creatorRef) {
-        const creatorSnap = await getDoc(creatorRef);
-        if (creatorSnap.exists()) {
-          creatorName.value = creatorSnap.data().name || 'Unnamed User';
-        } else {
-          creatorName.value = 'Unknown';
-        }
-      } else {
-        creatorName.value = 'No creator';
-      }
-    } else {
-      creatorName.value = 'No creator';
-    }
-    const taskId = route.params.id
-  try {
-    const res = await fetch(`/api/tasks/${taskId}?userId=${user.uid}`)
-    const data = await res.json()
-
-    if (!data.success || !data.task) {
-      console.warn('❌ Task not found or access denied')
-      task.value = null
-      return
-    }
-
-    task.value = data.task
-    projectTitle.value = data.task.projectTitle
-    creatorName.value = data.task.creatorName
-    assigneeNames.value = data.task.assigneeNames || []
-
-    // ✅ Determine if user can edit
-    const isCreator = data.task.creatorId === user.uid
-    canEdit.value = userRole.value === 'manager' || isCreator
-
-    console.log('🧩 Role:', userRole.value, '| Creator:', isCreator, '| canEdit:', canEdit.value)
-    // ✅ --- Fetch Assignee Names ---
-    if (Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0) {
-      const names = [];
-      for (const assignee of taskData.assignedTo) {
-        if (typeof assignee === 'string') {
-          names.push(assignee);
-        } else if (assignee?.path) {
-          const assigneeSnap = await getDoc(doc(db, assignee.path));
-          if (assigneeSnap.exists()) {
-            names.push(assigneeSnap.data().name || 'Unnamed User');
-          }
-        }
-      }
-      assigneeNames.value = names;
-    } else {
-      assigneeNames.value = [];
-    }
   } catch (err) {
-    console.error('Error fetching task details:', err);
-    projectTitle.value = 'Error loading project';
-    creatorName.value = 'Error loading creator';
-    assigneeNames.value = ['Error loading assignees'];
+    console.error('❌ Error fetching task details:', err);
   }
-}
+};
 
-// === Fetch Subtasks ===
+
+/* === Fetch Subtasks === */
 const fetchSubtasks = async () => {
-  // Don't fetch subtasks if we're viewing a subtask
   if (isSubtaskView.value) {
     subtasks.value = [];
     return;
   }
-  
+
   try {
     const response = await fetch(`http://localhost:3001/api/tasks/${taskId.value}/subtasks`);
-    
-    if (response.ok) {
-      const subtasksData = await response.json();
-      subtasks.value = subtasksData;
-    } else {
-      console.error('Failed to fetch subtasks');
-      subtasks.value = [];
-    }
+    const rawSubtasks = response.ok ? await response.json() : [];
+
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const token = user ? await user.getIdToken() : null;
+
+    // Enrich each subtask (project + creator)
+    const enrichedSubtasks = await Promise.all(
+      rawSubtasks.map(async (sub) => {
+        let projectName = 'No project';
+        let creatorName = 'No creator';
+        let assigneeNames = [];
+
+        try {
+          // --- Fetch Project Title ---
+          if (sub.projectId?.path) {
+            const projectPathParts = sub.projectId.path.split('/');
+            const projectId = projectPathParts[projectPathParts.length - 1];
+            const projectRes = await fetch(`http://localhost:3001/api/projects/${projectId}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            if (projectRes.ok) {
+              const projectData = await projectRes.json();
+              projectName = projectData.project?.title || projectData.title || 'Untitled Project';
+            }
+          }
+
+          // --- Fetch Creator Name ---
+          if (sub.taskCreatedBy?.path) {
+            const userPathParts = sub.taskCreatedBy.path.split('/');
+            const creatorId = userPathParts[userPathParts.length - 1];
+            const creatorRes = await fetch(`http://localhost:3001/api/users/${creatorId}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            if (creatorRes.ok) {
+              const creatorData = await creatorRes.json();
+              creatorName = creatorData.user?.name || creatorData.name || 'Unnamed Creator';
+            }
+          }
+
+          // --- Fetch Assignee Names ---
+          if (Array.isArray(sub.assignedTo)) {
+            const assigneeFetches = sub.assignedTo.map(async (ref) => {
+              const pathParts = ref.path?.split('/') || [];
+              const assigneeId = pathParts[pathParts.length - 1];
+              if (assigneeId) {
+                const assigneeRes = await fetch(`http://localhost:3001/api/users/${assigneeId}`, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                if (assigneeRes.ok) {
+                  const assigneeData = await assigneeRes.json();
+                  return assigneeData.user?.name || assigneeData.name || 'Unnamed';
+                }
+              }
+              return null;
+            });
+            assigneeNames = (await Promise.all(assigneeFetches)).filter(Boolean);
+          }
+
+        } catch (err) {
+          console.warn('Error enriching subtask data:', err);
+        }
+
+        return {
+          ...sub,
+          projectTitle: projectName,
+          creatorName,
+          assigneeNames,
+        };
+      })
+    );
+
+    subtasks.value = enrichedSubtasks;
   } catch (error) {
     console.error('Error fetching subtasks:', error);
     subtasks.value = [];

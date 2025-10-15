@@ -35,88 +35,94 @@
         </div>
       </div>
   
-      <table class="w-full border-collapse border text-sm">
+      <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
   <thead>
     <tr class="bg-gray-100 text-left">
       <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
-      <th class="p-2 border">Task</th>
+      <!-- <th class="p-2 border">Task</th> -->
       <th class="p-2 border">Project</th>
       <th class="p-2 border">Creator</th>
       <th class="p-2 border">Assignees</th>
       <th class="p-2 border">Due Date</th>
       <th class="p-2 border">Status</th>
       <th class="p-2 border">Priority</th>
-      <!-- ✅ New Tags Column -->
       <th class="p-2 border">Tags</th>
     </tr>
   </thead>
 
   <tbody>
-    <tr
-      v-for="task in tasks"
-      :key="task.id"
-      class="hover:bg-gray-50 cursor-pointer transition"
-      :class="{ 'bg-red-50': task.isOverdue }"
-      @click="goToTaskDetail(task.id)"
-    >
-      <!-- Task Title -->
-      <td class="p-2 border font-medium">{{ task.title }}</td>
+  <tr
+    v-for="task in tasks"
+    :key="task.id"
+    class="hover:bg-gray-50 cursor-pointer transition"
+    :class="{ 'bg-red-50': task.isOverdue }"
+    @click="goToTaskDetail(task.id)"
+  >
+    <!-- Task / Subtask Title -->
+    <td class="p-2 border font-medium">{{ task.title || 'Untitled' }}</td>
 
-      <!-- Project -->
-      <td class="p-2 border">{{ task.projectTitle }}</td>
+    <!-- ✅ Project -->
+    <td class="p-2 border text-gray-800">
+      {{ task.projectTitle || 'No project' }}
+    </td>
 
-      <!-- Creator -->
-      <td class="p-2 border">{{ task.creatorName }}</td>
+    <!-- ✅ Creator -->
+    <td class="p-2 border text-gray-800">
+      {{ task.creatorName || 'No creator' }}
+    </td>
 
-      <!-- Assignees -->
-      <td class="p-2 border">
-        <template v-if="task.assigneeNames && task.assigneeNames.length">
-          <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
-            {{ name }}
-            <span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
-          </span>
-          <span v-if="task.assigneeNames.length > 3">...</span>
-        </template>
-        <template v-else>No assignees</template>
-      </td>
-
-      <!-- Due Date -->
-      <td class="p-2 border" :class="getDateClasses(task)">
-        {{ formatDate(task.deadline) }}
-      </td>
-
-      <!-- Status -->
-      <td class="p-2 border">
-        <span
-          class="px-2 py-1 rounded text-white text-xs"
-          :class="getStatusConfig(task.status).color"
-        >
-          {{ getStatusConfig(task.status).label }}
+    <!-- ✅ Assignees -->
+    <td class="p-2 border text-gray-800">
+      <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
+        <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
+          {{ name }}
+          <span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
         </span>
-      </td>
+        <span v-if="task.assigneeNames.length > 3">...</span>
+      </template>
+      <template v-else>
+        <span class="text-gray-400 text-xs italic">No assignees</span>
+      </template>
+    </td>
 
-      <!-- Priority -->
-      <td class="p-2 border">{{ task.priority }}</td>
+    <!-- ✅ Due Date -->
+    <td class="p-2 border" :class="getDateClasses(task)">
+      {{ formatDate(task.deadline) }}
+    </td>
 
-      <!-- ✅ Tags -->
-      <td class="p-2 border">
-        <div class="flex flex-wrap gap-1">
-          <template v-if="task.tags && task.tags.length">
-            <span
-              v-for="(tag, i) in task.tags"
-              :key="i"
-              class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
-            >
-              {{ tag }}
-            </span>
-          </template>
-          <template v-else>
-            <span class="text-gray-400 text-xs">No tags</span>
-          </template>
-        </div>
-      </td>
-    </tr>
+    <!-- ✅ Status -->
+    <td class="p-2 border">
+      <span
+        class="px-2 py-1 rounded text-white text-xs"
+        :class="getStatusConfig(task.status).color"
+      >
+        {{ getStatusConfig(task.status).label }}
+      </span>
+    </td>
+
+    <!-- ✅ Priority -->
+    <td class="p-2 border">{{ task.priority || '—' }}</td>
+
+    <!-- ✅ Tags -->
+    <td class="p-2 border">
+      <div class="flex flex-wrap gap-1">
+        <template v-if="task.tags && task.tags.length">
+          <span
+            v-for="(tag, i) in task.tags"
+            :key="i"
+            class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
+          >
+            {{ tag }}
+          </span>
+        </template>
+        <template v-else>
+          <span class="text-gray-400 text-xs italic">No tags</span>
+        </template>
+      </div>
+    </td>
+  </tr>
   </tbody>
+
 </table>
 
     </div>
