@@ -117,7 +117,6 @@ export async function createTask(taskData) {
 //   await deleteDoc(taskRef);
 // }
 
-<<<<<<< HEAD
 export async function getTaskById(taskId) {
   try {
     const taskDoc = await db.collection(TASK_COLLECTION).doc(taskId).get();
@@ -131,8 +130,6 @@ export async function getTaskById(taskId) {
   }
 }
 
-=======
->>>>>>> 3169ca790a75f29712a4e317b4ce51cc91a5bbcf
 export async function getSubtasksForTask(taskId) {
   try {
     const snapshot = await db
@@ -326,10 +323,7 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
 export const taskService = {
   getTasksForUser,
   createTask,
-<<<<<<< HEAD
   getTaskById,
-=======
->>>>>>> 3169ca790a75f29712a4e317b4ce51cc91a5bbcf
   getSubtasksForTask,
   getSubtaskById,
   updateSubtask,
