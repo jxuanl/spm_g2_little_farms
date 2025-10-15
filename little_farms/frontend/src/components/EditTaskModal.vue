@@ -5,24 +5,24 @@
       @click.stop
     >
       <div class="flex flex-col space-y-1.5 text-center sm:text-left">
-        <h2 class="text-lg font-semibold leading-none tracking-tight">Edit Task</h2>
+        <h2 class="text-lg font-semibold leading-none tracking-tight">{{ isSubtask ? 'Edit Subtask' : 'Edit Task' }}</h2>
       </div>
 
       <div v-if="showSuccessMessage" class="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
-        <div class="text-sm text-green-800">✓ Task updated successfully!</div>
+        <div class="text-sm text-green-800">✓ {{ isSubtask ? 'Subtask' : 'Task' }} updated successfully!</div>
       </div>
 
       <form @submit.prevent="handleUpdate" class="space-y-4">
         <!-- === Title === -->
         <div class="space-y-2">
           <div class="flex justify-between items-center">
-            <label class="text-sm font-medium">Task Title *</label>
+            <label class="text-sm font-medium">{{ isSubtask ? 'Subtask' : 'Task' }} Title *</label>
             <span class="text-xs text-muted-foreground">{{ formData.title.length }}/50</span>
           </div>
           <input
             v-model="formData.title"
             type="text"
-            placeholder="Enter task title..."
+            :placeholder="isSubtask ? 'Enter subtask title...' : 'Enter task title...'"
             required
             :class="[
               'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
@@ -41,45 +41,30 @@
           <textarea
             v-model="formData.description"
             rows="3"
-            placeholder="Describe the task..."
+            :placeholder="isSubtask ? 'Describe the subtask...' : 'Describe the task...'"
             class="flex min-h-[60px] w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
 
         <!-- === Priority & Status (Side by Side) === -->
         <div class="grid grid-cols-2 gap-4">
-          <!-- Priority Dropdown -->
+          <!-- Priority Input -->
           <div class="space-y-2">
             <label class="text-sm font-medium">Priority (1–10)</label>
-            <div class="relative">
-              <button
-                type="button"
-                @click="toggleDropdown('priority')"
-                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <span :class="formData.priority ? 'text-foreground' : 'text-muted-foreground'">
-                  {{ formData.priority || 'Select priority (1–10)' }}
-                </span>
-                <ChevronDown class="h-4 w-4 opacity-50" />
-              </button>
-
-              <div
-                v-if="dropdownStates.priority"
-                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-56 overflow-y-auto"
-              >
-                <div class="p-1">
-                  <button
-                    v-for="n in 10"
-                    :key="n"
-                    type="button"
-                    @click="selectOption('priority', n)"
-                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm flex justify-between items-center"
-                  >
-                    <span>{{ n }}</span>
-                    <Check v-if="formData.priority === n" class="w-4 h-4 text-primary" />
-                  </button>
-                </div>
-              </div>
+            <input
+              v-model="formData.priority"
+              type="number"
+              min="1"
+              max="10"
+              placeholder="Enter priority (1-10)"
+              :class="[
+                'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                errors.priority ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+              ]"
+              @input="validatePriority"
+            />
+            <div v-if="errors.priority" class="text-sm text-red-500 mt-1">
+              {{ errors.priority }}
             </div>
           </div>
 
@@ -128,8 +113,12 @@
             <div class="relative">
               <button
                 type="button"
-                @click="toggleDropdown('project')"
-                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-left"
+                @click="!isSubtask && toggleDropdown('project')"
+                :disabled="isSubtask"
+                :class="[
+                  'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-left',
+                  isSubtask ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60' : 'bg-transparent'
+                ]"
               >
                 <span :class="formData.projectId ? 'text-foreground' : 'text-muted-foreground'">
                   {{ getProjectPlaceholder() }}
@@ -138,7 +127,7 @@
               </button>
 
               <div
-                v-if="dropdownStates.project"
+                v-if="dropdownStates.project && !isSubtask"
                 class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-56 overflow-y-auto"
               >
                 <div v-if="projects.length === 0" class="p-3 text-sm text-muted-foreground text-center">
@@ -201,25 +190,76 @@
         </div>
 
        
-        <!-- === Deadline === -->
+        <!-- === Due Date === -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">Deadline</label>
+          <label class="text-sm font-medium">Due Date</label>
           <input
             v-model="formData.deadline"
             type="date"
-            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            :class="[
+              'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+              errors.deadline ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+            ]"
+            @input="validateDueDate"
           />
+          <div v-if="errors.deadline" class="text-sm text-red-500 mt-1">
+            {{ errors.deadline }}
+          </div>
         </div>
 
         <!-- === Tags === -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">Tags (comma-separated)</label>
-          <input
-            v-model="formData.tags"
-            type="text"
-            placeholder="e.g. bug fix, backend, urgent"
-            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
+          <label class="text-sm font-medium">Tags</label>
+          
+          <!-- Display existing tags -->
+          <div v-if="formData.tags.length > 0" class="flex flex-wrap gap-2 mb-2">
+            <span
+              v-for="tag in formData.tags"
+              :key="tag"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs border border-primary/20"
+            >
+              {{ tag }}
+              <button
+                type="button"
+                @click="removeTag(tag)"
+                class="text-primary hover:text-primary/80 text-xs"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+
+          <!-- Add new tag input -->
+          <div class="relative">
+            <input
+              v-model="newTag"
+              type="text"
+              placeholder="Add a tag and press Enter"
+              class="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              @keyup.enter="addTag"
+              @input="updateTagSuggestions"
+              @focus="updateTagSuggestions"
+              @blur="() => setTimeout(() => showTagSuggestions = false, 200)"
+            />
+            
+            <!-- Tag suggestions dropdown -->
+            <div
+              v-if="showTagSuggestions && tagSuggestions.length > 0"
+              class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-40 overflow-y-auto"
+            >
+              <div class="p-1">
+                <button
+                  v-for="suggestion in tagSuggestions"
+                  :key="suggestion"
+                  type="button"
+                  @click="selectTagSuggestion(suggestion)"
+                  class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                >
+                  {{ suggestion }}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- === Buttons === -->
@@ -245,16 +285,27 @@
 
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue';
-import { ChevronDown, Check } from 'lucide-vue-next';
+import { ChevronDown, Check, X } from 'lucide-vue-next';
+// import { doc, updateDoc, getDocs, collection } from 'firebase/firestore';
+// import { db } from '../../firebase';
 
 const emit = defineEmits(['close', 'updated']);
-const props = defineProps({ isOpen: Boolean, task: Object });
+const props = defineProps({ 
+  isOpen: Boolean, 
+  task: Object,
+  isSubtask: { type: Boolean, default: false },
+  parentTaskId: { type: String, default: null }
+});
 
 const showSuccessMessage = ref(false);
 const projects = ref([]);
 const users = ref([]);
-const dropdownStates = reactive({ priority: false, status: false, project: false, assignees: false });
-const errors = reactive({ title: '' });
+const dropdownStates = reactive({ status: false, project: false, assignees: false });
+const errors = reactive({ 
+  title: '',
+  priority: '',
+  deadline: ''
+});
 
 const formData = reactive({
   title: '',
@@ -264,8 +315,18 @@ const formData = reactive({
   projectId: '',
   assignedTo: [],
   deadline: '',
-  tags: ''
+  tags: []
 });
+
+// Tag-related reactive data
+const newTag = ref('');
+const showTagSuggestions = ref(false);
+const tagSuggestions = ref([]);
+
+// Existing tags for auto-suggestion (would typically come from API)
+const existingTags = ref([
+  'Frontend', 'Backend', 'Bug Fix', 'Feature', 'Testing', 'Documentation', 'UI/UX', 'API', 'Database', 'Performance'
+]);
 
 // Load dropdown data
 // --- Fetch project and user lists from backend ---
@@ -342,8 +403,44 @@ watch(
       formData.description = task.description || '';
       formData.priority = task.priority || null;
       formData.status = task.status || '';
-      formData.projectId = task.projectId?.id || '';
-      formData.assignedTo = task.assignedTo?.map((a) => a.id || a) || [];
+      
+      // Handle projectId for both regular tasks and subtasks
+      if (props.isSubtask) {
+        // For subtasks, projectId might come as a path object from API
+        if (task.projectId?.path) {
+          // Extract the project ID from the path (e.g., "Projects/abc123" -> "abc123")
+          const pathParts = task.projectId.path.split('/');
+          formData.projectId = pathParts[pathParts.length - 1];
+        } else if (typeof task.projectId === 'string') {
+          formData.projectId = task.projectId;
+        } else {
+          formData.projectId = '';
+        }
+      } else {
+        // For regular tasks from Firestore
+        formData.projectId = task.projectId?.id || '';
+      }
+      
+      // Handle assignedTo for both regular tasks and subtasks
+      if (props.isSubtask) {
+        // For subtasks, assignedTo might come as path objects from API
+        if (Array.isArray(task.assignedTo)) {
+          formData.assignedTo = task.assignedTo.map((assignee) => {
+            if (assignee?.path) {
+              // Extract the user ID from the path (e.g., "Users/user123" -> "user123")
+              const pathParts = assignee.path.split('/');
+              return pathParts[pathParts.length - 1];
+            }
+            return assignee.id || assignee;
+          }).filter(Boolean);
+        } else {
+          formData.assignedTo = [];
+        }
+      } else {
+        // For regular tasks from Firestore
+        formData.assignedTo = task.assignedTo?.map((a) => a.id || a) || [];
+      }
+      
       formData.deadline = task.deadline
       ? new Date(task.deadline).toISOString().split('T')[0]
       : '';
@@ -363,6 +460,7 @@ const toggleDropdown = (key) => {
 
 const closeDropdowns = () => {
   Object.keys(dropdownStates).forEach((k) => (dropdownStates[k] = false));
+  showTagSuggestions.value = false;
 };
 
 const selectOption = (key, value) => {
@@ -398,40 +496,139 @@ const statusOptions = [
   { value: 'done', label: 'Done' }
 ];
 
-// // === Handle Update ===
-// const handleUpdate = async () => {
+// // === Validation functions ===
+// const validateTitle = () => {
+  errors.title = '';
 //   if (!formData.title.trim()) {
 //     errors.title = 'Title is required';
+  } else if (formData.title.length > 50) {
+    errors.title = 'Title cannot exceed 50 characters';
+  }
+};
+
+const validatePriority = () => {
+  errors.priority = '';
+  const priority = Number(formData.priority);
+  if (formData.priority && ((priority < 1) || (priority > 10))) {
+    errors.priority = 'Priority must be a number between 1 and 10';
+  }
+};
+
+const validateDueDate = () => {
+  errors.deadline = '';
+  if (formData.deadline.trim()) {
+    const inputDate = new Date(formData.deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (isNaN(inputDate.getTime())) {
+      errors.deadline = 'Please enter a valid date';
+    } else if (inputDate < today) {
+      errors.deadline = 'Due date cannot be in the past';
+    }
+  }
+};
+
+// === Tag management functions ===
+const updateTagSuggestions = () => {
+  if (newTag.value.trim().length > 0) {
+    tagSuggestions.value = existingTags.value.filter(tag => 
+      tag.toLowerCase().includes(newTag.value.toLowerCase()) &&
+      !formData.tags.includes(tag)
+    ).slice(0, 5);
+    showTagSuggestions.value = tagSuggestions.value.length > 0;
+  } else {
+    showTagSuggestions.value = false;
+    tagSuggestions.value = [];
+  }
+};
+
+const selectTagSuggestion = (tag) => {
+  formData.tags.push(tag);
+  newTag.value = '';
+  showTagSuggestions.value = false;
+  tagSuggestions.value = [];
+};
+
+const addTag = () => {
+  if (newTag.value.trim() && !formData.tags.includes(newTag.value.trim())) {
+    formData.tags.push(newTag.value.trim());
+    newTag.value = '';
+    showTagSuggestions.value = false;
+    tagSuggestions.value = [];
+  }
+};
+
+const removeTag = (tagToRemove) => {
+  const index = formData.tags.indexOf(tagToRemove);
+  if (index > -1) {
+    formData.tags.splice(index, 1);
+  }
+};
+
+// === Handle Update ===
+const handleUpdate = async () => {
+  // Validate all fields
+  validateTitle();
+  validatePriority();
+  validateDueDate();
+  
+  if (errors.title || errors.priority || errors.deadline) {
 //     return;
 //   }
 
-//   const taskRef = doc(db, 'Tasks', props.task.id);
-//   const tagsArray = formData.tags
-//     .split(',')
-//     .map((t) => t.trim())
-//     .filter(Boolean);
+  try {
+    const tagsArray = Array.isArray(formData.tags) ? formData.tags : [];
 
-//   await updateDoc(taskRef, {
-//     title: formData.title,
-//     description: formData.description,
-//     priority: formData.priority,
-//     status: formData.status,
-//     projectId: formData.projectId ? doc(db, 'Projects', formData.projectId) : null,
-//     assignedTo: formData.assignedTo.map((id) => doc(db, 'Users', id)),
-//     deadline: formData.deadline ? new Date(formData.deadline) : null,
-//     tags: tagsArray,
-//     modifiedDate: new Date()
-//   });
+    if (props.isSubtask) {
+      // Update subtask via API
+      // Note: For subtasks, we don't update the projectId as it's inherited from parent task
+      const response = await fetch(`http://localhost:3001/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          priority: formData.priority,
+          status: formData.status,
+          assignedTo: formData.assignedTo,
+          deadline: formData.deadline || null,
+          tags: tagsArray
+        })
+      });
 
-//   showSuccessMessage.value = true;
-//   setTimeout(() => {
-//     showSuccessMessage.value = false;
-//     emit('updated');
-//     emit('close');
-//   }, 1500);
+      if (!response.ok) {
+        throw new Error('Failed to update subtask');
+      }
+    } else {
+      // Update regular task via Firestore
+      const taskRef = doc(db, 'Tasks', props.task.id);
+      await updateDoc(taskRef, {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        status: formData.status,
+        projectId: formData.projectId ? doc(db, 'Projects', formData.projectId) : null,
+        assignedTo: formData.assignedTo.map((id) => doc(db, 'Users', id)),
+        deadline: formData.deadline ? new Date(formData.deadline) : null,
+        tags: tagsArray,
+        modifiedDate: new Date()
+      });
+    }
+
+  //   showSuccessMessage.value = true;
+  //   setTimeout(() => {
+  //     showSuccessMessage.value = false;
+  //     emit('updated');
+  //     emit('close');
+  //   }, 1500);
+  } catch (error) {
+    console.error('Error updating:', error);
+    errors.title = `Failed to update ${props.isSubtask ? 'subtask' : 'task'}. Please try again.`;
+  }
 // };
-
-const validateTitle = () => (errors.title = !formData.title ? 'Title is required' : '');
 </script>
 
 <style scoped>

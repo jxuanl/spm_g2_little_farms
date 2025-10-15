@@ -3,7 +3,7 @@
     <!-- === Statistics Overview === -->
     <div class="grid grid-cols-4 gap-4 mb-6">
       <div class="p-4 border rounded-lg shadow-sm">
-        <div class="text-sm text-gray-500">Total Tasks</div>
+        <div class="text-sm text-gray-500">{{ indvTask ? 'Total Subtasks' : 'Total Tasks' }}</div>
         <div class="text-2xl font-semibold">{{ totalTasks }}</div>
       </div>
       <div class="p-4 border rounded-lg shadow-sm">
@@ -24,13 +24,13 @@
     <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
       <div class="flex flex-col space-y-1.5 p-6">
         <div class="flex items-center justify-between">
-          <h3 class="text-2xl font-semibold leading-none tracking-tight">Tasks</h3>
+          <h3 class="text-2xl font-semibold leading-none tracking-tight">{{ indvTask ? 'Subtasks' : 'Tasks' }}</h3>
           <button 
             class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
             @click="$emit('createTask')"
           >
             <Plus class="w-4 h-4 mr-2" />
-            New Task
+            {{ indvTask ? 'New Subtask' : 'New Task' }}
           </button>
         </div>
       </div>
@@ -38,6 +38,7 @@
       <table class="w-full border-collapse border text-sm">
   <thead>
     <tr class="bg-gray-100 text-left">
+      <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
       <th class="p-2 border">Task</th>
       <th class="p-2 border">Project</th>
       <th class="p-2 border">Creator</th>
@@ -129,6 +130,7 @@ import { Plus } from 'lucide-vue-next'
 
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
+  indvTask: { type: Boolean, default: false }
 })
 defineEmits(['createTask'])
 

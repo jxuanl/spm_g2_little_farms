@@ -1,5 +1,5 @@
 import express from 'express'
-import { getTasksForUser, createTask, getTaskDetail, updateTask } from '../services/taskService.js'
+import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask } from '../services/taskService.js'
 
 const router = express.Router()
 
@@ -66,7 +66,8 @@ router.post('/', async (req, res) => {
       assigneeIds, // Array of user IDs
       projectId,   // Project document reference ID
       createdBy,   // User ID of the task creator
-      tags
+      tags,
+      parentTaskId // Optional: ID of parent task if this is a subtask
     } = req.body;
 
     // Validate required fields
@@ -91,7 +92,8 @@ router.post('/', async (req, res) => {
       assigneeIds,
       projectId,
       createdBy,
-      tags
+      tags,
+      parentTaskId
     };
 
     const newTask = await createTask(taskData);
@@ -112,5 +114,65 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to update task' })
   }
 })
+
+// GET /api/tasks/:taskId/subtasks - Get subtasks for a specific task
+router.get('/:taskId/subtasks', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    
+    if (!taskId) {
+      return res.status(400).json({ error: 'Missing taskId' });
+    }
+    
+    const subtasks = await getSubtasksForTask(taskId);
+    res.json(subtasks);
+  } catch (error) {
+    console.error('Backend error fetching subtasks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/tasks/:taskId/subtasks/:subtaskId - Get a specific subtask
+router.get('/:taskId/subtasks/:subtaskId', async (req, res) => {
+  try {
+    const { taskId, subtaskId } = req.params;
+    
+    if (!taskId || !subtaskId) {
+      return res.status(400).json({ error: 'Missing taskId or subtaskId' });
+    }
+    
+    const subtask = await getSubtaskById(taskId, subtaskId);
+    if (!subtask) {
+      return res.status(404).json({ error: 'Subtask not found' });
+    }
+    
+    res.json(subtask);
+  } catch (error) {
+    console.error('Backend error fetching subtask:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/tasks/:taskId/subtasks/:subtaskId - Update a specific subtask
+router.put('/:taskId/subtasks/:subtaskId', async (req, res) => {
+  try {
+    const { taskId, subtaskId } = req.params;
+    const updateData = req.body;
+    
+    if (!taskId || !subtaskId) {
+      return res.status(400).json({ error: 'Missing taskId or subtaskId' });
+    }
+    
+    const updatedSubtask = await updateSubtask(taskId, subtaskId, updateData);
+    if (!updatedSubtask) {
+      return res.status(404).json({ error: 'Subtask not found' });
+    }
+    
+    res.json(updatedSubtask);
+  } catch (error) {
+    console.error('Backend error updating subtask:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router

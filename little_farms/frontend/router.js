@@ -12,16 +12,17 @@ import Timeline from './src/views/Timeline.vue';
 
 const routes = [
   { path: '/', redirect: '/login' },
-  { path: '/all-tasks', component: AllTasks },
-  { path: '/my-tasks', component: MyTasks },
-  { path: '/all-tasks/:id', name: TaskDetail, component: TaskDetail, props: true },
-  { path: '/calendar', component: Calendar },
-  { path: '/reports', component: Reports },
-  { path: '/settings', component: Settings },
-  { path: '/login', component: login },
-  { path: '/projects', component: Project },
-  { path: '/projects/:id', component: ProjectDetail, props: true },
-  { path: '/timeline/', component: Timeline, props: true },
+  { path: '/all-tasks', name: 'AllTasks', component: AllTasks }, 
+  { path: '/my-tasks', name: 'MyTasks', component: MyTasks }, 
+  { path: '/all-tasks/:id', name: 'TaskDetail', name: TaskDetail, component: TaskDetail, props: true },
+  { path: '/all-tasks/:id/:subtaskId', name: 'SubtaskDetail', component: TaskDetail },
+  { path: '/calendar', name: 'Calendar', component: Calendar }, 
+  { path: '/reports', name: 'Reports', component: Reports }, 
+  { path: '/settings', name: 'Settings', component: Settings }, 
+  { path: '/login', name: 'Login', component: login }, 
+  { path: '/projects', name: 'Projects', component: Project }, 
+  { path: '/projects/:id', name: 'ProjectDetail', component: ProjectDetail, props: true },
+  { path: '/timeline/', name: 'Timeline', component: Timeline, props: true },
 ]
 
 const router = createRouter({
