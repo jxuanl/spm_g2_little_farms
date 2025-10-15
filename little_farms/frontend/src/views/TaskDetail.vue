@@ -177,15 +177,21 @@ const fetchTask = async () => {
   const userId = user.uid;
 
   try {
-    // --- determine if subtask or main task ---
     let res;
+
+    // Fetch user role
+    const userRes = await fetch(`/api/users/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const userData = await userRes.json();
+    userRole.value = (userData.user?.role || 'staff').toLowerCase();
+
+    // --- Determine endpoint ---
     if (isSubtaskView.value) {
-      // ✅ subtask endpoint
       res = await fetch(`/api/tasks/${taskId.value}/subtasks/${subtaskId.value}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
     } else {
-      // ✅ regular task endpoint
       res = await fetch(`/api/tasks/${taskId.value}?userId=${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -197,23 +203,39 @@ const fetchTask = async () => {
     }
 
     const data = await res.json();
+    let taskData = isSubtaskView.value ? data : data.task;
+    task.value = taskData;
 
-    if (isSubtaskView.value) {
-      task.value = data;  // backend returns the subtask directly
-      projectTitle.value = data.projectTitle || 'No project';
-      creatorName.value = data.creatorName || 'No creator';
-      assigneeNames.value = data.assigneeNames || [];
+    projectTitle.value = taskData.projectTitle || 'No project';
+    creatorName.value = taskData.creatorName || 'No creator';
+    assigneeNames.value = taskData.assigneeNames || [];
+
+    // ✅ Edit permission logic
+    const creatorId =
+      taskData.creatorId ||
+      taskData.taskCreatedBy?.id ||
+      taskData.taskCreatedBy?._path?.segments?.slice(-1)[0] ||
+      null;
+
+    const isCreator = creatorId === userId;
+
+    if (userRole.value === 'hr') {
+      canEdit.value = false;
+    } else if (userRole.value === 'manager') {
+      canEdit.value = true;
+    } else if (userRole.value === 'staff') {
+      canEdit.value = isCreator;
     } else {
-      task.value = data.task;
-      projectTitle.value = data.task.projectTitle;
-      creatorName.value = data.task.creatorName;
-      assigneeNames.value = data.task.assigneeNames || [];
+      canEdit.value = false;
     }
+
+    console.log(`👤 Role: ${userRole.value} | Creator: ${isCreator} | canEdit: ${canEdit.value}`);
 
   } catch (err) {
     console.error('❌ Error fetching task/subtask details:', err);
   }
 };
+
 
 /* === Fetch Subtasks === */
 const fetchSubtasks = async () => {
