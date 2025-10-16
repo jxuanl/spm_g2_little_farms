@@ -385,8 +385,6 @@ export async function getTaskById(taskId) {
     throw err;
   }
 }
-
-
 export async function getSubtasksForTask(taskId) {
   try {
     const snapshot = await db
