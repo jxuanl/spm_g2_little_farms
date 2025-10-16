@@ -1,7 +1,6 @@
 import express from 'express';
 import { getTaskById } from '../services/taskService.js';
 import { sendEmail } from '../services/emailService.js';
-import { getUserById } from '../services/userService.js';
 
 const router = express.Router();
 const senderEmail = process.env.SENDER_EMAIL
