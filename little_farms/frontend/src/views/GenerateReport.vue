@@ -18,7 +18,34 @@ async function generatePdf() {
   loading.value = true;
   error.value = '';
   try {
-    const response = await fetch('/api/report/generate-report');
+    const taskData = [
+      {
+        "Task Name": "Design Homepage Mockup",
+        "Project Name": "Website Redesign", 
+        "Owner of Task": "Alice Chen",
+        "Owner of Project": "Bob Smith",
+        "Completion date": "10/7/2025"
+      },
+      {
+        "Task Name": "Develop Login API",
+        "Project Name": "Mobile App Launch",
+        "Owner of Task": "Bob Smith", 
+        "Owner of Project": "Bob Smith",
+        "Completion date": "11/7/2025"
+      }];
+    // const response = await fetch('/api/report/generate-report');
+    const response = await fetch('/api/report/generate-report', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tasks: taskData,
+        reportType: 'Project', // Optional: 'User', 'Project', etc.
+        time_Frame: 'June'
+      })
+    });
+
     if (!response.ok) throw new Error('Failed to generate PDF');
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);

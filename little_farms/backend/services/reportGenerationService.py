@@ -5,22 +5,10 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.units import inch
 import sys
+import json
 from datetime import datetime
 
-def generate_task_completion_report(filename="task_completion_report.pdf"):
-    # Mock data
-    tasks = [
-        {"Task Name": "Design Homepage Mockup", "Project Name": "Website Redesign", "Owner of Task": "Alice Chen", "Owner of Project": "Bob Smith"},
-        {"Task Name": "Develop Login API", "Project Name": "Mobile App Launch", "Owner of Task": "Bob Smith", "Owner of Project": "Bob Smith"},
-        {"Task Name": "Write Blog Post: Q2 Results", "Project Name": "Content Marketing", "Owner of Task": "Eva Garcia", "Owner of Project": "Frank Lee"},
-        {"Task Name": "Competitor Analysis Report", "Project Name": "Market Research", "Owner of Task": "Frank Lee", "Owner of Project": "Alice Chen"},
-        {"Task Name": "Fix SSL Certificate Error", "Project Name": "Infrastructure Maintenance", "Owner of Task": "David Wilson", "Owner of Project": "David Wilson"},
-        {"Task Name": "Plan Q3 Team Offsite", "Project Name": "Internal Operations", "Owner of Task": "Grace Kim", "Owner of Project": "Grace Kim"},
-        {"Task Name": "User Testing: Beta Feature", "Project Name": "Mobile App Launch", "Owner of Task": "Bob Smith", "Owner of Project": "Bob Smith"},
-        {"Task Name": "Update Employee Handbook", "Project Name": "Internal Operations", "Owner of Task": "Grace Kim", "Owner of Project": "Grace Kim"},
-        {"Task Name": "Create Social Media Assets", "Project Name": "Product Launch Campaign", "Owner of Task": "Helen Taylor", "Owner of Project": "Charlie Brown"},
-        {"Task Name": "Migrate Database to Cloud", "Project Name": "Infrastructure Maintenance", "Owner of Task": "David Wilson", "Owner of Project": "David Wilson"}
-    ]
+def generate_task_completion_report(tasks_data, filename="task_completion_report.pdf", report_type="User", timeFrame ="Undefined"):
 
     # Create PDF document
     doc = SimpleDocTemplate(
@@ -55,8 +43,7 @@ def generate_task_completion_report(filename="task_completion_report.pdf"):
         textColor=colors.HexColor('#7F8C8D'),
         alignment=1
     )
-    reportType = "User"
-    elements.append(Paragraph("Completion Report for " + reportType, subtitle_style))
+    elements.append(Paragraph("Completion Report for " + report_type + " for the duration of " + timeFrame, subtitle_style))
 
     # Define wrapped text helper
     def create_wrapped_text(text, style_name='Normal'):
@@ -71,19 +58,20 @@ def generate_task_completion_report(filename="task_completion_report.pdf"):
         return Paragraph(str(text), style)
 
     # Table data
-    task_data = [["Task Name", "Project Name", "Owner of Task", "Owner of Project"]]
+    task_data = [["Task Name", "Owner of Task", "Project Name", "Owner of Project", "Completion date"]]
 
     # Add rows with wrapped text
-    for task in tasks:
+    for task in tasks_data:
         task_data.append([
             create_wrapped_text(task["Task Name"]),
-            create_wrapped_text(task["Project Name"]),
             create_wrapped_text(task["Owner of Task"]),
-            create_wrapped_text(task["Owner of Project"])
+            create_wrapped_text(task["Project Name"]),
+            create_wrapped_text(task["Owner of Project"]),
+            create_wrapped_text(task["Completion date"])
         ])
 
     # Column widths
-    col_widths = [1.8*inch, 1.6*inch, 1.3*inch, 1.3*inch, 1.2*inch, 0.8*inch]
+    col_widths = [1.8*inch, 1.6*inch, 1.3*inch, 1.3*inch]
 
     # Create table
     task_table = Table(task_data, colWidths=col_widths, repeatRows=1)
@@ -125,12 +113,36 @@ def generate_task_completion_report(filename="task_completion_report.pdf"):
     doc.build(elements)
     return True
 
-
-if __name__ == "__main__":
+def main():
     try:
-        filename = sys.argv[1] if len(sys.argv) > 1 else "task_completion_report.pdf"
-        success = generate_task_completion_report(filename)
+        # Read data from stdin
+        input_data = sys.stdin.read()
+        
+        if not input_data:
+            print("Error: No input data provided", file=sys.stderr)
+            sys.exit(1)
+            
+        # Parse JSON data
+        config = json.loads(input_data)
+        
+        tasks = config.get('tasks', [])
+        filename = config.get('filename', 'task_completion_report.pdf')
+        report_type = config.get('report_type', 'User')
+        timeFrame = config.get('timeFrame', 'Undefined')
+        
+        if not tasks:
+            print("Error: No tasks data provided", file=sys.stderr)
+            sys.exit(1)
+            
+        success = generate_task_completion_report(tasks, filename, report_type, timeFrame)
         sys.exit(0 if success else 1)
+        
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON input: {str(e)}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"Error generating task completion report: {str(e)}", file=sys.stderr)
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
