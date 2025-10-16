@@ -20,20 +20,60 @@ const ganttContainer = ref(null)
 let gantt = null
 
 // === Fetch data from backend ===
+// === Fetch data from backend (respect role-based access) ===
 const fetchData = async (userId) => {
   try {
-    console.log('📡 Fetching timeline from backend for user:', userId)
-    const res = await fetch(`/api/timeline?userId=${userId}`)
+    console.log('📡 Fetching tasks (role-based) for user:', userId)
+    const res = await fetch(`/api/tasks?userId=${encodeURIComponent(userId)}`)
     const data = await res.json()
 
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to fetch timeline.')
+    if (!data.success || !Array.isArray(data.tasks)) {
+      throw new Error(data.message || 'Failed to fetch tasks')
     }
 
-    tasks.value = data.tasks || []
-    console.log('✅ Timeline tasks loaded:', tasks.value)
+    // Map backend enriched tasks to Frappe Gantt format
+    const palette = ['#3b82f6', '#10b981', '#f59e0b', '#29E6BD', '#8b5cf6', '#14b8a6', '#ec4899', '#84cc16']
+    const projectColorCache = new Map()
+
+    tasks.value = data.tasks.map((t, i) => {
+      // Normalize dates to YYYY-MM-DD
+      const toYmd = (v) => {
+        if (!v) return null
+        const d = typeof v === 'string' ? new Date(v) : v instanceof Date ? v : null
+        if (!d || Number.isNaN(d.getTime())) return null
+        return d.toISOString().split('T')[0]
+      }
+
+      const start = toYmd(t.createdDate) || toYmd(t.modifiedDate) || toYmd(new Date())
+      // default end: +3 days if missing or invalid
+      const end = toYmd(t.deadline) || toYmd(new Date(new Date(start).getTime() + 3 * 86400000))
+
+      // Derive stable color per project reference/path
+      const projectKey = typeof t.projectId === 'string'
+        ? t.projectId
+        : t.projectId?.path || t.projectId?._path?.segments?.join('/') || 'no-project'
+      if (!projectColorCache.has(projectKey)) {
+        projectColorCache.set(projectKey, palette[projectColorCache.size % palette.length])
+      }
+      const color = projectColorCache.get(projectKey)
+
+      // Normalize status to match your popup logic
+      const status = (t.status || 'Not started')
+
+      return {
+        id: t.id,
+        name: t.title || 'Untitled Task',
+        start,
+        end,
+        status,
+        color,
+        projectId: projectKey
+      }
+    })
+
+    console.log('✅ Timeline tasks loaded (role-filtered):', tasks.value.length)
   } catch (err) {
-    console.error('❌ Error fetching backend timeline data:', err)
+    console.error('❌ Error fetching tasks:', err)
   } finally {
     loading.value = false
   }
