@@ -13,6 +13,7 @@ import projectsRouter from './routes/projects.js'
 import updateRouter from './routes/update.js'
 import allProjectsRouter from './routes/allProjects.js'
 import timelineRouter from "./routes/timeline.js";
+import { startDeadlineChecker } from './services/deadlineService.js';
 
 const app = express()
 
@@ -66,4 +67,10 @@ app.use("/api/timeline", timelineRouter);
 // });
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`))
+app.listen(PORT, () => {
+  console.log(`Server started on port ${PORT}`)
+  
+  // Start the deadline checker after server starts
+  console.log('Starting deadline checker...')
+  startDeadlineChecker();
+});
