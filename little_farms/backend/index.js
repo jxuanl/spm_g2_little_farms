@@ -14,7 +14,6 @@ import updateRouter from './routes/update.js'
 import allProjectsRouter from './routes/allProjects.js'
 import timelineRouter from "./routes/timeline.js";
 import { startDeadlineChecker } from './services/deadlineService.js';
-
 const app = express()
 
 // Add CORS middleware
@@ -50,6 +49,7 @@ app.use('/api/projects', projectsRouter);
 app.use('/api/update', updateRouter);
 app.use('/api/allProjects', allProjectsRouter);
 app.use("/api/timeline", timelineRouter);
+app.use("/api/update", updateRouter);
 
 // const bree = new Bree({
 //   jobs: [
