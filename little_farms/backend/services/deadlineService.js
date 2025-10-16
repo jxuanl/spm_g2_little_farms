@@ -16,8 +16,6 @@ export function startDeadlineChecker() {
   bree.start();
 }
 
-startDeadlineChecker();
-
 // jobs/check-deadline.js
 // import { parentPort, workerData } from "node:worker_threads";
 // import { taskDeadlineDue } from "../services/deadlineService.js";

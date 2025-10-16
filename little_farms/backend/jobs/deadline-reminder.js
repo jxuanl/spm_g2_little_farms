@@ -30,6 +30,8 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
       taskSnapshot.docs.forEach(async (taskDoc) => {
         const taskData = taskDoc.data();
         const deadline = taskData.deadline;
+        const isReminderEmailSent = taskData.isReminderEmailSent || false;
+        if (!deadline || isReminderEmailSent) return; // skip if theres no deadline or email is already sent
         const now = Date.now();
         const reminderDays = parseInt(userReminderPreference, 10); // "1, 3 & 5"
         const reminderMs = reminderDays * 24 * 60 * 60 * 1000;
@@ -43,7 +45,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
             to: "jovanwang2002@gmail.com",
             from: 'smuagilespm@gmail.com',
             subject: 'Task Deadline Reminder for "' + taskData.title + '", which is due in ' + userReminderPreference + " days.",
-            text: 'Task title: ' + taskData.title + "\nDescription: " + taskData.description,
+            text: 'Task title: ' + taskData.title + "\nDescription: " + taskData.description + "\nDeadline: " + deadline.toDate().toLocaleString() + "\n\nThis is an automated reminder from Little Farms.",
           }
           try {
             await sendEmail(emailMsg);
@@ -51,6 +53,9 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
           } catch (err) {
             console.error("Email sending failed:", err);
           }
+
+          // now update emailreminder status to true
+          await taskDoc.ref.update({ isReminderEmailSent: true });
         }
       })
     };

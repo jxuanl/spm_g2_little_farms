@@ -13,8 +13,7 @@ import projectsRouter from './routes/projects.js'
 import updateRouter from './routes/update.js'
 import allProjectsRouter from './routes/allProjects.js'
 import timelineRouter from "./routes/timeline.js";
-import generateReport from './routes/reportGeneration.js'
-
+import { startDeadlineChecker } from './services/deadlineService.js';
 const app = express()
 
 // Add CORS middleware
@@ -31,7 +30,7 @@ app.use((req, res, next) => {
   }
 });
 
-app.use(express.json());
+app.use(express.json())
 
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -43,14 +42,14 @@ app.use(express.urlencoded({ extended: true }));
 // const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename);
 
-app.use('/api/tasks', tasksRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/auth', authRouter);
+app.use('/api/tasks', tasksRouter)
+app.use('/api', usersRouter)
+app.use('/api/auth', authRouter)
 app.use('/api/projects', projectsRouter);
 app.use('/api/update', updateRouter);
 app.use('/api/allProjects', allProjectsRouter);
 app.use("/api/timeline", timelineRouter);
-app.use('/api/report', generateReport);
+app.use("/api/update", updateRouter);
 
 // const bree = new Bree({
 //   jobs: [
@@ -68,4 +67,10 @@ app.use('/api/report', generateReport);
 // });
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`))
+app.listen(PORT, () => {
+  console.log(`Server started on port ${PORT}`)
+  
+  // Start the deadline checker after server starts
+  console.log('Starting deadline checker...')
+  startDeadlineChecker();
+});
