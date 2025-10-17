@@ -8,9 +8,11 @@
         <h2 class="text-lg font-semibold leading-none tracking-tight">{{ isSubtask ? 'Edit Subtask' : 'Edit Task' }}</h2>
       </div>
 
+
       <div v-if="showSuccessMessage" class="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
         <div class="text-sm text-green-800">✓ {{ isSubtask ? 'Subtask' : 'Task' }} updated successfully!</div>
       </div>
+
 
       <form @submit.prevent="handleUpdate" class="space-y-4">
         <!-- === Title === -->
@@ -24,6 +26,7 @@
             type="text"
             :placeholder="isSubtask ? 'Enter subtask title...' : 'Enter task title...'"
             required
+            maxlength="50"
             :class="[
               'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
               errors.title ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
@@ -34,6 +37,7 @@
             {{ errors.title }}
           </div>
         </div>
+
 
         <!-- === Description === -->
         <div class="space-y-2">
@@ -46,13 +50,14 @@
           />
         </div>
 
+
         <!-- === Priority & Status (Side by Side) === -->
         <div class="grid grid-cols-2 gap-4">
           <!-- Priority Input -->
           <div class="space-y-2">
             <label class="text-sm font-medium">Priority (1–10)</label>
             <input
-              v-model="formData.priority"
+              v-model.number="formData.priority"
               type="number"
               min="1"
               max="10"
@@ -68,6 +73,7 @@
             </div>
           </div>
 
+
           <!-- Status Dropdown -->
           <div class="space-y-2">
             <label class="text-sm font-medium">Status</label>
@@ -82,6 +88,7 @@
                 </span>
                 <ChevronDown class="h-4 w-4 opacity-50" />
               </button>
+
 
               <div
                 v-if="dropdownStates.status"
@@ -104,7 +111,8 @@
           </div>
         </div>
 
-        
+
+       
         <!-- === Project & Assignees (Side by Side) === -->
         <div class="grid grid-cols-2 gap-4">
           <!-- Project Dropdown -->
@@ -126,6 +134,7 @@
                 <ChevronDown class="h-4 w-4 opacity-50" />
               </button>
 
+
               <div
                 v-if="dropdownStates.project && !isSubtask"
                 class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-56 overflow-y-auto"
@@ -138,7 +147,7 @@
                     v-for="project in projects"
                     :key="project.id"
                     type="button"
-                    @click="selectOption('project', project.id)"
+                    @click="selectOption('projectId', project.id)"
                     class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm flex justify-between items-center"
                   >
                     <span>{{ project.name }}</span>
@@ -148,6 +157,7 @@
               </div>
             </div>
           </div>
+
 
           <!-- Assignees Dropdown -->
           <div class="space-y-2">
@@ -163,6 +173,7 @@
                 </span>
                 <ChevronDown class="h-4 w-4 opacity-50" />
               </button>
+
 
               <div
                 v-if="dropdownStates.assignees"
@@ -189,6 +200,7 @@
           </div>
         </div>
 
+
        
         <!-- === Due Date === -->
         <div class="space-y-2">
@@ -200,17 +212,18 @@
               'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
               errors.deadline ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
             ]"
-            @input="validateDueDate"
+            @change="validateDueDate"
           />
           <div v-if="errors.deadline" class="text-sm text-red-500 mt-1">
             {{ errors.deadline }}
           </div>
         </div>
 
+
         <!-- === Tags === -->
         <div class="space-y-2">
           <label class="text-sm font-medium">Tags</label>
-          
+         
           <!-- Display existing tags -->
           <div v-if="formData.tags.length > 0" class="flex flex-wrap gap-2 mb-2">
             <span
@@ -229,19 +242,29 @@
             </span>
           </div>
 
+
           <!-- Add new tag input -->
           <div class="relative">
-            <input
-              v-model="newTag"
-              type="text"
-              placeholder="Add a tag and press Enter"
-              class="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              @keyup.enter="addTag"
-              @input="updateTagSuggestions"
-              @focus="updateTagSuggestions"
-              @blur="() => setTimeout(() => showTagSuggestions = false, 200)"
-            />
-            
+            <div class="flex gap-2">
+              <input
+                v-model="newTag"
+                type="text"
+                placeholder="Add a tag and press Enter"
+                class="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                @keypress.enter.prevent="addTag"
+                @input="updateTagSuggestions"
+                @focus="updateTagSuggestions"
+                @blur="() => setTimeout(() => showTagSuggestions = false, 200)"
+              />
+              <button
+                type="button"
+                @click="addTag"
+                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+              >
+                Add
+              </button>
+            </div>
+           
             <!-- Tag suggestions dropdown -->
             <div
               v-if="showTagSuggestions && tagSuggestions.length > 0"
@@ -261,6 +284,7 @@
             </div>
           </div>
         </div>
+
 
         <!-- === Buttons === -->
         <div class="flex justify-end gap-2 pt-4">
@@ -283,29 +307,32 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue';
-import { doc, updateDoc, getDocs, collection } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { ChevronDown, Check, X } from 'lucide-vue-next';
+import { getAuth } from 'firebase/auth';
+
 
 const emit = defineEmits(['close', 'updated']);
-const props = defineProps({ 
-  isOpen: Boolean, 
+const props = defineProps({
+  isOpen: Boolean,
   task: Object,
   isSubtask: { type: Boolean, default: false },
   parentTaskId: { type: String, default: null }
 });
 
+
 const showSuccessMessage = ref(false);
 const projects = ref([]);
 const users = ref([]);
 const dropdownStates = reactive({ status: false, project: false, assignees: false });
-const errors = reactive({ 
+const errors = reactive({
   title: '',
   priority: '',
   deadline: ''
 });
+
 
 const formData = reactive({
   title: '',
@@ -318,24 +345,57 @@ const formData = reactive({
   tags: []
 });
 
+
 // Tag-related reactive data
 const newTag = ref('');
 const showTagSuggestions = ref(false);
 const tagSuggestions = ref([]);
 
-// Existing tags for auto-suggestion (would typically come from API)
+
+// Existing tags for auto-suggestion
 const existingTags = ref([
   'Frontend', 'Backend', 'Bug Fix', 'Feature', 'Testing', 'Documentation', 'UI/UX', 'API', 'Database', 'Performance'
 ]);
 
+
 // Load dropdown data
 onMounted(async () => {
-  const projectSnap = await getDocs(collection(db, 'Projects'));
-  projects.value = projectSnap.docs.map((d) => ({ id: d.id, name: d.data().title }));
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return console.warn('⚠️ User not logged in');
+    const token = await user.getIdToken();
 
-  const userSnap = await getDocs(collection(db, 'Users'));
-  users.value = userSnap.docs.map((d) => ({ id: d.id, name: d.data().name }));
+
+    const [projectRes, userRes] = await Promise.all([
+      fetch('http://localhost:3001/api/allProjects', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+      fetch('http://localhost:3001/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+    ]);
+
+
+    const projectData = await projectRes.json();
+    const userData = await userRes.json();
+
+
+    projects.value = Array.isArray(projectData.data)
+      ? projectData.data.map(p => ({ id: p.id, name: p.name || p.title || 'Unnamed Project' }))
+      : (projectData.projects || []).map(p => ({ id: p.id, name: p.name || p.title || 'Unnamed Project' }));
+
+
+    users.value = Array.isArray(userData.data)
+      ? userData.data.map(u => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }))
+      : (userData.users || []).map(u => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }));
+
+
+  } catch (err) {
+    console.error('❌ Error fetching dropdown data:', err);
+  }
 });
+
 
 // Prefill form from props
 watch(
@@ -346,12 +406,10 @@ watch(
       formData.description = task.description || '';
       formData.priority = task.priority || null;
       formData.status = task.status || '';
-      
+     
       // Handle projectId for both regular tasks and subtasks
       if (props.isSubtask) {
-        // For subtasks, projectId might come as a path object from API
         if (task.projectId?.path) {
-          // Extract the project ID from the path (e.g., "Projects/abc123" -> "abc123")
           const pathParts = task.projectId.path.split('/');
           formData.projectId = pathParts[pathParts.length - 1];
         } else if (typeof task.projectId === 'string') {
@@ -360,17 +418,14 @@ watch(
           formData.projectId = '';
         }
       } else {
-        // For regular tasks from Firestore
         formData.projectId = task.projectId?.id || '';
       }
-      
+     
       // Handle assignedTo for both regular tasks and subtasks
       if (props.isSubtask) {
-        // For subtasks, assignedTo might come as path objects from API
         if (Array.isArray(task.assignedTo)) {
           formData.assignedTo = task.assignedTo.map((assignee) => {
             if (assignee?.path) {
-              // Extract the user ID from the path (e.g., "Users/user123" -> "user123")
               const pathParts = assignee.path.split('/');
               return pathParts[pathParts.length - 1];
             }
@@ -380,20 +435,62 @@ watch(
           formData.assignedTo = [];
         }
       } else {
-        // For regular tasks from Firestore
         formData.assignedTo = task.assignedTo?.map((a) => a.id || a) || [];
       }
-      
+     
       formData.deadline = task.deadline
-        ? new Date(task.deadline.toDate ? task.deadline.toDate() : task.deadline)
-            .toISOString()
-            .split('T')[0]
+        ? new Date(task.deadline).toISOString().split('T')[0]
         : '';
       formData.tags = Array.isArray(task.tags) ? [...task.tags] : [];
     }
   },
   { immediate: true }
 );
+
+
+// === Validation functions ===
+const validateTitle = () => {
+  errors.title = '';
+  if (!formData.title.trim()) {
+    errors.title = 'Task title is required';
+  } else if (formData.title.length > 50) {
+    errors.title = 'Task title cannot exceed 50 characters';
+  }
+};
+
+
+const validatePriority = () => {
+  errors.priority = '';
+  const priority = Number(formData.priority);
+  if (formData.priority !== null && formData.priority !== '' && ((priority < 1) || (priority > 10))) {
+    errors.priority = 'Priority must be a number between 1 and 10';
+  }
+};
+
+
+const validateDueDate = () => {
+  errors.deadline = '';
+  if (formData.deadline && formData.deadline.trim()) {
+    const inputDate = new Date(formData.deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+   
+    if (isNaN(inputDate.getTime())) {
+      errors.deadline = 'Please enter a valid date';
+    } else if (inputDate < today) {
+      errors.deadline = 'Due date cannot be in the past';
+    }
+  }
+};
+
+
+const validateForm = () => {
+  validateTitle();
+  validatePriority();
+  validateDueDate();
+  return !errors.title && !errors.priority && !errors.deadline;
+};
+
 
 // === Dropdown helpers ===
 const toggleDropdown = (key) => {
@@ -403,15 +500,18 @@ const toggleDropdown = (key) => {
   dropdownStates[key] = !dropdownStates[key];
 };
 
+
 const closeDropdowns = () => {
   Object.keys(dropdownStates).forEach((k) => (dropdownStates[k] = false));
   showTagSuggestions.value = false;
 };
 
+
 const selectOption = (key, value) => {
   formData[key] = value;
   closeDropdowns();
 };
+
 
 const toggleAssignee = (id) => {
   const index = formData.assignedTo.indexOf(id);
@@ -419,20 +519,24 @@ const toggleAssignee = (id) => {
   else formData.assignedTo.push(id);
 };
 
+
 const getStatusLabel = () => {
   const map = { todo: 'To Do', 'in-progress': 'In Progress', review: 'In Review', done: 'Done' };
   return formData.status ? map[formData.status] : 'Select status';
 };
+
 
 const getProjectPlaceholder = () => {
   const project = projects.value.find((p) => p.id === formData.projectId);
   return project ? project.name : 'Select project';
 };
 
+
 const getAssigneesPlaceholder = () =>
   formData.assignedTo.length
     ? users.value.filter((u) => formData.assignedTo.includes(u.id)).map((u) => u.name).join(', ')
     : 'Select assignees';
+
 
 const statusOptions = [
   { value: 'todo', label: 'To Do' },
@@ -441,43 +545,11 @@ const statusOptions = [
   { value: 'done', label: 'Done' }
 ];
 
-// === Validation functions ===
-const validateTitle = () => {
-  errors.title = '';
-  if (!formData.title.trim()) {
-    errors.title = 'Title is required';
-  } else if (formData.title.length > 50) {
-    errors.title = 'Title cannot exceed 50 characters';
-  }
-};
-
-const validatePriority = () => {
-  errors.priority = '';
-  const priority = Number(formData.priority);
-  if (formData.priority && ((priority < 1) || (priority > 10))) {
-    errors.priority = 'Priority must be a number between 1 and 10';
-  }
-};
-
-const validateDueDate = () => {
-  errors.deadline = '';
-  if (formData.deadline.trim()) {
-    const inputDate = new Date(formData.deadline);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    if (isNaN(inputDate.getTime())) {
-      errors.deadline = 'Please enter a valid date';
-    } else if (inputDate < today) {
-      errors.deadline = 'Due date cannot be in the past';
-    }
-  }
-};
 
 // === Tag management functions ===
 const updateTagSuggestions = () => {
   if (newTag.value.trim().length > 0) {
-    tagSuggestions.value = existingTags.value.filter(tag => 
+    tagSuggestions.value = existingTags.value.filter(tag =>
       tag.toLowerCase().includes(newTag.value.toLowerCase()) &&
       !formData.tags.includes(tag)
     ).slice(0, 5);
@@ -488,12 +560,16 @@ const updateTagSuggestions = () => {
   }
 };
 
+
 const selectTagSuggestion = (tag) => {
-  formData.tags.push(tag);
+  if (!formData.tags.includes(tag)) {
+    formData.tags.push(tag);
+  }
   newTag.value = '';
   showTagSuggestions.value = false;
   tagSuggestions.value = [];
 };
+
 
 const addTag = () => {
   if (newTag.value.trim() && !formData.tags.includes(newTag.value.trim())) {
@@ -504,6 +580,7 @@ const addTag = () => {
   }
 };
 
+
 const removeTag = (tagToRemove) => {
   const index = formData.tags.indexOf(tagToRemove);
   if (index > -1) {
@@ -511,57 +588,61 @@ const removeTag = (tagToRemove) => {
   }
 };
 
+
 // === Handle Update ===
 const handleUpdate = async () => {
-  // Validate all fields
-  validateTitle();
-  validatePriority();
-  validateDueDate();
-  
-  if (errors.title || errors.priority || errors.deadline) {
+  // Validate form
+  if (!validateForm()) {
     return;
   }
 
+
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      errors.title = 'User not logged in.';
+      return;
+    }
+    const token = await user.getIdToken();
+
+
     const tagsArray = Array.isArray(formData.tags) ? formData.tags : [];
 
-    if (props.isSubtask) {
-      // Update subtask via API
-      // Note: For subtasks, we don't update the projectId as it's inherited from parent task
-      const response = await fetch(`http://localhost:3001/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          description: formData.description,
-          priority: formData.priority,
-          status: formData.status,
-          assignedTo: formData.assignedTo,
-          deadline: formData.deadline || null,
-          tags: tagsArray
-        })
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to update subtask');
-      }
-    } else {
-      // Update regular task via Firestore
-      const taskRef = doc(db, 'Tasks', props.task.id);
-      await updateDoc(taskRef, {
-        title: formData.title,
-        description: formData.description,
-        priority: formData.priority,
-        status: formData.status,
-        projectId: formData.projectId ? doc(db, 'Projects', formData.projectId) : null,
-        assignedTo: formData.assignedTo.map((id) => doc(db, 'Users', id)),
-        deadline: formData.deadline ? new Date(formData.deadline) : null,
-        tags: tagsArray,
-        modifiedDate: new Date()
-      });
+    const updateData = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      priority: formData.priority ? Number(formData.priority) : null,
+      status: formData.status || 'todo',
+      assignedTo: formData.assignedTo || [],
+      projectId: formData.projectId || null,
+      deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+      tags: tagsArray,
+      userId: user.uid // for backend access control
+    };
+
+
+    const endpoint = props.isSubtask
+      ? `http://localhost:3001/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`
+      : `http://localhost:3001/api/tasks/${props.task.id}`;
+
+
+    const res = await fetch(endpoint, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(updateData),
+    });
+
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to update: ${res.status} ${text}`);
     }
+
 
     showSuccessMessage.value = true;
     setTimeout(() => {
@@ -569,13 +650,56 @@ const handleUpdate = async () => {
       emit('updated');
       emit('close');
     }, 1500);
+
+
   } catch (error) {
-    console.error('Error updating:', error);
-    errors.title = `Failed to update ${props.isSubtask ? 'subtask' : 'task'}. Please try again.`;
+    console.error('❌ Error updating task:', error);
+    errors.title = error.message || `Failed to update ${props.isSubtask ? 'subtask' : 'task'}. Please try again.`;
   }
 };
+
+
 </script>
+
 
 <style scoped>
 @import '../../styles/CreateTaskModal.css';
+
+
+/* Component-specific border overrides */
+.border-gray-300 {
+  border-color: #d1d5db !important;
+  border-width: 1px !important;
+}
+
+
+.border-gray-200 {
+  border-color: #e5e7eb !important;
+  border-width: 1px !important;
+}
+
+
+/* Ensure all input elements have visible borders */
+input, textarea, button[type="button"] {
+  border-width: 1px !important;
+}
+
+
+/* Focus ring for better accessibility */
+.focus-visible\:ring-1:focus-visible {
+  --tw-ring-shadow: 0 0 0 1px var(--ring);
+  box-shadow: var(--tw-ring-shadow);
+}
+
+
+/* Dark mode border adjustments */
+.dark .border-gray-300 {
+  border-color: #6b7280 !important;
+}
+
+
+.dark .border-gray-200 {
+  border-color: #4b5563 !important;
+}
 </style>
+

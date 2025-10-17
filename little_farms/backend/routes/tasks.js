@@ -1,20 +1,56 @@
 import express from 'express'
-import { getTasksForUser, createTask, getSubtasksForTask, getSubtaskById, updateSubtask } from '../services/taskService.js'
+import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask } from '../services/taskService.js'
 
 const router = express.Router()
 
-// Example GET /api/tasks?userId=xxx
-router.get('/', async (req, res) => {
-  const userId = req.query.userId
-  if (!userId) {
-    return res.status(400).json({ error: 'Missing userId' })
-  }
+// ✅ GET /api/tasks/:id?userId=abc123  (must come first)
+router.get('/:id', async (req, res) => {
   try {
-    const tasks = await getTasksForUser(userId)
-    res.json(tasks)
+    const { id } = req.params
+    const { userId } = req.query
+
+    if (!id || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing task ID or userId',
+      })
+    }
+
+    const task = await getTaskDetail(id, userId)
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found or access denied',
+      })
+    }
+
+    return res.status(200).json({ success: true, task })
   } catch (error) {
-    console.error('Backend error fetching tasks:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error fetching task detail:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch task detail',
+    })
+  }
+})
+
+// ✅ GET /api/tasks?userId=xxx (list)
+router.get('/', async (req, res) => {
+  try {
+    const userId = req.query.userId
+    if (!userId) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Missing userId' })
+    }
+
+    const tasks = await getTasksForUser(userId)
+    return res.status(200).json({ success: true, tasks })
+  } catch (error) {
+    console.error('Backend error fetching tasks:', error)
+    return res
+      .status(500)
+      .json({ success: false, message: error.message })
   }
 })
 
@@ -67,6 +103,17 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to create task' });
   }
 });
+
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const updates = req.body
+    const updatedTask = await updateTask(id, updates)
+    res.status(200).json({ success: true, task: updatedTask })
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update task' })
+  }
+})
 
 // GET /api/tasks/:taskId/subtasks - Get subtasks for a specific task
 router.get('/:taskId/subtasks', async (req, res) => {
