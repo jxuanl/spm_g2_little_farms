@@ -17,6 +17,7 @@ import allProjectsRouter from './routes/allProjects.js'
 import timelineRouter from "./routes/timeline.js";
 import { startDeadlineChecker } from './services/deadlineService.js';
 import { attachWebSocket, whenConnected } from './services/webSocketService.js';
+import notificationsRouter from './routes/notifications.js';
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/update', updateRouter);
 app.use('/api/allProjects', allProjectsRouter);
 app.use("/api/timeline", timelineRouter);
 app.use("/api/update", updateRouter);
+app.use("/api/notifications", notificationsRouter);
 
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
@@ -61,5 +63,5 @@ server.listen(PORT, async ()=> {
   console.log(`Server started on port 3001`);
   await whenConnected
   // Start the deadline checker after server starts
-  startDeadlineChecker(10_000);
+  // startDeadlineChecker(300_000);
 });
