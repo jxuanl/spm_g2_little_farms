@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import { createCSV } from '../services/csvReportService.js';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -17,7 +18,7 @@ function getTempFileName() {
 const router = express.Router();
 
 // POST endpoint to generate report with dynamic data
-router.post('/generate-report', (req, res) => {
+router.post('/generate_pdf', (req, res) => {
   const { tasks, reportType = 'User', time_Frame = 'Undefined' } = req.body;
   
   if (!tasks || !Array.isArray(tasks)) {
@@ -28,7 +29,7 @@ router.post('/generate-report', (req, res) => {
   }
 
   const tempFile = getTempFileName();
-  const pythonScriptPath = path.join(__dirname, '../services/reportGenerationService.py');
+  const pythonScriptPath = path.join(__dirname, '../services/pdfReportService.py');
   
   console.log('Generating task report with', tasks.length, 'tasks...');
   console.log('Python script path:', pythonScriptPath);
@@ -124,7 +125,7 @@ router.post('/generate-report', (req, res) => {
 });
 
 // GET endpoint for backward compatibility (uses mock data from Python)
-router.get('/generate-report', (req, res) => {
+router.get('/generate_pdf', (req, res) => {
   const tempFile = getTempFileName();
   const pythonScriptPath = path.join(__dirname, '../services/reportGenerationService.py');
 
@@ -169,5 +170,18 @@ router.get('/generate-report', (req, res) => {
     }
   });
 });
+
+router.post('/generate_csv', (req, res) => {
+  try {
+    const jsonData = req.body;
+    const csv = createCSV(jsonData);
+    res.header('Content-Type', 'text/csv');
+    res.attachment('routes.csv');
+    res.send(csv);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 export default router;

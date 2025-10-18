@@ -553,7 +553,7 @@ async function exportPDF() {
         "Completion date": "11/7/2025"
       }];
     // const response = await fetch('/api/report/generate-report');
-    const response = await fetch('/api/report/generate-report', {
+    const response = await fetch('/api/report/generate_pdf', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
