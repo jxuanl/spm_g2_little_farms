@@ -1,4 +1,3 @@
-import { collection, getDocs, getDoc } from "firebase/firestore";
 import { db } from "../adminFirebase.js";
 
 export async function getProjectsForUser(userId) {

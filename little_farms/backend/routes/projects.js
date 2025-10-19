@@ -1,5 +1,6 @@
 import express from 'express';
 import projectService from '../services/projectService.js';
+import admin from '../adminFirebase.js';
 
 const router = express.Router();
 
@@ -23,6 +24,34 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.post('/createProject', async (req, res) => {
+    try {
+    const { title, desc, userId } = req.body;
+    
+    const projectData = {
+      title: title.trim(),
+      description: desc.trim(),
+      owner: userId, // Don't prefix with "/Projects/"
+      taskList: []
+    };
+
+    // Use admin firestore correctly
+    const docRef = await admin.firestore().collection('Projects').add(projectData);
+    
+    res.status(201).json({
+      success: true,
+      projectId: docRef.id,
+      message: "Project created successfully"
+    });
+  } catch (error) {
+        console.error("Error adding project: ", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Internal server error'
+        });
+    }
+});
+
 // GET /api/projects/:id
 router.get('/:projectId', async (req, res) => {
   try {
@@ -40,5 +69,6 @@ router.get('/:projectId', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch project' });
   }
 });
+
 
 export default router;

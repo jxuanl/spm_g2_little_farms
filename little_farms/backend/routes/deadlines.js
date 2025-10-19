@@ -1,30 +1,13 @@
-import { db } from "../adminFirebase.js"
-import { collection, query, where, getDocs, orderBy, doc, getDoc } from "firebase/firestore";
-import Bree from 'bree';
+// import express from 'express';
+// import deadlineService from '../services/deadlineService.js';
 
-const TASK_COLLECTION = "Tasks";
+// const router = express.Router();
 
-/**
- * Fetch the `deadline` for a single task by id.
- * @param {string} taskId
- * @returns {Promise<{ taskId: string, deadline: Date|null, raw: any } | null>}
- *          Returns null if task doesn't exist. `deadline` is normalized to Date when possible.
- */
-
-export async function taskDeadlineDue(taskId) {
-    const taskRef = doc(db, TASK_COLLECTION, taskId);
-    const snap = await getDoc(taskRef);
-
-    // if (!snap.exists()) {
-    //     console.warn(`Task ${taskId} not found`);
-    // return null;
-
-    const data = snap.data();
-    const rawDeadline = data?.deadline ?? null;
-    if (!rawDeadline) return null;   // no deadline stored
-    if (typeof rawDeadline.toMillis === "function") {
-        ms_of_deadline = rawDeadline.toMillis();
-        const timestamp = Date.now();
-        return Date.now() >= ms_of_deadline;
-    }
-}
+// router.post('/start-deadline-checker', (req, res) => {
+//   try {
+//     deadlineService.startDeadlineChecker();
+//   } catch (error) {
+//     console.error("Failed to start deadline checker:", error);
+//     return res.status(500).json({ success: false, message: 'Failed to start deadline checker' });
+//   }
+// });

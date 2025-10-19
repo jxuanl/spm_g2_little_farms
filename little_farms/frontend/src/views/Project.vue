@@ -12,7 +12,7 @@
               View and manage your projects
             </p>
           </div>
-          <button @click="handleNewProjectClick" :disabled="!isLoggedIn"
+          <button @click="handleNewProjectClick" v-if="canCreateProject"
             class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
             <PlusIcon class="w-4 h-4" />
             {{ showCreateForm ? 'Cancel' : 'New Project' }}
@@ -93,9 +93,9 @@
           </div>
           <h3 class="text-lg font-medium mb-2">No Projects Yet</h3>
           <p class="text-muted-foreground mb-4">
-            Create your first project to get started.
+            {{ canCreateProject ? 'Create your first project to get started.' : 'You do not have permission to create projects.' }}
           </p>
-          <button @click="showCreateForm = true"
+          <button v-if="canCreateProject" @click="showCreateForm = true"
             class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
             Create Project
           </button>
@@ -105,9 +105,9 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <router-link 
             v-for="project in projects" 
+            class="block bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
             :key="project.id" 
             :to="`/projects/${project.id}`"
-            class="block bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
             >
               <h4 class="font-semibold text-lg mb-2">{{ project.title }}</h4>
               <p class="text-sm text-muted-foreground mb-3 line-clamp-2">
@@ -128,7 +128,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { Settings as SettingsIcon, Plus as PlusIcon } from 'lucide-vue-next';
 import TaskSidebar from '../components/TaskSidebar.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
@@ -143,36 +143,51 @@ const error = ref('');
 const successMessage = ref('');
 const isLoggedIn = ref(false);
 const authError = ref('');
+// const permissionError = ref('');
+const userRole = ref('');
 
 const formData = ref({
   title: '',
   description: ''
 });
 
-// // Check if user is logged in
-// const checkAuth = () => {
-//   try {
-//     const userSessionStr = sessionStorage.getItem('userSession');
-//     if (!userSessionStr) {
-//       isLoggedIn.value = false;
-//       authError.value = 'You must be logged in to create projects';
-//       return false;
-//     }
-//     const userSession = JSON.parse(userSessionStr);
-//     if (!userSession.uid) {
-//       isLoggedIn.value = false;
-//       authError.value = 'Invalid user session. Please log in again.';
-//       return false;
-//     }
-//     isLoggedIn.value = true;
-//     authError.value = '';
-//     return true;
-//   } catch (err) {
-//     isLoggedIn.value = false;
-//     authError.value = 'Authentication error. Please log in again.';
-//     return false;
-//   }
-// };
+// Check if user is logged in and get their role
+const checkAuth = () => {
+  try {
+    const userSessionStr = sessionStorage.getItem('userSession');
+    if (!userSessionStr) {
+      isLoggedIn.value = false;
+      authError.value = 'You must be logged in to create projects';
+      userRole.value = '';
+      return false;
+    }
+    const userSession = JSON.parse(userSessionStr);
+    if (!userSession.uid) {
+      isLoggedIn.value = false;
+      authError.value = 'Invalid user session. Please log in again.';
+      userRole.value = '';
+      return false;
+    }
+    
+    isLoggedIn.value = true;
+    authError.value = '';
+    userRole.value = userSession.role || '';
+    
+    
+    return true;
+  } catch (err) {
+    isLoggedIn.value = false;
+    authError.value = 'Authentication error. Please log in again.';
+    userRole.value = '';
+    return false;
+  }
+};
+
+// Computed property to check if user can create projects
+const canCreateProject = computed(() => {
+  return isLoggedIn.value && userRole.value !== 'staff';
+});
+
 const setActiveProject = (project) => {
   activeProject.value = project;
 };
@@ -185,6 +200,8 @@ const handleNewProjectClick = () => {
   if (!checkAuth()) {
     return;
   }
+  
+  
   showCreateForm.value = !showCreateForm.value;
   if (showCreateForm.value) {
     resetForm();
@@ -244,41 +261,48 @@ const handleCreateProject = async () => {
     return;
   }
 
-  if (!formData.value.title.trim()) {
-    error.value = 'Project title is required';
+  if (!canCreateProject.value) {
+    error.value = 'Staff members are not allowed to create projects.';
     return;
   }
 
-  if (formData.value.startDate && formData.value.endDate) {
-    const start = new Date(formData.value.startDate);
-    const end = new Date(formData.value.endDate);
-
-    if (end < start) {
-      error.value = 'End date cannot be before start date';
-      return;
-    }
+  if (!formData.value.title.trim()) {
+    error.value = 'Project title is required.';
+    return;
   }
 
   loading.value = true;
 
   try {
-    const newProject = await projectService.createProject({ ...formData.value });
-    projects.value.push(newProject);
+    const sessionStr = sessionStorage.getItem('userSession');
+    const session = JSON.parse(sessionStr);
+    console.log(formData.value.desc)
+
+    const response = await fetch('/api/projects/createProject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: formData.value.title,
+        desc: formData.value.desc,
+        userId: session.uid
+      })
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to create project');
+    }
+
     successMessage.value = 'Project created successfully!';
+    projects.value.push(result.project); // Update UI immediately
 
     setTimeout(() => {
       showCreateForm.value = false;
       resetForm();
-    }, 1500);
+    }, 1000);
   } catch (err) {
     console.error('Error creating project:', err);
-    if (err.message === 'No user session found') {
-      authError.value = 'Session expired. Please log in again.';
-      isLoggedIn.value = false;
-      error.value = 'Your session has expired. Please log in again.';
-    } else {
-      error.value = err.message || 'Failed to create project. Please try again.';
-    }
+    error.value = err.message;
   } finally {
     loading.value = false;
   }
@@ -286,10 +310,10 @@ const handleCreateProject = async () => {
 
 const handleCreateTask = (newTask) => {
   console.log("Create task:", newTask);
-  setIsCreateModalOpen(false);
+  isCreateModalOpen.value = false;
 };
 
 onMounted(() => {
-    loadProjects();
+  if (checkAuth()) loadProjects();
 });
 </script>

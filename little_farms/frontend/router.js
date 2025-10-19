@@ -1,30 +1,28 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import AllTasks from './src/views/AllTasks.vue'
-import TaskDetail from './src/views/TaskDetail.vue';
 import MyTasks from './src/views/MyTasks.vue'
 import Calendar from './src/views/Calendar.vue'
 import Reports from './src/views/Reports.vue'
 import Settings from './src/views/Settings.vue'
-import Home from './src/views/Home.vue'
-import About from './src/views/About.vue'
 import login from './src/views/LoginPage.vue'
 import Project from './src/views/Project.vue'
+import AllTasks from './src/views/AllTasks.vue'
+import TaskDetail from './src/views/TaskDetail.vue';
 import ProjectDetail from './src/views/ProjectDetail.vue'
-
+import Timeline from './src/views/Timeline.vue';
 
 const routes = [
-  { path: '/', redirect: '/all-tasks' },
-  { path: '/all-tasks', component: AllTasks },
-  { path: '/my-tasks', component: MyTasks },
-  { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail },
-  { path: '/calendar', component: Calendar },
-  { path: '/reports', component: Reports },
-  { path: '/settings', component: Settings },
-  { path: '/home', component: Home },
-  { path: '/about', component: About },
-  { path: '/login', component: login },
-  { path: '/projects', component: Project },
-  { path: '/projects/:id', component: ProjectDetail, props: true },
+  { path: '/', redirect: '/login' },
+  { path: '/all-tasks', name: 'AllTasks', component: AllTasks }, 
+  { path: '/my-tasks', name: 'MyTasks', component: MyTasks }, 
+  { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail, props: true },
+  { path: '/all-tasks/:id/:subtaskId', name: 'SubtaskDetail', component: TaskDetail },
+  { path: '/calendar', name: 'Calendar', component: Calendar }, 
+  { path: '/reports', name: 'Reports', component: Reports }, 
+  { path: '/settings', name: 'Settings', component: Settings }, 
+  { path: '/login', name: 'Login', component: login }, 
+  { path: '/projects', name: 'Projects', component: Project }, 
+  { path: '/projects/:id', name: 'ProjectDetail', component: ProjectDetail, props: true },
+  { path: '/timeline/', name: 'Timeline', component: Timeline, props: true },
 ]
 
 const router = createRouter({
