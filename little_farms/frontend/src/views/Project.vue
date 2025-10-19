@@ -232,7 +232,7 @@ const loadProjects = async () => {
       throw new Error("User not logged in or session missing UID");
     }
     
-    const res = await fetch(`http://localhost:3001/api/projects?userId=${userSession.uid}`);
+    const res = await fetch(`http://localhost:3001/api/projects?userId=${userSession.uid}&userRole=${userSession.role}`);
     console.log(res)
     
     // Check if response is OK
