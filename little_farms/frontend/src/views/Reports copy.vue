@@ -1,8 +1,11 @@
 <template>
   <div class="h-screen bg-background flex">
-    <TaskSidebar :activeProject="activeProject" @projectChange="setActiveProject"
-      @createTask="() => setIsCreateModalOpen(true)" />
-
+    <TaskSidebar
+      :activeProject="activeProject"
+      @projectChange="setActiveProject"
+      @createTask="() => setIsCreateModalOpen(true)"
+    />
+   
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
       <div class="bg-card border-b border-border p-6">
@@ -26,8 +29,10 @@
           <!-- Export Format -->
           <div class="mb-6">
             <label class="block text-sm font-medium mb-2">Export As</label>
-            <select v-model="filters.exportFormat"
-              class="w-full px-3 py-2 border border-border rounded-md bg-background">
+            <select
+              v-model="filters.exportFormat"
+              class="w-full px-3 py-2 border border-border rounded-md bg-background"
+            >
               <option value="csv">CSV</option>
               <option value="pdf">PDF</option>
             </select>
@@ -37,7 +42,10 @@
           <!-- Report Type -->
           <div class="mb-6">
             <label class="block text-sm font-medium mb-2">Report Type</label>
-            <select v-model="filters.reportType" class="w-full px-3 py-2 border border-border rounded-md bg-background">
+            <select
+              v-model="filters.reportType"
+              class="w-full px-3 py-2 border border-border rounded-md bg-background"
+            >
               <option value="team-summary">Team Summary</option>
               <option value="task-completion">Task Completion</option>
               <option value="logged-time">Logged Time</option>
@@ -48,8 +56,11 @@
           <!-- Interval -->
           <div class="mb-6">
             <label class="block text-sm font-medium mb-2">Interval</label>
-            <select v-model="filters.interval" @change="handleIntervalChange"
-              class="w-full px-3 py-2 border border-border rounded-md bg-background">
+            <select
+              v-model="filters.interval"
+              @change="handleIntervalChange"
+              class="w-full px-3 py-2 border border-border rounded-md bg-background"
+            >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
             </select>
@@ -59,11 +70,14 @@
           <!-- Time Frame (conditional) -->
           <div class="mb-6">
             <label class="block text-sm font-medium mb-2">Time Frame</label>
-
+           
             <!-- Monthly Selection -->
             <div v-if="filters.interval === 'monthly'" class="space-y-2">
-              <input v-model="filters.month" type="month"
-                class="w-full px-3 py-2 border border-border rounded-md bg-background" />
+              <input
+                v-model="filters.month"
+                type="month"
+                class="w-full px-3 py-2 border border-border rounded-md bg-background"
+              />
             </div>
 
 
@@ -72,13 +86,19 @@
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="block text-xs text-muted-foreground mb-1">Start Date</label>
-                  <input v-model="filters.startDate" type="date"
-                    class="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-background" />
+                  <input
+                    v-model="filters.startDate"
+                    type="date"
+                    class="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-background"
+                  />
                 </div>
                 <div>
                   <label class="block text-xs text-muted-foreground mb-1">End Date</label>
-                  <input v-model="filters.endDate" type="date"
-                    class="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-background" />
+                  <input
+                    v-model="filters.endDate"
+                    type="date"
+                    class="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-background"
+                  />
                 </div>
               </div>
             </div>
@@ -88,7 +108,10 @@
           <!-- Filter By (only for Task Completion Report) -->
           <div v-if="filters.reportType === 'task-completion'" class="mb-6">
             <label class="block text-sm font-medium mb-2">Filter By</label>
-            <select v-model="filters.filterBy" class="w-full px-3 py-2 border border-border rounded-md bg-background">
+            <select
+              v-model="filters.filterBy"
+              class="w-full px-3 py-2 border border-border rounded-md bg-background"
+            >
               <option value="all">All Tasks</option>
               <option value="project">Project</option>
               <option value="user">User</option>
@@ -97,8 +120,10 @@
 
             <!-- Project Selection -->
             <div v-if="filters.filterBy === 'project'" class="mt-3">
-              <select v-model="filters.selectedProject"
-                class="w-full px-3 py-2 border border-border rounded-md bg-background">
+              <select
+                v-model="filters.selectedProject"
+                class="w-full px-3 py-2 border border-border rounded-md bg-background"
+              >
                 <option value="">Select Project</option>
                 <option v-for="project in projects" :key="project.id" :value="project.id">
                   {{ project.title || project.name }}
@@ -109,8 +134,10 @@
 
             <!-- User Selection -->
             <div v-if="filters.filterBy === 'user'" class="mt-3">
-              <select v-model="filters.selectedUser"
-                class="w-full px-3 py-2 border border-border rounded-md bg-background">
+              <select
+                v-model="filters.selectedUser"
+                class="w-full px-3 py-2 border border-border rounded-md bg-background"
+              >
                 <option value="">Select User</option>
                 <option v-for="user in users" :key="user.id" :value="user.id">
                   {{ user.name }}
@@ -122,14 +149,20 @@
 
           <!-- Action Buttons -->
           <div class="space-y-4">
-            <button @click="generateReport" :disabled="loading"
-              class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50">
+            <button
+              @click="generateReport"
+              :disabled="loading"
+              class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
               {{ loading ? 'Generating...' : 'Generate Report' }}
             </button>
 
 
-            <button v-if="reportData" @click="exportReport"
-              class="w-full px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors my-4">
+            <button
+              v-if="reportData"
+              @click="exportReport"
+              class="w-full px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors my-4"
+            >
               Export {{ filters.exportFormat.toUpperCase() }}
             </button>
           </div>
@@ -206,6 +239,21 @@
 
             <!-- Task Completion Report -->
             <div v-if="filters.reportType === 'task-completion'" class="space-y-4">
+              <!-- Summary Stats -->
+              <div class="grid grid-cols-3 gap-4">
+                <div class="bg-card border border-border rounded-lg p-4">
+                  <div class="text-sm text-muted-foreground">Total Tasks</div>
+                  <div class="text-2xl font-bold">{{ reportData.totalTasks }}</div>
+                </div>
+                <div class="bg-card border border-border rounded-lg p-4">
+                  <div class="text-sm text-muted-foreground">Completed</div>
+                  <div class="text-2xl font-bold text-green-600">{{ reportData.completedTasks }}</div>
+                </div>
+                <div class="bg-card border border-border rounded-lg p-4">
+                  <div class="text-sm text-muted-foreground">Completion Rate</div>
+                  <div class="text-2xl font-bold">{{ reportData.completionRate }}%</div>
+                </div>
+              </div>
 
 
               <!-- Task Details -->
@@ -252,11 +300,11 @@
     </div>
 
 
-    <!-- <CreateTaskModal
+    <CreateTaskModal
       :isOpen="isCreateModalOpen"
       @close="() => setIsCreateModalOpen(false)"
       @createTask="handleCreateTask"
-    /> -->
+    />
   </div>
 </template>
 
@@ -321,9 +369,9 @@ const setIsCreateModalOpen = (open) => {
 };
 
 
-// const handleCreateTask = (newTask) => {
-//   console.log("Create task:", newTask);
-// };
+const handleCreateTask = (newTask) => {
+  console.log("Create task:", newTask);
+};
 
 
 const handleIntervalChange = () => {
@@ -346,7 +394,7 @@ const handleIntervalChange = () => {
 
 const generateReport = async () => {
   loading.value = true;
-
+ 
   try {
     const auth = getAuth();
     const user = auth.currentUser;
@@ -354,7 +402,7 @@ const generateReport = async () => {
 
 
     const token = await user.getIdToken();
-
+   
     // Determine date range
     let startDate, endDate;
     if (filters.value.interval === 'monthly') {
@@ -367,58 +415,39 @@ const generateReport = async () => {
     }
 
 
-    // Fetch all tasks based on userID
-    // let url = `/api/tasks?userId=${user.uid}`;
-    let url = `/api/tasks/allTasks`;
-    const response = await fetch(url);
+    // Fetch tasks based on filters
+    let url = `/api/tasks?userId=${user.uid}`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
 
     if (!response.ok) throw new Error('Failed to fetch tasks');
-
+   
     const data = await response.json();
-    let tasks = data.data || []; //this gets all the tasks
-    // console.log(tasks)
+    let tasks = data.tasks || [];
 
 
     // Filter tasks by date range
     tasks = tasks.filter(task => {
-      // Convert Firestore timestamp to Date object
-      const taskDate = new Date(task.createdDate._seconds * 1000); // Convert seconds to milliseconds
+      const taskDate = new Date(task.createdDate);
       return taskDate >= startDate && taskDate <= endDate;
     });
-    console.log(tasks)
 
 
     // Apply additional filters for task completion report
     if (filters.value.reportType === 'task-completion') {
-      // console.log("Project id: " + filters.value.selectedProject)
-      // console.log("Task: " + tasks)
-      console.log("Task Completion Hit")
       if (filters.value.filterBy === 'project' && filters.value.selectedProject) {
-        tasks = tasks.filter(task => {
-          // Based on your data structure: segments: (2) ['Projects', "CLGW96yugsTjEWYmCzrp']
-          return task.projectId?._path?.segments?.[1] === filters.value.selectedProject;
-        });
+        tasks = tasks.filter(task => task.projectId?.id === filters.value.selectedProject);
       } else if (filters.value.filterBy === 'user' && filters.value.selectedUser) {
-        console.log("Users Filter Hit")
-
-        console.log("User id: " + filters.value.selectedUser)
         tasks = tasks.filter(task =>
-          task.assignedTo?.some(assignee =>
-            assignee?._path?.segments?.[1] === filters.value.selectedUser
-          )
+          task.assigneeNames?.includes(users.value.find(u => u.id === filters.value.selectedUser)?.name)
         );
       }
-      console.log(tasks)
 
 
       // Calculate stats
       const completedTasks = tasks.filter(t => t.status === 'done').length;
-      console.log("completedTasks: " + completedTasks)
-      console.log(tasks.length)
-      tasks = tasks.filter(t => t.status === "done");
-      console.log(tasks.length)
-
       reportData.value = {
         tasks,
         totalTasks: tasks.length,
@@ -441,7 +470,6 @@ const generateReport = async () => {
 
 const exportReport = () => {
   if (!reportData.value) return;
-  console.log(reportData.value)
 
 
   if (filters.value.exportFormat === 'csv') {
@@ -452,136 +480,58 @@ const exportReport = () => {
 };
 
 
-// const exportCSV = () => {
-//   const tasks = reportData.value.tasks;
-//   if (!tasks || tasks.length === 0) return;
+const exportCSV = () => {
+  const tasks = reportData.value.tasks;
+  if (!tasks || tasks.length === 0) return;
 
 
-//   // Create CSV headers based on report type
-//   let headers, rows;
-
-//   if (filters.value.reportType === 'team-summary') {
-//     headers = ['Task Name', 'Assigned To', 'Start Date', 'End Date', 'Status', 'Comments/Issues'];
-//     rows = tasks.map(task => [
-//       task.title,
-//       task.assigneeName || 'Unassigned',
-//       formatDate(task.createdDate),
-//       formatDate(task.deadline),
-//       task.status,
-//       task.description || '-'
-//     ]);
-//   } else if (filters.value.reportType === 'task-completion') {
-//     if (filters.value.filterBy === 'project') {
-//       headers = ['Task', 'Project', 'Assignee', 'Status', 'Completion Date'];
-//       rows = tasks.map(task => [
-//         task.title,
-//         task.projectTitle || 'No Project',
-//         task.assigneeName || 'Unassigned',
-//         task.status,
-//         task.status === 'done' ? formatDate(task.modifiedDate) : '-'
-//       ]);
-//     }
-//     else {
-//       headers = ['Task', 'Project', 'Assignee', 'Status', 'Completion Date'];
-//       rows = tasks.map(task => [
-//         task.title,
-//         task.projectTitle || 'No Project',
-//         task.assigneeName || 'Unassigned',
-//         task.status,
-//         task.status === 'done' ? formatDate(task.modifiedDate) : '-'
-//       ]);
-//     }
-
-//   }
+  // Create CSV headers based on report type
+  let headers, rows;
+ 
+  if (filters.value.reportType === 'team-summary') {
+    headers = ['Task Name', 'Assigned To', 'Start Date', 'End Date', 'Status', 'Comments/Issues'];
+    rows = tasks.map(task => [
+      task.title,
+      task.assigneeName || 'Unassigned',
+      formatDate(task.createdDate),
+      formatDate(task.deadline),
+      task.status,
+      task.description || '-'
+    ]);
+  } else {
+    headers = ['Task', 'Project', 'Assignee', 'Status', 'Completion Date'];
+    rows = tasks.map(task => [
+      task.title,
+      task.projectTitle || 'No Project',
+      task.assigneeName || 'Unassigned',
+      task.status,
+      task.status === 'done' ? formatDate(task.modifiedDate) : '-'
+    ]);
+  }
 
 
-//   // Create CSV content
-//   const csvContent = [
-//     headers.join(','),
-//     ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-//   ].join('\n');
+  // Create CSV content
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n');
 
 
-//   // Download CSV
-//   const blob = new Blob([csvContent], { type: 'text/csv' });
-//   const url = window.URL.createObjectURL(blob);
-//   const a = document.createElement('a');
-//   a.href = url;
-//   a.download = `${filters.value.reportType}-${filters.value.interval}-${Date.now()}.csv`;
-//   a.click();
-//   window.URL.revokeObjectURL(url);
-// };
+  // Download CSV
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filters.value.reportType}-${filters.value.interval}-${Date.now()}.csv`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+};
 
 
 // const exportPDF = () => {
 //   alert('PDF export feature coming soon!');
 //   // TODO: Implement PDF generation using library like jsPDF
 // };
-
-async function exportCSV() {
-  loading.value = true;
-  error.value = '';
-  try {
-    // Mocked route and service data
-    // const routeData = [
-    //   { route_code: 'R1', service: 'Express' },
-    //   { route_code: 'R2', service: 'Local', note: 'Peak hours' },
-    //   { route_code: 'R3', service: 'Express' }
-    // ];
-    const routeData = tasks.map(task => {
-      const assigneeNames = task.assignedTo?.map(assignee => {
-        const userId = assignee?._path?.segments?.[1];
-        const user = users.value.find(u => u.id === userId);
-        return user?.name || 'Unassigned';
-      }).join(', ') || 'Unassigned';
-
-      const projectTitle = task.projectId?._path?.segments?.[1] ? 
-        projects.value.find(p => p.id === task.projectId._path.segments[1])?.title || 'No Project' : 
-        'No Project';
-
-      const formatDate = (timestamp) => {
-        if (!timestamp) return '-';
-        const date = new Date(timestamp._seconds * 1000);
-        return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
-      };
-
-      return {
-        'Task Name': task.title || 'No Title',
-        'Project Name': projectTitle,
-        'Owner of Task': assigneeNames,
-        'Owner of Project': 'TBD', // Replace with actual project owner if available
-        'Completion date': task.status === 'done' ? formatDate(task.modifiedDate) : '-'
-      };
-    });
-
-    const response = await fetch('/api/report/generate_csv', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(routeData)
-    });
-
-    if (!response.ok) throw new Error('Failed to generate CSV');
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'routes.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    setTimeout(() => {
-      window.URL.revokeObjectURL(url);
-    }, 1000);
-
-  } catch (e) {
-    error.value = e.message || 'Unknown error';
-  }
-  loading.value = false;
-}
 
 async function exportPDF() {
   loading.value = true;
@@ -590,7 +540,7 @@ async function exportPDF() {
     const taskData = [
       {
         "Task Name": "Design Homepage Mockup",
-        "Project Name": "Website Redesign",
+        "Project Name": "Website Redesign", 
         "Owner of Task": "Alice Chen",
         "Owner of Project": "Bob Smith",
         "Completion date": "10/7/2025"
@@ -598,7 +548,7 @@ async function exportPDF() {
       {
         "Task Name": "Develop Login API",
         "Project Name": "Mobile App Launch",
-        "Owner of Task": "Bob Smith",
+        "Owner of Task": "Bob Smith", 
         "Owner of Project": "Bob Smith",
         "Completion date": "11/7/2025"
       }];
@@ -609,7 +559,7 @@ async function exportPDF() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        tasks: tasks,
+        tasks: taskData,
         reportType: 'Project', // Optional: 'User', 'Project', etc.
         time_Frame: 'June'
       })
@@ -621,7 +571,7 @@ async function exportPDF() {
 
     // Open PDF in a new tab
     const newTab = window.open(url, '_blank');
-
+    
     // Fallback if popup is blocked
     if (!newTab || newTab.closed || typeof newTab.closed == 'undefined') {
       // Alternative: create an iframe or embed element
@@ -630,7 +580,7 @@ async function exportPDF() {
       embed.type = 'application/pdf';
       embed.style.width = '100%';
       embed.style.height = '100vh';
-
+      
       // Clear any existing content and show the PDF
       const container = document.getElementById('pdf-container') || createPdfContainer();
       container.innerHTML = '';
@@ -659,7 +609,7 @@ function createPdfContainer() {
   container.style.height = '100%';
   container.style.background = 'white';
   container.style.zIndex = '1000';
-
+  
   // Add close button
   const closeButton = document.createElement('button');
   closeButton.textContent = 'Close';
@@ -673,14 +623,14 @@ function createPdfContainer() {
   closeButton.style.border = 'none';
   closeButton.style.borderRadius = '5px';
   closeButton.style.cursor = 'pointer';
-
+  
   closeButton.onclick = () => {
     document.body.removeChild(container);
   };
-
+  
   container.appendChild(closeButton);
   document.body.appendChild(container);
-
+  
   return container;
 }
 
@@ -715,7 +665,7 @@ const loadProjectsAndUsers = async () => {
 
     const [projectsRes, usersRes] = await Promise.all([
       fetch('/api/allProjects', { headers: { Authorization: `Bearer ${token}` } }),
-      fetch('/api/users/users', { headers: { Authorization: `Bearer ${token}` } })
+      fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
     ]);
 
 

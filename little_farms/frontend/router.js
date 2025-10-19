@@ -10,6 +10,7 @@ import TaskDetail from './src/views/TaskDetail.vue';
 import ProjectDetail from './src/views/ProjectDetail.vue'
 import Timeline from './src/views/Timeline.vue';
 import generateReport from './src/views/GenerateReport.vue'
+import reportForm from './src/views/Reports copy.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -25,6 +26,7 @@ const routes = [
   { path: '/projects/:id', name: 'ProjectDetail', component: ProjectDetail, props: true },
   { path: '/timeline/', name: 'Timeline', component: Timeline, props: true },
   { path: '/generateReport', component: generateReport },
+  { path: '/reportForm', component: reportForm },
 ]
 
 const router = createRouter({

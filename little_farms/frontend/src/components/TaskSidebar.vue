@@ -192,6 +192,7 @@ const menuItems = [
   { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
   { id: "timeline", label: "Timeline", icon: GanttChartIcon, path: "/timeline" },
+  { id: "Report Copy", label: "Report Copy", icon: GanttChartIcon, path: "/reportForm" },
   // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 const staffMenuItems = [

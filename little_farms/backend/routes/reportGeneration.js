@@ -11,30 +11,45 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Helper to create a unique temp filename
-function getTempFileName() {
-  return path.join(os.tmpdir(), `task_report_${Date.now()}.pdf`);
+function getTempFileName(reportType = 'report') {
+  return path.join(os.tmpdir(), `${reportType}_${Date.now()}.pdf`);
 }
 
 const router = express.Router();
 
 // POST endpoint to generate report with dynamic data
 router.post('/generate_pdf', (req, res) => {
-  const { tasks, reportType = 'User', time_Frame = 'Undefined' } = req.body;
+  const { 
+    tasks, 
+    projects, 
+    data,
+    reportType = 'task_completion', 
+    reportTitle = 'Report',
+    timeFrame = 'Undefined' 
+  } = req.body;
   
-  if (!tasks || !Array.isArray(tasks)) {
+  // Validate based on report type
+  if (reportType === 'task_completion' && (!tasks || !Array.isArray(tasks))) {
     return res.status(400).json({ 
       error: 'Invalid request data',
-      details: 'Tasks array is required'
+      details: 'Tasks array is required for task completion reports'
+    });
+  }
+  
+  if (reportType === 'project_summary' && (!projects || !Array.isArray(projects))) {
+    return res.status(400).json({ 
+      error: 'Invalid request data',
+      details: 'Projects array is required for project summary reports'
     });
   }
 
-  const tempFile = getTempFileName();
+  const tempFile = getTempFileName(reportType);
   const pythonScriptPath = path.join(__dirname, '../services/pdfReportService.py');
   
-  console.log('Generating task report with', tasks.length, 'tasks...');
+  console.log('Generating', reportType, 'report with data...');
   console.log('Python script path:', pythonScriptPath);
   console.log('Output file:', tempFile);
-  console.log("timeframe: " + time_Frame);
+  console.log('Time frame:', timeFrame);
 
   // Check if Python script exists
   if (!fs.existsSync(pythonScriptPath)) {
@@ -47,10 +62,13 @@ router.post('/generate_pdf', (req, res) => {
 
   // Prepare configuration data for Python script
   const configData = JSON.stringify({
-    tasks: tasks,
-    filename: tempFile,
     report_type: reportType,
-    timeFrame: time_Frame
+    report_title: reportTitle,
+    timeFrame: timeFrame,
+    filename: tempFile,
+    tasks: tasks || [],
+    projects: projects || [],
+    data: data || []
   });
 
   const pythonProcess = spawn('python', [pythonScriptPath]);
@@ -82,7 +100,7 @@ router.post('/generate_pdf', (req, res) => {
       
       // Set headers to open in browser instead of download
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'inline; filename="task_report.pdf"');
+      res.setHeader('Content-Disposition', `inline; filename="${reportType}_report.pdf"`);
       res.setHeader('Content-Length', stats.size);
       
       // Stream the file
@@ -109,7 +127,7 @@ router.post('/generate_pdf', (req, res) => {
       console.error('Python error output:', pythonError);
       
       res.status(500).json({ 
-        error: 'Failed to generate task report',
+        error: 'Failed to generate report',
         details: pythonError || 'Unknown error during PDF generation'
       });
     }
@@ -124,16 +142,21 @@ router.post('/generate_pdf', (req, res) => {
   });
 });
 
-// GET endpoint for backward compatibility (uses mock data from Python)
+// GET endpoint for backward compatibility (uses default report type)
 router.get('/generate_pdf', (req, res) => {
-  const tempFile = getTempFileName();
-  const pythonScriptPath = path.join(__dirname, '../services/reportGenerationService.py');
+  const reportType = req.query.report_type || 'task_completion';
+  const tempFile = getTempFileName(reportType);
+  const pythonScriptPath = path.join(__dirname, '../services/pdfReportService.py');
 
-  // For GET requests, we'll pass empty data to use Python's mock data
+  // For GET requests, pass minimal data
   const configData = JSON.stringify({
-    tasks: [],
+    report_type: reportType,
     filename: tempFile,
-    report_type: 'User'
+    report_title: 'Report',
+    timeFrame: 'Undefined',
+    tasks: [],
+    projects: [],
+    data: []
   });
 
   const pythonProcess = spawn('python', [pythonScriptPath]);
@@ -153,7 +176,7 @@ router.get('/generate_pdf', (req, res) => {
       const stats = fs.statSync(tempFile);
       
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'inline; filename="task_report.pdf"');
+      res.setHeader('Content-Disposition', `inline; filename="${reportType}_report.pdf"`);
       res.setHeader('Content-Length', stats.size);
       
       const fileStream = fs.createReadStream(tempFile);
@@ -164,7 +187,7 @@ router.get('/generate_pdf', (req, res) => {
       });
     } else {
       res.status(500).json({ 
-        error: 'Failed to generate task report',
+        error: 'Failed to generate report',
         details: pythonError
       });
     }
@@ -182,6 +205,5 @@ router.post('/generate_csv', (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 export default router;
