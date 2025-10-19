@@ -31,7 +31,7 @@ export async function getProjectsForUser(userId) {
       // OR If the user is a creator of the task
         const isCreatorOfProject = projectData.owner?.path === `Users/${userId}`;
         console.log(`Project ${projectDoc.id} owner path:`, projectData.owner?.path);
-        const hasUserTask =
+        const hasRelevantTask =
           isCreatorOfProject || taskSnapshots.some(taskDoc => {
             if (!taskDoc || !taskDoc.exists) return false;
             const taskData = taskDoc.data();
@@ -46,7 +46,7 @@ export async function getProjectsForUser(userId) {
             return isAssigned || isCreatorOfTask;
           });
 
-      if (hasUserTask) {
+      if (hasRelevantTask) {
         // Only return relevant fields
         console.log("User has tasks in project:", projectDoc.id);
         filteredProjects.push({
@@ -69,36 +69,70 @@ export async function getProjectsForUser(userId) {
 }
 
 export async function getProjectDetailForUser(projectId, userId) {
-  const projectDoc = await db.collection('Projects').doc(projectId).get();
-  if (!projectDoc.exists) return null;
+  try {
+    const projectDoc = await db.collection('Projects').doc(projectId).get();
+    if (!projectDoc.exists) return null;
 
-  const projectData = projectDoc.data();
-  const taskList = projectData.taskList || [];
+    const projectData = projectDoc.data();
+    const taskList = projectData.taskList || [];
 
-  // Fetch task documents
-  const taskSnapshots = await Promise.all(
-    taskList.map(async (taskRef) => {
-      const taskSnap = await taskRef.get();
-      if (!taskSnap.exists) return null;
-      const taskData = taskSnap.data();
+    // Check if user is the project owner (owner is a DocumentReference)
+    const isProjectOwner = projectData.owner?.path === `Users/${userId}`;
 
-      // Only include tasks assigned to this user
-      const isAssigned = Array.isArray(taskData.assignedTo) &&
-        taskData.assignedTo.some(ref => ref.path === `Users/${userId}`);
-      return isAssigned ? { id: taskSnap.id, ...taskData } : null;
-    })
-  );
+    console.log('Project owner check:', {
+      projectId,
+      userId,
+      ownerPath: projectData.owner?.path,
+      expectedPath: `Users/${userId}`,
+      isProjectOwner
+    });
 
-  // Filter out nulls
-  const userTasks = taskSnapshots.filter(t => t !== null);
+    // Fetch task documents
+    const taskSnapshots = await Promise.all(
+      taskList.map(async (taskRef) => {
+        const taskSnap = await taskRef.get();
+        if (!taskSnap.exists) return null;
+        const taskData = taskSnap.data();
 
-  return {
-    id: projectDoc.id,
-    title: projectData.title || '',
-    description: projectData.description || '',
-    owner: projectData.owner || '',
-    tasks: userTasks
-  };
+        // If user owns the project (is the manager who created it), show ALL tasks
+        if (isProjectOwner) {
+          console.log('Project owner viewing task:', taskSnap.id);
+          return { id: taskSnap.id, ...taskData };
+        }
+
+        // Otherwise, only include tasks where user is assigned OR created the task
+        const isAssigned = Array.isArray(taskData.assignedTo) &&
+          taskData.assignedTo.some(ref => ref.path === `Users/${userId}`);
+        
+        const isTaskCreator = taskData.taskCreatedBy?.path === `Users/${userId}`;
+
+        if (isAssigned || isTaskCreator) {
+          console.log('User has access to task:', taskSnap.id, { isAssigned, isTaskCreator });
+          return { id: taskSnap.id, ...taskData };
+        }
+        
+        return null;
+      })
+    );
+
+    // Filter out nulls
+    const userTasks = taskSnapshots.filter(t => t !== null);
+
+    console.log('Total tasks returned:', userTasks.length, 'out of', taskList.length);
+
+    return {
+      id: projectDoc.id,
+      title: projectData.title || '',
+      description: projectData.description || '',
+      owner: projectData.owner || '',
+      tasks: userTasks,
+      isOwner: isProjectOwner,
+      showingAllTasks: isProjectOwner
+    };
+  } catch (error) {
+    console.error("Error fetching project detail for user:", error);
+    throw error;
+  }
 }
 
 export default {
