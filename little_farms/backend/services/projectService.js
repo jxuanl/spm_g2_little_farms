@@ -12,9 +12,6 @@ export async function getProjectsForUser(userId) {
       const projectData = projectDoc.data();
       const taskList = projectData.taskList || [];
 
-      // Skip projects with no tasks
-      if (!Array.isArray(taskList) || taskList.length === 0) continue;
-
       console.log("Task refs:", taskList.map(ref => ref.path || ref));
 
       const taskSnapshots = await Promise.all(
@@ -30,14 +27,24 @@ export async function getProjectsForUser(userId) {
       );
 
       // Check if user has at least one assigned task
-      const hasUserTask = taskSnapshots.some(taskDoc => {
-        if (!taskDoc || !taskDoc.exists) return false;
-        const taskData = taskDoc.data();
-        console.log(taskData)
-        // assignedTo is an array of DocumentReference
-        return Array.isArray(taskData.assignedTo) &&
-        taskData.assignedTo.some(ref => ref.path === `Users/${userId}`);
-      });
+      // OR If user is a creator of the project
+      // OR If the user is a creator of the task
+        const isCreatorOfProject = projectData.owner?.path === `Users/${userId}`;
+        console.log(`Project ${projectDoc.id} owner path:`, projectData.owner?.path);
+        const hasUserTask =
+          isCreatorOfProject || taskSnapshots.some(taskDoc => {
+            if (!taskDoc || !taskDoc.exists) return false;
+            const taskData = taskDoc.data();
+
+            const isAssigned =
+              Array.isArray(taskData.assignedTo) &&
+              taskData.assignedTo.some(ref => ref.path === `Users/${userId}`);
+
+            const isCreatorOfTask =
+              taskData.taskCreatedBy?.path === `Users/${userId}`;
+
+            return isAssigned || isCreatorOfTask;
+          });
 
       if (hasUserTask) {
         // Only return relevant fields
