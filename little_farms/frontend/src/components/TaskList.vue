@@ -37,7 +37,7 @@
         </button>
         <div
           v-if="isProjectPopoverOpen"
-          class="absolute z-10 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
+          class="absolute z-50 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
         >
           <div class="p-3 max-h-64 overflow-y-auto">
             <div v-for="project in projectOptions" :key="project" class="flex items-center mb-2">
@@ -149,7 +149,7 @@
           class="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 flex justify-between items-center w-56"
         >
           <span>
-            {{ selectedStatuses.length === 0 ? 'All Statuses' : selectedStatuses.join(', ') }}
+              {{ selectedStatuses.length === 0 ? 'All Statuses' : selectedStatuses.map(s => statusConfig[s]?.label || s).join(', ') }}
           </span>
           <svg class="ml-2 w-4 h-4 transform" :class="{ 'rotate-180': isStatusPopoverOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -372,7 +372,6 @@ const getDateClasses = (task) => {
 const statusConfig = {
   todo: { label: 'To Do', color: 'bg-gray-500' },
   'in-progress': { label: 'In Progress', color: 'bg-blue-500' },
-  review: { label: 'In Review', color: 'bg-yellow-500' },
   done: { label: 'Done', color: 'bg-green-500' },
 }
 const getStatusConfig = (status) => statusConfig[status] || { label: 'To Do', color: 'bg-gray-500' }
@@ -452,7 +451,7 @@ const isStatusPopoverOpen = ref(false)
 const toggleStatusPopover = () => {
   isStatusPopoverOpen.value = !isStatusPopoverOpen.value
 }
-const statusOptions = ['todo', 'in-progress', 'review', 'done']
+const statusOptions = ['todo', 'in-progress', 'done']
 
 const selectedPriority = ref([1, 10])
 
