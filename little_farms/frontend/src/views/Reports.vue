@@ -216,23 +216,37 @@
                     <thead>
                       <tr class="bg-muted">
                         <th class="border p-3 text-left">Task</th>
-                        <th class="border p-3 text-left">Project</th>
-                        <th class="border p-3 text-left">Assignee</th>
+                        <th class="border p-3 text-left">Task Owner</th>
+                        <th v-if="filters.filterBy === 'user'" class="border p-3 text-left">Project</th>
+                        <th v-else class="border p-3 text-left">Assignee</th>
                         <th class="border p-3 text-left">Status</th>
                         <th class="border p-3 text-left">Completion Date</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="task in reportData.tasks" :key="task.id" class="hover:bg-muted/50">
-                        <td class="border p-3">{{ task.title }}</td>
-                        <td class="border p-3">{{ task.projectTitle || 'No Project' }}</td>
-                        <td class="border p-3">{{ task.assigneeName || 'Unassigned' }}</td>
+                      <tr v-for="task in reportData" :key="task.title" class="hover:bg-muted/50">
+                        <td class="border p-3">{{ task.taskTitle }}</td>
+                        <td class="border p-3">{{ task.taskOwner || 'Unkown Owner' }}</td>
+                        <td v-if="filters.filterBy === 'user'" class="border p-3">{{ task.prjTitle || 'Unassigned' }}
+                        </td>
+                        <!-- <td v-else class="border p-3">{{ task.assignedTo || 'Unassigned' }}</td> -->
+                        <td v-else class="border p-3">
+                          <span v-if="Array.isArray(task.assignedTo)">
+                            <span v-for="(assignee, idx) in task.assignedTo" :key="idx">
+                              {{ assignee }}<span v-if="idx < task.assignedTo.length - 1">, </span>
+                            </span>
+                          </span>
+                          <span v-else>
+                            {{ task.assignedTo || 'Unassigned' }}
+                          </span>
+                        </td>
+
                         <td class="border p-3">
                           <span :class="getStatusBadgeClass(task.status)" class="px-2 py-1 rounded text-xs">
                             {{ task.status }}
                           </span>
                         </td>
-                        <td class="border p-3">{{ task.status === 'done' ? formatDate(task.modifiedDate) : '-' }}</td>
+                        <td class="border p-3">{{ task.status === 'done' ? formatDate(task.completedDate) : '-' }}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -272,7 +286,8 @@ import CreateTaskModal from '../components/CreateTaskModal.vue';
 const activeProject = ref("all");
 const isCreateModalOpen = ref(false);
 const loading = ref(false);
-const reportData = ref(null);
+// const reportData = ref(null);
+const reportData = [];
 const projects = ref([]);
 const users = ref([]);
 const error = ref('');
@@ -347,6 +362,8 @@ const handleIntervalChange = () => {
 const generateReport = async () => {
   loading.value = true;
 
+  reportData.length = 0;
+
   try {
     const auth = getAuth();
     const user = auth.currentUser;
@@ -419,15 +436,64 @@ const generateReport = async () => {
       tasks = tasks.filter(t => t.status === "done");
       console.log(tasks.length)
 
-      reportData.value = {
-        tasks,
-        totalTasks: tasks.length,
-        completedTasks,
-        completionRate: tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0
-      };
-    } else {
-      reportData.value = { tasks };
+        // reportData.value = {
+        //   tasks,
+        //   totalTasks: tasks.length,
+        //   completedTasks,
+        //   completionRate: tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0
+        // };
+
+
+        ;
+
+      for (let task of tasks) {
+        const data = {}
+        console.log(task)
+        // Basic conversions
+        data.taskTitle = task.title;
+        data.status = task.status;
+
+
+        const formattedDate = formatDate(task.modifiedDate._seconds * 1000);
+        // console.log(formattedDate); // "Oct 12, 2025"
+
+        data.completedDate = formattedDate;
+
+        // convert task owner
+        const taskOwner = task.taskCreatedBy._path.segments[1];
+        const taskOwnerDetails = await getUser(taskOwner);
+        // console.log(taskOwnerDetails.user.name);
+        data.taskOwner = taskOwnerDetails.user.name
+
+        // Project details
+        const prjid = task.projectId._path.segments[1];
+        const prjDetails = await getProject(prjid);
+        // console.log(prjDetails.title)
+        data.prjTitle = prjDetails.title;
+
+        // Assignee
+        const newAssigneeList = [];
+        const assigneeList = task.assignedTo;
+        console.log(assigneeList)
+        for (let i of assigneeList) {
+          // console.log(i)
+          const assigneeID = i._path.segments[1];
+          const assigneeDetails = await getUser(assigneeID);
+          newAssigneeList.push(assigneeDetails.user.name);
+        }
+        data.assignedTo = newAssigneeList
+        console.log(data)
+        reportData.push(data);
+
+      }
+
+      console.log(reportData);
+
+
     }
+    //  else {
+    //   reportData.value = { tasks };
+    // }
 
 
   } catch (error) {
@@ -438,15 +504,64 @@ const generateReport = async () => {
   }
 };
 
+async function getUser(uid) {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) return;
+
+
+  const token = await user.getIdToken();
+  try {
+    const response = await fetch(`/api/users/users/${uid}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const userData = await response.json();
+    return userData;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw error;
+  }
+}
+
+async function getProject(pid) {
+
+  try {
+    const response = await fetch(`/api/projects/${pid}`, {
+      method: 'GET'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const prjData = await response.json();
+    return prjData;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw error;
+  }
+}
 
 const exportReport = () => {
-  if (!reportData.value) return;
-  console.log(reportData.value)
+  console.log("export report")
+  if (!reportData) return;
+  console.log(reportData)
 
 
   if (filters.value.exportFormat === 'csv') {
+    console.log("Exporting CSV...")
     exportCSV();
   } else {
+    console.log("Exporting PDF...")
     exportPDF();
   }
 };
@@ -522,44 +637,13 @@ async function exportCSV() {
   loading.value = true;
   error.value = '';
   try {
-    // Mocked route and service data
-    // const routeData = [
-    //   { route_code: 'R1', service: 'Express' },
-    //   { route_code: 'R2', service: 'Local', note: 'Peak hours' },
-    //   { route_code: 'R3', service: 'Express' }
-    // ];
-    const routeData = tasks.map(task => {
-      const assigneeNames = task.assignedTo?.map(assignee => {
-        const userId = assignee?._path?.segments?.[1];
-        const user = users.value.find(u => u.id === userId);
-        return user?.name || 'Unassigned';
-      }).join(', ') || 'Unassigned';
-
-      const projectTitle = task.projectId?._path?.segments?.[1] ? 
-        projects.value.find(p => p.id === task.projectId._path.segments[1])?.title || 'No Project' : 
-        'No Project';
-
-      const formatDate = (timestamp) => {
-        if (!timestamp) return '-';
-        const date = new Date(timestamp._seconds * 1000);
-        return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
-      };
-
-      return {
-        'Task Name': task.title || 'No Title',
-        'Project Name': projectTitle,
-        'Owner of Task': assigneeNames,
-        'Owner of Project': 'TBD', // Replace with actual project owner if available
-        'Completion date': task.status === 'done' ? formatDate(task.modifiedDate) : '-'
-      };
-    });
 
     const response = await fetch('/api/report/generate_csv', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(routeData)
+      body: JSON.stringify(reportData)
     });
 
     if (!response.ok) throw new Error('Failed to generate CSV');
@@ -584,34 +668,38 @@ async function exportCSV() {
 }
 
 async function exportPDF() {
+  console.log(filters.value)
   loading.value = true;
   error.value = '';
   try {
-    const taskData = [
-      {
-        "Task Name": "Design Homepage Mockup",
-        "Project Name": "Website Redesign",
-        "Owner of Task": "Alice Chen",
-        "Owner of Project": "Bob Smith",
-        "Completion date": "10/7/2025"
-      },
-      {
-        "Task Name": "Develop Login API",
-        "Project Name": "Mobile App Launch",
-        "Owner of Task": "Bob Smith",
-        "Owner of Project": "Bob Smith",
-        "Completion date": "11/7/2025"
-      }];
-    // const response = await fetch('/api/report/generate-report');
+    const mappedReports = reportData.map(mapReportData);
+    console.log(mappedReports)
+
+    // Get Report Title
+        let prjTitle = "";
+        if (filters.value.filterBy =="project") {
+          const prjID = filters.value.selectedProject;
+          prjTitle = await getProject(prjID);
+          prjTitle = prjTitle.title
+        } else if (filters.value.filterBy =="user") {
+          const userID = filters.value.selectedUser;
+          prjTitle = await getUser(userID);
+          prjTitle = prjTitle.user.name
+        }
+
+    const cleanedTimeFrame = formatDateDisplay(filters.value)
     const response = await fetch('/api/report/generate_pdf', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        tasks: tasks,
-        reportType: 'Project', // Optional: 'User', 'Project', etc.
-        time_Frame: 'June'
+        // "reportType": filters.value.reportType,
+        "reportType": "task_completion",
+        "reportTitle": prjTitle,
+        "timeFrame": cleanedTimeFrame,
+        "filterType": filters.value.filterBy,
+        tasks: mappedReports
       })
     });
 
@@ -619,25 +707,19 @@ async function exportPDF() {
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
 
-    // Open PDF in a new tab
     const newTab = window.open(url, '_blank');
-
-    // Fallback if popup is blocked
     if (!newTab || newTab.closed || typeof newTab.closed == 'undefined') {
-      // Alternative: create an iframe or embed element
       const embed = document.createElement('embed');
       embed.src = url;
       embed.type = 'application/pdf';
       embed.style.width = '100%';
       embed.style.height = '100vh';
 
-      // Clear any existing content and show the PDF
       const container = document.getElementById('pdf-container') || createPdfContainer();
       container.innerHTML = '';
       container.appendChild(embed);
     }
 
-    // Clean up the URL after a delay (optional, as browser will handle it when tab closes)
     setTimeout(() => {
       window.URL.revokeObjectURL(url);
     }, 1000);
@@ -646,6 +728,39 @@ async function exportPDF() {
     error.value = e.message || 'Unknown error';
   }
   loading.value = false;
+}
+
+function mapReportData(inputData) {
+  const status = inputData.status.toUpperCase();
+  return {
+    "Task Name": inputData.taskTitle,
+    "Owner of Task": inputData.taskOwner,
+    "Project Name": inputData.prjTitle,
+    "Assignee List": Array.isArray(inputData.assignedTo)
+      ? inputData.assignedTo.join(', ')
+      : inputData.assignedTo,
+    "Status": status,
+    "Completion date": inputData.completedDate
+  };
+}
+
+function formatDateDisplay(timeFrame) {
+  const data = timeFrame?.__v_raw || timeFrame;
+
+  if (data.interval === "monthly" && data.month) {
+    const [year, month] = data.month.split('-');
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  } else if (data.startDate && data.endDate) {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    return `${start.getDate()}-${end.getDate()} ${monthNames[start.getMonth()]} ${start.getFullYear()}`;
+  } else {
+    return "Date not specified";
+  }
 }
 
 // Helper function to create a PDF container if it doesn't exist
@@ -688,7 +803,11 @@ function createPdfContainer() {
 const formatDate = (date) => {
   if (!date) return '-';
   const d = new Date(date);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
 };
 
 

@@ -22,8 +22,9 @@ router.post('/generate_pdf', (req, res) => {
   const { 
     tasks, 
     projects, 
-    data,
+    // data,
     reportType = 'task_completion', 
+    filterType = 'undefined',
     reportTitle = 'Report',
     timeFrame = 'Undefined' 
   } = req.body;
@@ -63,12 +64,13 @@ router.post('/generate_pdf', (req, res) => {
   // Prepare configuration data for Python script
   const configData = JSON.stringify({
     report_type: reportType,
+    filter_type: filterType,
     report_title: reportTitle,
     timeFrame: timeFrame,
     filename: tempFile,
     tasks: tasks || [],
     projects: projects || [],
-    data: data || []
+    // data: data || []
   });
 
   const pythonProcess = spawn('python', [pythonScriptPath]);

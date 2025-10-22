@@ -29,14 +29,14 @@ async function generatePdf() {
         "Task Name": "Design Homepage Mockup",
         "Project Name": "Website Redesign",
         "Owner of Task": "Alice Chen",
-        "Owner of Project": "Bob Smith",
+        "Status": "Bob Smith",
         "Completion date": "10/7/2025"
       },
       {
         "Task Name": "Develop Login API",
         "Project Name": "Mobile App Launch",
         "Owner of Task": "Bob Smith",
-        "Owner of Project": "Bob Smith",
+        "Status": "Bob Smith",
         "Completion date": "11/7/2025"
       }
     ];
@@ -47,43 +47,44 @@ async function generatePdf() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        reportType: "project_summary",
-        reportTitle: "Project Overview",
-        timeFrame: "January 2024",
-        // tasks: [
-        //   {
-        //     "Task Name": "Design Database",
-        //     "Owner of Task": "John Doe",
-        //     "Project Name": "System Upgrade",
-        //     "Owner of Project": "Jane Smith",
-        //     "Completion date": "12/3/2025"
-        //   },
-        //   {
-        //     "Task Name": "Develop Login API",
-        //     "Owner of Task": "Bob Smith",
-        //     "Project Name": "Mobile App Launch",
-        //     "Owner of Project": "Bob Smith",
-        //     "Completion date": "11/7/2025"
-        //   },
-        //   {
-        //     "Task Name": "Develop Login API",
-        //     "Owner of Task": "Bob Smith",
-        //     "Project Name": "Mobile App Launch",
-        //     "Owner of Project": "Bob Smith",
-        //     "Completion date": "11/7/2025"
-        //   }
-        //   // ... more tasks
-        // ]
-        "projects": [
+        "reportType": "task_completion",
+        "reportTitle": "User Performance",
+        "timeFrame": "Q1 2024",
+        "filterType": "project",
+        tasks: [
           {
-            "Project Name": "System Upgrade",
-            "Manager": "Jane Smith",
-            "Total Tasks": 15,
-            "Completed": 10,
-            "Progress": 67
+            "Task Name": "Design Database",
+            "Owner of Task": "John Doe",
+            "Assignee List": "System Upgrade",
+            "Status": "Jane Smith",
+            "Completion date": "12/3/2025"
+          },
+          {
+            "Task Name": "Develop Login API",
+            "Owner of Task": "Bob Smith",
+            "Assignee List": "Mobile App Launch",
+            "Status": "Bob Smith",
+            "Completion date": "11/7/2025"
+          },
+          {
+            "Task Name": "Develop Login API",
+            "Owner of Task": "Bob Smith",
+            "Assignee List": "Mobile App Launch",
+            "Status": "Bob Smith",
+            "Completion date": "11/7/2025"
           }
-          // ... more projects
+          // ... more tasks
         ]
+        // "projects": [
+        //   {
+        //     "Project Name": "System Upgrade",
+        //     "Manager": "Jane Smith",
+        //     "Total Tasks": 15,
+        //     "Completed": 10,
+        //     "Progress": 67
+        //   }
+          // ... more projects
+        // ]
       })
     });
 

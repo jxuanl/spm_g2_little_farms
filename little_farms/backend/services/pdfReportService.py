@@ -8,7 +8,7 @@ import sys
 import json
 from datetime import datetime
 
-def generate_task_completion_report(tasks_data, filename="task_completion_report.pdf", report_type="User", timeFrame="Undefined"):
+def generate_task_completion_report(tasks_data, filename="task_completion_report.pdf", report_type="user", timeFrame="Undefined", filter_type="undefined"):
     # Your existing task completion report code here
     doc = SimpleDocTemplate(
         filename,
@@ -55,20 +55,32 @@ def generate_task_completion_report(tasks_data, filename="task_completion_report
         )
         return Paragraph(str(text), style)
 
-    # Table data
-    task_data = [["Task Name", "Owner of Task", "Project Name", "Owner of Project", "Completion date"]]
+    if filter_type == "user":
+        # Table data
+        header_data = [["Task Name", "Owner of Task", "Project Name", "Status", "Completion date"]]
 
-    for task in tasks_data:
-        task_data.append([
-            create_wrapped_text(task["Task Name"]),
-            create_wrapped_text(task["Owner of Task"]),
-            create_wrapped_text(task["Project Name"]),
-            create_wrapped_text(task["Owner of Project"]),
-            create_wrapped_text(task["Completion date"])
-        ])
+        for task in tasks_data:
+            header_data.append([
+                create_wrapped_text(task["Task Name"]),
+                create_wrapped_text(task["Owner of Task"]),
+                create_wrapped_text(task["Project Name"]),
+                create_wrapped_text(task["Status"]),
+                create_wrapped_text(task["Completion date"])
+            ])
+    else:
+        header_data = [["Task Name", "Owner of Task", "Assignee List", "Status", "Completion date"]]
+
+        for task in tasks_data:
+            header_data.append([
+                create_wrapped_text(task["Task Name"]),
+                create_wrapped_text(task["Owner of Task"]),
+                create_wrapped_text(task["Assignee List"]),
+                create_wrapped_text(task["Status"]),
+                create_wrapped_text(task["Completion date"])
+            ])
 
     col_widths = [1.8*inch, 1.6*inch, 1.3*inch, 1.3*inch]
-    task_table = Table(task_data, colWidths=col_widths, repeatRows=1)
+    task_table = Table(header_data, colWidths=col_widths, repeatRows=1)
 
     task_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495E')),
@@ -213,6 +225,7 @@ def main():
         filename = config.get('filename', f'{report_type}_report.pdf')
         timeFrame = config.get('timeFrame', 'Undefined')
         report_title = config.get('report_title', 'Report')
+        filter_type = config.get('filter_type', 'Undefined')
         
         print(report_type)
         
@@ -222,7 +235,7 @@ def main():
             if not tasks:
                 print("Error: No tasks data provided for task completion report", file=sys.stderr)
                 sys.exit(1)
-            success = report_function(tasks, filename, report_title, timeFrame)
+            success = report_function(tasks, filename, report_title, timeFrame, filter_type)
             
         elif report_type == 'project_summary':
             projects = config.get('projects', [])
