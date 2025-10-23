@@ -39,18 +39,13 @@ router.get('/', async (req, res) => {
   try {
     const userId = req.query.userId
     if (!userId) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'Missing userId' })
+      return res.status(400).json({ success: false, message: 'Missing userId' })
     }
-
-    const tasks = await getTasksForUser(userId)
+    const tasks = await getTasksForUser(userId) // now includes assigneeNames
     return res.status(200).json({ success: true, tasks })
   } catch (error) {
     console.error('Backend error fetching tasks:', error)
-    return res
-      .status(500)
-      .json({ success: false, message: error.message })
+    return res.status(500).json({ success: false, message: error.message })
   }
 })
 
