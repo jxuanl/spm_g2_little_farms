@@ -1,5 +1,5 @@
 import express from 'express'
-import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, getAllTasks } from '../services/taskService.js'
+import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask } from '../services/taskService.js'
 
 const router = express.Router()
 
@@ -60,18 +60,13 @@ router.get('/', async (req, res) => {
   try {
     const userId = req.query.userId
     if (!userId) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'Missing userId' })
+      return res.status(400).json({ success: false, message: 'Missing userId' })
     }
-
-    const tasks = await getTasksForUser(userId)
+    const tasks = await getTasksForUser(userId) // now includes assigneeNames
     return res.status(200).json({ success: true, tasks })
   } catch (error) {
     console.error('Backend error fetching tasks:', error)
-    return res
-      .status(500)
-      .json({ success: false, message: error.message })
+    return res.status(500).json({ success: false, message: error.message })
   }
 })
 
@@ -88,7 +83,10 @@ router.post('/', async (req, res) => {
       projectId,   // Project document reference ID
       createdBy,   // User ID of the task creator
       tags,
-      parentTaskId // Optional: ID of parent task if this is a subtask
+      parentTaskId, // Optional: ID of parent task if this is a subtask
+      recurring,           // Add recurrence fields
+      recurrenceInterval,
+      recurrenceValue
     } = req.body;
 
     // Validate required fields
@@ -104,6 +102,26 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Validate recurrence fields if recurring is true
+    if (recurring) {
+      if (!recurrenceInterval || !['days', 'weeks', 'months'].includes(recurrenceInterval)) {
+        return res.status(400).json({
+          error: 'Valid recurrence interval (days, weeks, or months) is required for recurring tasks'
+        });
+      }
+      if (!recurrenceValue || recurrenceValue < 1) {
+        return res.status(400).json({
+          error: 'Recurrence value must be at least 1'
+        });
+      }
+      if (!deadline) {
+        return res.status(400).json({
+          error: 'Deadline is required for recurring tasks'
+        });
+      }
+    }
+
+
     const taskData = {
       title,
       description,
@@ -114,7 +132,10 @@ router.post('/', async (req, res) => {
       projectId,
       createdBy,
       tags,
-      parentTaskId
+      parentTaskId,
+      recurring: recurring || false,
+      recurrenceInterval: recurring ? recurrenceInterval : null,
+      recurrenceValue: recurring ? recurrenceValue : null
     };
 
     const newTask = await createTask(taskData);
@@ -133,6 +154,18 @@ router.put('/:id', async (req, res) => {
     res.status(200).json({ success: true, task: updatedTask })
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to update task' })
+  }
+})
+
+// POST /api/tasks/:id/complete - Complete task
+router.post('/:id/complete', async (req, res) => {
+  try {
+    const { userId } = req.body
+    const result = await completeTask(req.params.id, userId)
+    res.status(200).json(result)
+  } catch (err) {
+    console.error('Error completing task:', err)
+    res.status(500).json({ error: err.message || 'Failed to complete task' })
   }
 })
 

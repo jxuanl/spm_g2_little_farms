@@ -21,166 +21,213 @@
     </div>
 
     <!-- === Filters === -->
-    <div class="flex flex-wrap items-center gap-4 relative z-20">
+    <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
       <!-- Project Filter -->
-      <div class="relative inline-block text-left mb-4">
+      <div class="relative inline-block text-left" @click.stop>
         <button
-          @click="toggleProjectPopover"
-          class="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 flex justify-between items-center w-56"
+          @click="toggleDropdown('project')"
+          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
         >
-          <span>
-            {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.join(', ') }}
+          <span class="truncate">
+            {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.length === 1 ? selectedProjects[0] : `${selectedProjects.length} Projects` }}
           </span>
-          <svg class="ml-2 w-4 h-4 transform" :class="{ 'rotate-180': isProjectPopoverOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
+          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
         </button>
-        <div
-          v-if="isProjectPopoverOpen"
-          class="absolute z-50 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
+        <div 
+          v-if="dropdownStates.project"
+          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
         >
-          <div class="p-3 max-h-64 overflow-y-auto">
-            <div v-for="project in projectOptions" :key="project" class="flex items-center mb-2">
-              <input
-                type="checkbox"
-                :id="`project-${project}`"
-                :value="project"
-                v-model="selectedProjects"
-                class="mr-2"
-              />
-              <label :for="`project-${project}`" class="text-gray-700 cursor-pointer">
-                {{ project }}
-              </label>
-            </div>
+          <div class="p-2">
+            <button
+              v-for="project in projectOptions"
+              :key="project"
+              type="button"
+              @click="toggleSelection('project', project)"
+              :class="[
+                'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                selectedProjects.includes(project) 
+                  ? 'bg-accent text-accent-foreground' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
+              ]"
+            >
+              <span>{{ project }}</span>
+              <Check v-if="selectedProjects.includes(project)" class="h-4 w-4" />
+            </button>
           </div>
-          <div class="border-t border-gray-200 px-3 py-2 flex justify-end">
-            <button @click="toggleProjectPopover" class="text-sm text-blue-600 hover:underline">Done</button>
+          <div class="border-t border-gray-200 p-2">
+            <button 
+              @click="clearFilter('project')" 
+              class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+            >
+              Clear
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Creator Filter -->
-      <div class="relative inline-block text-left mb-4 ml-4">
+      <div class="relative inline-block text-left" @click.stop>
         <button
-          @click="toggleCreatorPopover"
-          class="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 flex justify-between items-center w-56"
+          @click="toggleDropdown('creator')"
+          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
         >
-          <span>
-            {{ selectedCreators.length === 0 ? 'All Creators' : selectedCreators.join(', ') }}
+          <span class="truncate">
+            {{ selectedCreators.length === 0 ? 'All Creators' : selectedCreators.length === 1 ? selectedCreators[0] : `${selectedCreators.length} Creators` }}
           </span>
-          <svg class="ml-2 w-4 h-4 transform" :class="{ 'rotate-180': isCreatorPopoverOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
+          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
         </button>
-        <div
-          v-if="isCreatorPopoverOpen"
-          class="absolute z-10 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
+        <div 
+          v-if="dropdownStates.creator"
+          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
         >
-          <div class="p-3 max-h-64 overflow-y-auto">
-            <div v-for="creator in creatorOptions" :key="creator" class="flex items-center mb-2">
-              <input
-                type="checkbox"
-                :id="`creator-${creator}`"
-                :value="creator"
-                v-model="selectedCreators"
-                class="mr-2"
-              />
-              <label :for="`creator-${creator}`" class="text-gray-700 cursor-pointer">
-                {{ creator }}
-              </label>
-            </div>
+          <div class="p-2">
+            <button
+              v-for="creator in creatorOptions"
+              :key="creator"
+              type="button"
+              @click="toggleSelection('creator', creator)"
+              :class="[
+                'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                selectedCreators.includes(creator) 
+                  ? 'bg-accent text-accent-foreground' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
+              ]"
+            >
+              <span>{{ creator }}</span>
+              <Check v-if="selectedCreators.includes(creator)" class="h-4 w-4" />
+            </button>
           </div>
-          <div class="border-t border-gray-200 px-3 py-2 flex justify-end">
-            <button @click="toggleCreatorPopover" class="text-sm text-blue-600 hover:underline">Done</button>
+          <div class="border-t border-gray-200 p-2">
+            <button 
+              @click="clearFilter('creator')" 
+              class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+            >
+              Clear
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Assignee Filter -->
-      <div class="relative inline-block text-left mb-4 ml-4">
+      <div class="relative inline-block text-left" @click.stop>
         <button
-          @click="toggleAssigneePopover"
-          class="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 flex justify-between items-center w-56"
+          @click="toggleDropdown('assignee')"
+          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
         >
-          <span>
-            {{ selectedAssignees.length === 0 ? 'All Assignees' : selectedAssignees.join(', ') }}
+          <span class="truncate">
+            {{ selectedAssignees.length === 0 ? 'All Assignees' : selectedAssignees.length === 1 ? selectedAssignees[0] : `${selectedAssignees.length} Assignees` }}
           </span>
-          <svg class="ml-2 w-4 h-4 transform" :class="{ 'rotate-180': isAssigneePopoverOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
+          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
         </button>
-        <div
-          v-if="isAssigneePopoverOpen"
-          class="absolute z-10 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
+        <div 
+          v-if="dropdownStates.assignee"
+          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
         >
-          <div class="p-3 max-h-64 overflow-y-auto">
-            <div v-for="assignee in assigneeOptions" :key="assignee" class="flex items-center mb-2">
-              <input
-                type="checkbox"
-                :id="`assignee-${assignee}`"
-                :value="assignee"
-                v-model="selectedAssignees"
-                class="mr-2"
-              />
-              <label :for="`assignee-${assignee}`" class="text-gray-700 cursor-pointer">
-                {{ assignee }}
-              </label>
-            </div>
+          <div class="p-2">
+            <button
+              v-for="assignee in assigneeOptions"
+              :key="assignee"
+              type="button"
+              @click="toggleSelection('assignee', assignee)"
+              :class="[
+                'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                selectedAssignees.includes(assignee) 
+                  ? 'bg-accent text-accent-foreground' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
+              ]"
+            >
+              <span>{{ assignee }}</span>
+              <Check v-if="selectedAssignees.includes(assignee)" class="h-4 w-4" />
+            </button>
           </div>
-          <div class="border-t border-gray-200 px-3 py-2 flex justify-end">
-            <button @click="toggleAssigneePopover" class="text-sm text-blue-600 hover:underline">Done</button>
+          <div class="border-t border-gray-200 p-2">
+            <button 
+              @click="clearFilter('assignee')" 
+              class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+            >
+              Clear
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Due Date Filter -->
-      <div class="inline-block mb-4 ml-4">
-        <select v-model="selectedDueDate" class="px-4 py-2 border rounded-md bg-white text-gray-700">
-          <option v-for="option in dueDateOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
+      <div class="relative inline-block text-left" @click.stop>
+        <button
+          @click="toggleDropdown('dueDate')"
+          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <span class="truncate">{{ selectedDueDate }}</span>
+          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+        </button>
+        <div 
+          v-if="dropdownStates.dueDate"
+          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+        >
+          <div class="p-2">
+            <button
+              v-for="option in dueDateOptions"
+              :key="option"
+              type="button"
+              @click="selectDueDate(option)"
+              :class="[
+                'w-full text-left px-2 py-1.5 text-sm rounded-sm',
+                selectedDueDate === option 
+                  ? 'bg-accent text-accent-foreground' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
+              ]"
+            >
+              {{ option }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Status Filter -->
-      <div class="relative inline-block text-left mb-4 ml-4">
+      <div class="relative inline-block text-left" @click.stop>
         <button
-          @click="toggleStatusPopover"
-          class="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 flex justify-between items-center w-56"
+          @click="toggleDropdown('status')"
+          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
         >
-          <span>
-              {{ selectedStatuses.length === 0 ? 'All Statuses' : selectedStatuses.map(s => statusConfig[s]?.label || s).join(', ') }}
+          <span class="truncate">
+            {{ selectedStatuses.length === 0 ? 'All Statuses' : selectedStatuses.length === 1 ? statusConfig[selectedStatuses[0]].label : `${selectedStatuses.length} Statuses` }}
           </span>
-          <svg class="ml-2 w-4 h-4 transform" :class="{ 'rotate-180': isStatusPopoverOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
+          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
         </button>
-        <div
-          v-if="isStatusPopoverOpen"
-          class="absolute z-10 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
+        <div 
+          v-if="dropdownStates.status"
+          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
         >
-          <div class="p-3 max-h-64 overflow-y-auto">
-            <div v-for="status in statusOptions" :key="status" class="flex items-center mb-2">
-              <input
-                type="checkbox"
-                :id="`status-${status}`"
-                :value="status"
-                v-model="selectedStatuses"
-                class="mr-2"
-              />
-              <label :for="`status-${status}`" class="text-gray-700 cursor-pointer">
-                {{ statusConfig[status].label }}
-              </label>
-            </div>
+          <div class="p-2">
+            <button
+              v-for="status in statusOptions"
+              :key="status"
+              type="button"
+              @click="toggleSelection('status', status)"
+              :class="[
+                'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                selectedStatuses.includes(status) 
+                  ? 'bg-accent text-accent-foreground' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
+              ]"
+            >
+              <span>{{ statusConfig[status].label }}</span>
+              <Check v-if="selectedStatuses.includes(status)" class="h-4 w-4" />
+            </button>
           </div>
-          <div class="border-t border-gray-200 px-3 py-2 flex justify-end">
-            <button @click="toggleStatusPopover" class="text-sm text-blue-600 hover:underline">Done</button>
+          <div class="border-t border-gray-200 p-2">
+            <button 
+              @click="clearFilter('status')" 
+              class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+            >
+              Clear
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Priority Filter -->
-      <div class="p-3 w-64 mx-auto border rounded-md bg-white shadow-sm">
+      <div class="p-3 w-64 border rounded-md bg-white shadow-sm" @click.stop>
         <Slider
           v-model="selectedPriority"
           :min="1"
@@ -290,15 +337,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus } from 'lucide-vue-next'
+import { Plus, ChevronDown, Check } from 'lucide-vue-next'
 import Slider from '@vueform/slider'
 import '@vueform/slider/themes/default.css'
 
-/**
- * Props
- * - tasks: raw tasks passed from parent (no enrichment required here)
- * - indvTask/parentTaskId: navigation behavior
- */
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
   indvTask: { type: Boolean, default: false },
@@ -309,9 +351,30 @@ defineEmits(['createTask'])
 
 const router = useRouter()
 
-/**
- * Navigation (keep from code 1)
- */
+// Dropdown states (matching CreateTaskModal pattern)
+const dropdownStates = ref({
+  project: false,
+  creator: false,
+  assignee: false,
+  dueDate: false,
+  status: false
+})
+
+// Toggle dropdown function
+const toggleDropdown = (dropdown) => {
+  Object.keys(dropdownStates.value).forEach(key => {
+    if (key !== dropdown) dropdownStates.value[key] = false
+  })
+  dropdownStates.value[dropdown] = !dropdownStates.value[dropdown]
+}
+
+// Close all dropdowns
+const closeAllDropdowns = () => {
+  Object.keys(dropdownStates.value).forEach(key => {
+    dropdownStates.value[key] = false
+  })
+}
+
 const goToTaskDetail = (taskId) => {
   if (props.indvTask && props.parentTaskId) {
     router.push({ name: 'SubtaskDetail', params: { id: props.parentTaskId, subtaskId: taskId } })
@@ -320,10 +383,7 @@ const goToTaskDetail = (taskId) => {
   }
 }
 
-/**
- * === Date helpers (from code 1) ===
- * Keep the robust conversion used in code 1 so deadlines render reliably.
- */
+// Date helpers
 const toJsDate = (value) => {
   if (!value) return null
   if (typeof value?.toDate === 'function') return value.toDate()
@@ -366,9 +426,7 @@ const getDateClasses = (task) => {
   return ''
 }
 
-/**
- * === Status config (shared) ===
- */
+// Status config
 const statusConfig = {
   todo: { label: 'To Do', color: 'bg-gray-500' },
   'in-progress': { label: 'In Progress', color: 'bg-blue-500' },
@@ -376,17 +434,7 @@ const statusConfig = {
 }
 const getStatusConfig = (status) => statusConfig[status] || { label: 'To Do', color: 'bg-gray-500' }
 
-/**
- * === Local working list ===
- * Keep the data as-is from props (code 1 does not do async enrichment here),
- * assuming parent already passes tasks with:
- * - projectTitle
- * - creatorName
- * - assigneeNames (array of strings)
- *
- * If your parent currently passes raw ids/refs, perform that enrichment upstream
- * as in code 1, or reintroduce that watch+fetch here.
- */
+// Local working list
 const tasks = ref([])
 
 watch(
@@ -397,14 +445,53 @@ watch(
   { immediate: true }
 )
 
-/**
- * === Filter state & options (from code 2) ===
- */
-const isProjectPopoverOpen = ref(false)
+// Filter state
 const selectedProjects = ref([])
-const toggleProjectPopover = () => {
-  isProjectPopoverOpen.value = !isProjectPopoverOpen.value
+const selectedCreators = ref([])
+const selectedAssignees = ref([])
+const selectedDueDate = ref('All Tasks')
+const selectedStatuses = ref([])
+const selectedPriority = ref([1, 10])
+
+// Toggle selection for multi-select filters
+const toggleSelection = (filterType, value) => {
+  const filterMap = {
+    project: selectedProjects,
+    creator: selectedCreators,
+    assignee: selectedAssignees,
+    status: selectedStatuses
+  }
+  
+  const filter = filterMap[filterType]
+  const index = filter.value.indexOf(value)
+  
+  if (index > -1) {
+    filter.value.splice(index, 1)
+  } else {
+    filter.value.push(value)
+  }
 }
+
+// Clear filter
+const clearFilter = (filterType) => {
+  const filterMap = {
+    project: selectedProjects,
+    creator: selectedCreators,
+    assignee: selectedAssignees,
+    status: selectedStatuses
+  }
+  
+  filterMap[filterType].value = []
+  dropdownStates.value[filterType] = false
+}
+
+// Select due date (single select)
+const selectDueDate = (option) => {
+  selectedDueDate.value = option
+  dropdownStates.value.dueDate = false
+}
+
+// Filter options
 const projectOptions = computed(() => {
   const map = {}
   tasks.value.forEach((t) => {
@@ -413,11 +500,6 @@ const projectOptions = computed(() => {
   return Object.values(map)
 })
 
-const isCreatorPopoverOpen = ref(false)
-const selectedCreators = ref([])
-const toggleCreatorPopover = () => {
-  isCreatorPopoverOpen.value = !isCreatorPopoverOpen.value
-}
 const creatorOptions = computed(() => {
   const map = {}
   tasks.value.forEach((t) => {
@@ -426,11 +508,6 @@ const creatorOptions = computed(() => {
   return Object.values(map)
 })
 
-const isAssigneePopoverOpen = ref(false)
-const selectedAssignees = ref([])
-const toggleAssigneePopover = () => {
-  isAssigneePopoverOpen.value = !isAssigneePopoverOpen.value
-}
 const assigneeOptions = computed(() => {
   const map = {}
   tasks.value.forEach((t) => {
@@ -444,22 +521,9 @@ const assigneeOptions = computed(() => {
 })
 
 const dueDateOptions = ['All Tasks', 'Overdue', 'Due Today', 'Due This Week', 'No Due Date']
-const selectedDueDate = ref('All Tasks')
-
-const selectedStatuses = ref([])
-const isStatusPopoverOpen = ref(false)
-const toggleStatusPopover = () => {
-  isStatusPopoverOpen.value = !isStatusPopoverOpen.value
-}
 const statusOptions = ['todo', 'in-progress', 'done']
 
-const selectedPriority = ref([1, 10])
-
-/**
- * === Filtering logic (from code 2) ===
- * Runs over the local tasks list that already has projectTitle/creatorName/assigneeNames,
- * preserving the working columns behavior from code 1.
- */
+// Filtering logic
 const filteredTasks = computed(() => {
   return tasks.value.filter((task) => {
     const matchesProject =
@@ -513,9 +577,7 @@ const filteredTasks = computed(() => {
   })
 })
 
-/**
- * === Stats (computed over the same filtered/enriched list as in code 1/2) ===
- */
+// Stats
 const totalTasks = computed(() => tasks.value.length)
 const completedTasks = computed(() => tasks.value.filter((t) => t.status === 'done').length)
 const inProgressTasks = computed(() => tasks.value.filter((t) => t.status === 'in-progress').length)
@@ -524,5 +586,20 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
 </script>
 
 <style scoped>
-/* Optional: slider theme import already added above */
+/* Consistent styling with CreateTaskModal */
+.border-gray-300 {
+  border-color: #d1d5db !important;
+  border-width: 1px !important;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ensure dropdowns appear above other elements */
+.z-50 {
+  z-index: 50;
+}
 </style>
