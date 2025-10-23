@@ -119,24 +119,6 @@
             </div>
           </div>
 
-          <!-- Filter By (only for Task Completion Report) -->
-          <div v-if="filters.reportType === 'team-summary'" class="mb-6">
-            <label class="block text-sm font-medium mb-2">Filter By Project</label>
-
-
-
-            <!-- Project Selection -->
-            <div class="mt-3">
-              <select v-model="filters.selectedProject"
-                class="w-full px-3 py-2 border border-border rounded-md bg-background">
-                <option value="">Select Project</option>
-                <option v-for="project in projects" :key="project.id" :value="project.id">
-                  {{ project.title || project.name }}
-                </option>
-              </select>
-            </div>
-          </div>
-
 
           <!-- Action Buttons -->
           <div class="space-y-4">
@@ -146,18 +128,11 @@
             </button>
 
 
-            <button v-if="reportData.length > 0" @click="exportReport"
+            <button v-if="reportData" @click="exportReport"
               class="w-full px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors my-4">
               Export {{ filters.exportFormat.toUpperCase() }}
             </button>
           </div>
-
-          <!-- <div class="p-4 bg-yellow-100 mb-4">
-            <h3 class="font-bold">Debug Info:</h3>
-            <p>Report Type: {{ filters.reportType }}</p>
-            <p>Selected Project: {{ filters.selectedProject }}</p>
-            <p>Projects Loaded: {{ projects.length }}</p>
-          </div> -->
         </div>
 
 
@@ -202,31 +177,25 @@
                     <tr class="bg-muted">
                       <th class="border p-3 text-left">Task Name</th>
                       <th class="border p-3 text-left">Assigned To</th>
+                      <th class="border p-3 text-left">Start Date</th>
+                      <th class="border p-3 text-left">End Date</th>
                       <th class="border p-3 text-left">Status</th>
-                      <th class="border p-3 text-left">Deadline</th>
+                      <th class="border p-3 text-left">Comments/Issues</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="task in reportData" :key="task.id" class="hover:bg-muted/50">
-                      <td class="border p-3">{{ task.taskTitle }}</td>
-                      <!-- <td class="border p-3">{{ task.assignedTo || 'Unassigned' }}</td> -->
-                       <td class="border p-3">
-                          <span v-if="Array.isArray(task.assignedTo)">
-                            <span v-for="(assignee, idx) in task.assignedTo" :key="idx">
-                              {{ assignee }}<span v-if="idx < task.assignedTo.length - 1">, </span>
-                            </span>
-                          </span>
-                          <span v-else>
-                            {{ task.assignedTo || 'Unassigned' }}
-                          </span>
-                        </td>
+                    <tr v-for="task in reportData.tasks" :key="task.id" class="hover:bg-muted/50">
+                      <td class="border p-3">{{ task.title }}</td>
+                      <td class="border p-3">{{ task.assigneeName || 'Unassigned' }}</td>
+                      <td class="border p-3">{{ formatDate(task.createdDate) }}</td>
+                      <td class="border p-3">{{ formatDate(task.deadline) }}</td>
                       <td class="border p-3">
                         <span :class="getStatusBadgeClass(task.status)" class="px-2 py-1 rounded text-xs">
                           {{ task.status }}
                         </span>
                       </td>
                       <td class="border p-3 text-sm text-muted-foreground">
-                        {{ formatDate(task.deadline) }}
+                        {{ task.description || '-' }}
                       </td>
                     </tr>
                   </tbody>
@@ -311,21 +280,24 @@ import { ref, computed, onMounted } from 'vue';
 import { BarChart3 } from 'lucide-vue-next';
 import { getAuth } from 'firebase/auth';
 import TaskSidebar from '../components/TaskSidebar.vue';
+// import CreateTaskModal from '../components/CreateTaskModal.vue';
 
-// Reactive state
+
 const activeProject = ref("all");
 const isCreateModalOpen = ref(false);
 const loading = ref(false);
-const reportData = ref([]);
+// const reportData = ref(null);
+const reportData = [];
 const projects = ref([]);
 const users = ref([]);
 const error = ref('');
+
 
 const filters = ref({
   exportFormat: 'csv',
   reportType: 'team-summary',
   interval: 'monthly',
-  month: new Date().toISOString().slice(0, 7),
+  month: new Date().toISOString().slice(0, 7), // Current month
   startDate: '',
   endDate: '',
   filterBy: 'all',
@@ -333,34 +305,439 @@ const filters = ref({
   selectedUser: ''
 });
 
-// Auth helper
 const getCurrentUserAuth = async () => {
   const auth = getAuth();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
+  
   const token = await user.getIdToken();
   return { auth, user, token };
 };
 
-// Computed properties this is for frontend
 const reportTitle = computed(() => {
   const titles = {
-    'team-summary': 'Team Summary Report',
+    'team-summary': 'Monthly Work Summary Report - Team Plan',
     'task-completion': 'Task Completion Report',
     'logged-time': 'Logged Time Report'
   };
   return titles[filters.value.reportType] || 'Report';
 });
 
+
 const reportPeriod = computed(() => {
   if (filters.value.interval === 'monthly') {
     const date = new Date(filters.value.month + '-01');
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  } else {
+    return `${filters.value.startDate} to ${filters.value.endDate}`;
   }
-  return `${filters.value.startDate} to ${filters.value.endDate}`;
 });
 
-// Utility functions
+
+const setActiveProject = (project) => {
+  activeProject.value = project;
+};
+
+
+const setIsCreateModalOpen = (open) => {
+  isCreateModalOpen.value = open;
+};
+
+
+// const handleCreateTask = (newTask) => {
+//   console.log("Create task:", newTask);
+// };
+
+
+const handleIntervalChange = () => {
+  // Reset time frame when interval changes
+  if (filters.value.interval === 'monthly') {
+    filters.value.month = new Date().toISOString().slice(0, 7);
+    filters.value.startDate = '';
+    filters.value.endDate = '';
+  } else {
+    filters.value.month = '';
+    // Set default to current week
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+    filters.value.startDate = weekAgo.toISOString().split('T')[0];
+    filters.value.endDate = today.toISOString().split('T')[0];
+  }
+};
+
+
+const generateReport = async () => {
+  loading.value = true;
+
+  reportData.length = 0;
+
+  try {
+    const token  = await getCurrentUserAuth();
+
+    // Determine date range
+    let startDate, endDate;
+    if (filters.value.interval === 'monthly') {
+      const date = new Date(filters.value.month + '-01');
+      startDate = new Date(date.getFullYear(), date.getMonth(), 1);
+      endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    } else {
+      startDate = new Date(filters.value.startDate);
+      endDate = new Date(filters.value.endDate);
+    }
+
+
+    // Fetch all tasks based on userID
+    // let url = `/api/tasks?userId=${user.uid}`;
+    let url = `/api/tasks/allTasks`;
+    const response = await fetch(url);
+
+
+    if (!response.ok) throw new Error('Failed to fetch tasks');
+
+    const data = await response.json();
+    let tasks = data.data || []; //this gets all the tasks
+    // console.log(tasks)
+
+
+    // Filter tasks by date range
+    tasks = tasks.filter(task => {
+      // Convert Firestore timestamp to Date object
+      const taskDate = new Date(task.createdDate._seconds * 1000); // Convert seconds to milliseconds
+      return taskDate >= startDate && taskDate <= endDate;
+    });
+    console.log(tasks)
+
+
+    // Apply additional filters for task completion report
+    if (filters.value.reportType === 'task-completion') {
+      // console.log("Project id: " + filters.value.selectedProject)
+      // console.log("Task: " + tasks)
+      console.log("Task Completion Hit")
+      if (filters.value.filterBy === 'project' && filters.value.selectedProject) {
+        tasks = tasks.filter(task => {
+          // Based on your data structure: segments: (2) ['Projects', "CLGW96yugsTjEWYmCzrp']
+          return task.projectId?._path?.segments?.[1] === filters.value.selectedProject;
+        });
+      } else if (filters.value.filterBy === 'user' && filters.value.selectedUser) {
+        console.log("Users Filter Hit")
+
+        console.log("User id: " + filters.value.selectedUser)
+        tasks = tasks.filter(task =>
+          task.assignedTo?.some(assignee =>
+            assignee?._path?.segments?.[1] === filters.value.selectedUser
+          )
+        );
+      }
+      console.log(tasks)
+
+
+      // Calculate stats
+      const completedTasks = tasks.filter(t => t.status === 'done').length;
+      console.log("completedTasks: " + completedTasks)
+      console.log(tasks.length)
+      tasks = tasks.filter(t => t.status === "done");
+      console.log(tasks.length)
+
+        // reportData.value = {
+        //   tasks,
+        //   totalTasks: tasks.length,
+        //   completedTasks,
+        //   completionRate: tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0
+        // };
+
+
+        ;
+
+      for (let task of tasks) {
+        const data = {}
+        console.log(task)
+        // Basic conversions
+        data.taskTitle = task.title;
+        data.status = task.status;
+
+
+        const formattedDate = formatDate(task.modifiedDate._seconds * 1000);
+        // console.log(formattedDate); // "Oct 12, 2025"
+
+        data.completedDate = formattedDate;
+
+        // convert task owner
+        const taskOwner = task.taskCreatedBy._path.segments[1];
+        const taskOwnerDetails = await getUser(taskOwner);
+        // console.log(taskOwnerDetails.user.name);
+        data.taskOwner = taskOwnerDetails.user.name
+
+        // Project details
+        const prjid = task.projectId._path.segments[1];
+        const prjDetails = await getProject(prjid);
+        // console.log(prjDetails.title)
+        data.prjTitle = prjDetails.title;
+
+        // Assignee
+        const newAssigneeList = [];
+        const assigneeList = task.assignedTo;
+        console.log(assigneeList)
+        for (let i of assigneeList) {
+          // console.log(i)
+          const assigneeID = i._path.segments[1];
+          const assigneeDetails = await getUser(assigneeID);
+          newAssigneeList.push(assigneeDetails.user.name);
+        }
+        data.assignedTo = newAssigneeList
+        console.log(data)
+        reportData.push(data);
+
+      }
+
+      console.log(reportData);
+
+
+    }
+    //  else {
+    //   reportData.value = { tasks };
+    // }
+
+
+  } catch (error) {
+    console.error('Error generating report:', error);
+    alert('Failed to generate report. Please try again.');
+  } finally {
+    loading.value = false;
+  }
+};
+
+async function getUser(uid) {
+  // const auth = getAuth();
+  // const user = auth.currentUser;
+  // if (!user) return;
+
+
+  // const token = await user.getIdToken();
+
+  const token = await getCurrentUserAuth();
+  try {
+    const response = await fetch(`/api/users/users/${uid}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const userData = await response.json();
+    return userData;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw error;
+  }
+}
+
+async function getProject(pid) {
+
+  try {
+    const response = await fetch(`/api/projects/${pid}`, {
+      method: 'GET'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const prjData = await response.json();
+    return prjData;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw error;
+  }
+}
+
+const exportReport = () => {
+  console.log("export report")
+  if (!reportData) return;
+  console.log(reportData)
+
+
+  if (filters.value.exportFormat === 'csv') {
+    console.log("Exporting CSV...")
+    exportCSV();
+  } else {
+    console.log("Exporting PDF...")
+    exportPDF();
+  }
+};
+
+async function exportCSV() {
+  loading.value = true;
+  error.value = '';
+  try {
+
+    const response = await fetch('/api/report/generate_csv', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(reportData)
+    });
+
+    if (!response.ok) throw new Error('Failed to generate CSV');
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'routes.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 1000);
+
+  } catch (e) {
+    error.value = e.message || 'Unknown error';
+  }
+  loading.value = false;
+}
+
+async function exportPDF() {
+  console.log(filters.value)
+  loading.value = true;
+  error.value = '';
+  try {
+    const mappedReports = reportData.map(mapReportData);
+    console.log(mappedReports)
+
+    // Get Report Title
+        let prjTitle = "";
+        if (filters.value.filterBy =="project") {
+          const prjID = filters.value.selectedProject;
+          prjTitle = await getProject(prjID);
+          prjTitle = prjTitle.title
+        } else if (filters.value.filterBy =="user") {
+          const userID = filters.value.selectedUser;
+          prjTitle = await getUser(userID);
+          prjTitle = prjTitle.user.name
+        }
+
+    const cleanedTimeFrame = formatDateDisplay(filters.value)
+    const response = await fetch('/api/report/generate_pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        // "reportType": filters.value.reportType,
+        "reportType": "task_completion",
+        "reportTitle": prjTitle,
+        "timeFrame": cleanedTimeFrame,
+        "filterType": filters.value.filterBy,
+        tasks: mappedReports
+      })
+    });
+
+    if (!response.ok) throw new Error('Failed to generate PDF');
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const newTab = window.open(url, '_blank');
+    if (!newTab || newTab.closed || typeof newTab.closed == 'undefined') {
+      const embed = document.createElement('embed');
+      embed.src = url;
+      embed.type = 'application/pdf';
+      embed.style.width = '100%';
+      embed.style.height = '100vh';
+
+      const container = document.getElementById('pdf-container') || createPdfContainer();
+      container.innerHTML = '';
+      container.appendChild(embed);
+    }
+
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 1000);
+
+  } catch (e) {
+    error.value = e.message || 'Unknown error';
+  }
+  loading.value = false;
+}
+
+function mapReportData(inputData) {
+  const status = inputData.status.toUpperCase();
+  return {
+    "Task Name": inputData.taskTitle,
+    "Owner of Task": inputData.taskOwner,
+    "Project Name": inputData.prjTitle,
+    "Assignee List": Array.isArray(inputData.assignedTo)
+      ? inputData.assignedTo.join(', ')
+      : inputData.assignedTo,
+    "Status": status,
+    "Completion date": inputData.completedDate
+  };
+}
+
+function formatDateDisplay(timeFrame) {
+  const data = timeFrame?.__v_raw || timeFrame;
+
+  if (data.interval === "monthly" && data.month) {
+    const [year, month] = data.month.split('-');
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  } else if (data.startDate && data.endDate) {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    return `${start.getDate()}-${end.getDate()} ${monthNames[start.getMonth()]} ${start.getFullYear()}`;
+  } else {
+    return "Date not specified";
+  }
+}
+
+// Helper function to create a PDF container if it doesn't exist
+function createPdfContainer() {
+  const container = document.createElement('div');
+  container.id = 'pdf-container';
+  container.style.position = 'fixed';
+  container.style.top = '0';
+  container.style.left = '0';
+  container.style.width = '100%';
+  container.style.height = '100%';
+  container.style.background = 'white';
+  container.style.zIndex = '1000';
+
+  // Add close button
+  const closeButton = document.createElement('button');
+  closeButton.textContent = 'Close';
+  closeButton.style.position = 'absolute';
+  closeButton.style.top = '10px';
+  closeButton.style.right = '10px';
+  closeButton.style.zIndex = '1001';
+  closeButton.style.padding = '10px';
+  closeButton.style.background = '#f44336';
+  closeButton.style.color = 'white';
+  closeButton.style.border = 'none';
+  closeButton.style.borderRadius = '5px';
+  closeButton.style.cursor = 'pointer';
+
+  closeButton.onclick = () => {
+    document.body.removeChild(container);
+  };
+
+  container.appendChild(closeButton);
+  document.body.appendChild(container);
+
+  return container;
+}
+
+
 const formatDate = (date) => {
   if (!date) return '-';
   const d = new Date(date);
@@ -370,6 +747,7 @@ const formatDate = (date) => {
     day: 'numeric'
   });
 };
+
 
 const getStatusBadgeClass = (status) => {
   const classes = {
@@ -381,327 +759,40 @@ const getStatusBadgeClass = (status) => {
   return classes[status] || classes['todo'];
 };
 
-// API functions
-const fetchWithAuth = async (url, options = {}) => {
-  const { token } = await getCurrentUserAuth();
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      ...options.headers
-    },
-    ...options
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  return response.json();
-};
-
-const getUser = async (uid) => {
-  return fetchWithAuth(`/api/users/users/${uid}`);
-};
-
-const getProject = async (pid) => {
-  return fetchWithAuth(`/api/projects/${pid}`);
-};
 
 const loadProjectsAndUsers = async () => {
   try {
+
+    const token = await getCurrentUserAuth();
+
+
     const [projectsRes, usersRes] = await Promise.all([
-      fetchWithAuth('/api/allProjects'),
-      fetchWithAuth('/api/users/users')
+      fetch('/api/allProjects', { headers: { Authorization: `Bearer ${token.token}` } }),
+      fetch('/api/users/users', { headers: { Authorization: `Bearer ${token.token}` } })
     ]);
 
-    projects.value = projectsRes.data || projectsRes.projects || [];
-    users.value = usersRes.data || usersRes.users || [];
+
+    if (projectsRes.ok) {
+      const projectsData = await projectsRes.json();
+      projects.value = projectsData.data || projectsData.projects || [];
+    }
+
+
+    if (usersRes.ok) {
+      const usersData = await usersRes.json();
+      users.value = usersData.data || usersData.users || [];
+    }
   } catch (error) {
     console.error('Error loading projects/users:', error);
   }
 };
 
-// Filter and data processing
-const getDateRange = () => {
-  if (filters.value.interval === 'monthly') {
-    const date = new Date(filters.value.month + '-01');
-    return {
-      startDate: new Date(date.getFullYear(), date.getMonth(), 1),
-      endDate: new Date(date.getFullYear(), date.getMonth() + 1, 0)
-    };
-  }
-  return {
-    startDate: new Date(filters.value.startDate),
-    endDate: new Date(filters.value.endDate)
-  };
-};
-
-const filterTasks = (tasks) => {
-  const { startDate, endDate } = getDateRange();
-
-  let filteredTasks = tasks.filter(task => {
-    const taskDate = new Date(task.createdDate._seconds * 1000);
-    return taskDate >= startDate && taskDate <= endDate;
-  });
-
-  // Process data for Task Compeletion
-  if (filters.value.reportType === 'task-completion') {
-    if (filters.value.filterBy === 'project' && filters.value.selectedProject) {
-      filteredTasks = filteredTasks.filter(task =>
-        task.projectId?._path?.segments?.[1] === filters.value.selectedProject
-      );
-    } else if (filters.value.filterBy === 'user' && filters.value.selectedUser) {
-      filteredTasks = filteredTasks.filter(task =>
-        task.assignedTo?.some(assignee =>
-          assignee?._path?.segments?.[1] === filters.value.selectedUser
-        )
-      );
-    }
-    filteredTasks = filteredTasks.filter(t => t.status === "done");
-  }
-
-
-  // Process data for Team Summary
-  else if (filters.value.reportType === 'team-summary') {
-    filteredTasks = filteredTasks.filter(task =>
-      task.projectId?._path?.segments?.[1] === filters.value.selectedProject
-    );
-    console.log(filteredTasks);
-  }
-
-  return filteredTasks;
-};
-
-const processTaskSummaryData = async (task) => {
-  const data = {
-    taskTitle: task.title,
-    status: task.status,
-    completedDate: formatDate(task.modifiedDate._seconds * 1000)
-  };
-
-  // Get task owner
-  const taskOwnerId = task.taskCreatedBy._path.segments[1];
-  const taskOwnerDetails = await getUser(taskOwnerId);
-  data.taskOwner = taskOwnerDetails.user.name;
-
-  // Get project details
-  const projectId = task.projectId._path.segments[1];
-  const projectDetails = await getProject(projectId);
-  data.prjTitle = projectDetails.title;
-
-  // Get assignees
-  const assigneePromises = task.assignedTo.map(async (assignee) => {
-    const assigneeId = assignee._path.segments[1];
-    const assigneeDetails = await getUser(assigneeId);
-    return assigneeDetails.user.name;
-  });
-
-  data.assignedTo = await Promise.all(assigneePromises);
-
-  return data;
-};
-
-const processTaskCompletionData = async (task) => {
-  const data = {
-    taskTitle: task.title,
-    status: task.status,
-    deadline: formatDate(task.deadline._seconds * 1000)
-  };
-
-  // Get assignees
-  const assigneePromises = task.assignedTo.map(async (assignee) => {
-    const assigneeId = assignee._path.segments[1];
-    const assigneeDetails = await getUser(assigneeId);
-    return assigneeDetails.user.name;
-  });
-
-  data.assignedTo = await Promise.all(assigneePromises);
-
-  return data;
-};
-
-// Main functions
-const generateReport = async () => {
-  loading.value = true;
-  reportData.value = [];
-
-  try {
-    const response = await fetch('/api/tasks/allTasks');
-    if (!response.ok) throw new Error('Failed to fetch tasks');
-
-    const data = await response.json();
-    let tasks = data.data || [];
-
-    tasks = filterTasks(tasks);
-
-    if (filters.value.reportType === 'task-completion') {
-      const processedTasks = await Promise.all(
-        tasks.map(task => processTaskSummaryData(task))
-      );
-      reportData.value = processedTasks;
-      console.log(reportData)
-    }
-    else if(filters.value.reportType === 'team-summary'){
-      const processedTasks = await Promise.all(
-        tasks.map(task => processTaskCompletionData(task))
-      );
-      reportData.value = processedTasks;
-    }
-
-  } catch (error) {
-    console.error('Error generating report:', error);
-    alert('Failed to generate report. Please try again.');
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleIntervalChange = () => {
-  if (filters.value.interval === 'monthly') {
-    filters.value.month = new Date().toISOString().slice(0, 7);
-    filters.value.startDate = '';
-    filters.value.endDate = '';
-  } else {
-    filters.value.month = '';
-    const today = new Date();
-    const weekAgo = new Date(today);
-    weekAgo.setDate(today.getDate() - 7);
-    filters.value.startDate = weekAgo.toISOString().split('T')[0];
-    filters.value.endDate = today.toISOString().split('T')[0];
-  }
-};
-
-// Export functions
-const mapReportData = (inputData) => ({
-  "Task Name": inputData.taskTitle,
-  "Owner of Task": inputData.taskOwner,
-  "Project Name": inputData.prjTitle,
-  "Assignee List": Array.isArray(inputData.assignedTo)
-    ? inputData.assignedTo.join(', ')
-    : inputData.assignedTo,
-  "Status": inputData.status.toUpperCase(),
-  "Completion date": inputData.completedDate
-});
-
-const formatDateDisplay = (timeFrame) => {
-  const data = timeFrame?.__v_raw || timeFrame;
-
-  if (data.interval === "monthly" && data.month) {
-    const [year, month] = data.month.split('-');
-    const monthNames = ["January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"];
-    return `${monthNames[parseInt(month) - 1]} ${year}`;
-  } else if (data.startDate && data.endDate) {
-    const start = new Date(data.startDate);
-    const monthNames = ["January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"];
-    return `${start.getDate()}-${new Date(data.endDate).getDate()} ${monthNames[start.getMonth()]} ${start.getFullYear()}`;
-  }
-  return "Date not specified";
-};
-
-const exportReport = async () => {
-  if (!reportData.value.length) return;
-
-  if (filters.value.exportFormat === 'csv') {
-    await exportCSV();
-  } else {
-    await exportPDF();
-  }
-};
-
-const exportCSV = async () => {
-  loading.value = true;
-  error.value = '';
-
-  try {
-    const response = await fetch('/api/report/generate_csv', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reportData.value)
-    });
-
-    if (!response.ok) throw new Error('Failed to generate CSV');
-
-    const blob = await response.blob();
-    downloadBlob(blob, 'report.csv');
-
-  } catch (e) {
-    error.value = e.message || 'Unknown error';
-  } finally {
-    loading.value = false;
-  }
-};
-
-const exportPDF = async () => {
-  loading.value = true;
-  error.value = '';
-
-  try {
-    let reportTitle = "";
-    if (filters.value.filterBy === "project") {
-      const project = await getProject(filters.value.selectedProject);
-      reportTitle = project.title;
-    } else if (filters.value.filterBy === "user") {
-      const user = await getUser(filters.value.selectedUser);
-      reportTitle = user.user.name;
-    }
-
-    const mappedReports = reportData.value.map(mapReportData);
-    const cleanedTimeFrame = formatDateDisplay(filters.value);
-
-    const response = await fetch('/api/report/generate_pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        reportType: filters.value.reportType,
-        reportTitle,
-        timeFrame: cleanedTimeFrame,
-        filterType: filters.value.filterBy,
-        tasks: mappedReports
-      })
-    });
-
-    if (!response.ok) throw new Error('Failed to generate PDF');
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    window.open(url, '_blank');
-
-    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-
-  } catch (e) {
-    error.value = e.message || 'Unknown error';
-  } finally {
-    loading.value = false;
-  }
-};
-
-const downloadBlob = (blob, filename) => {
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-};
-
-// Component functions
-const setActiveProject = (project) => {
-  activeProject.value = project;
-};
-
-const setIsCreateModalOpen = (open) => {
-  isCreateModalOpen.value = open;
-};
 
 onMounted(() => {
   loadProjectsAndUsers();
 });
 </script>
+
 
 <style scoped>
 /* Add any custom styles here */

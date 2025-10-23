@@ -133,7 +133,8 @@ def generate_project_summary_report(projects_data, filename="project_summary_rep
         fontSize=16,
         spaceAfter=20,
         textColor=colors.HexColor('#2C3E50'),
-        alignment=1
+        alignment=1,
+        wordWrap='CJK'
     )
     elements.append(Paragraph("Project Summary Report", title_style))
 
@@ -149,15 +150,17 @@ def generate_project_summary_report(projects_data, filename="project_summary_rep
     elements.append(Paragraph(f"Summary Report for {report_type} - Timeframe: {timeFrame}", subtitle_style))
 
     # Add your project summary table logic here
-    project_data = [["Project Name", "Manager", "Total Tasks", "Completed", "Progress"]]
+    project_data = [["Task Title", "Assignee", "Status", "Deadline"]]
     
     for project in projects_data:
         project_data.append([
-            project.get("Project Name", ""),
-            project.get("Manager", ""),
-            str(project.get("Total Tasks", 0)),
-            str(project.get("Completed", 0)),
-            f"{project.get('Progress', 0)}%"
+            project.get("Task Title", ""),
+            project.get("Assignee", ""),
+            project.get("Status", ""),
+            project.get("Deadline", ""),
+            # str(project.get("Total Tasks", 0)),
+            # str(project.get("Completed", 0)),
+            # f"{project.get('Progress', 0)}%"
         ])
 
     col_widths = [2.0*inch, 1.5*inch, 1.0*inch, 1.0*inch, 1.0*inch]
@@ -195,8 +198,8 @@ def generate_project_summary_report(projects_data, filename="project_summary_rep
 
 # Report function mapping
 REPORT_FUNCTIONS = {
-    'task_completion': generate_task_completion_report,
-    'project_summary': generate_project_summary_report,
+    'task-completion': generate_task_completion_report,
+    'team-summary': generate_project_summary_report,
     # Add more report types here as you create them
 }
 
@@ -212,7 +215,7 @@ def main():
         # Parse JSON data
         config = json.loads(input_data)
         
-        report_type = config.get('report_type', 'task_completion')
+        report_type = config.get('report_type', 'task-completion')
         
         # Get the appropriate function based on report_type
         report_function = REPORT_FUNCTIONS.get(report_type)
@@ -230,14 +233,14 @@ def main():
         print(report_type)
         
         # Call the appropriate function based on report type
-        if report_type == 'task_completion':
+        if report_type == 'task-completion':
             tasks = config.get('tasks', [])
             if not tasks:
                 print("Error: No tasks data provided for task completion report", file=sys.stderr)
                 sys.exit(1)
             success = report_function(tasks, filename, report_title, timeFrame, filter_type)
             
-        elif report_type == 'project_summary':
+        elif report_type == 'team-summary':
             projects = config.get('projects', [])
             if not projects:
                 print("Error: No projects data provided for project summary report", file=sys.stderr)

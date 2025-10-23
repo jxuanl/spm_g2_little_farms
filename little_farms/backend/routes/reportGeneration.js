@@ -23,21 +23,21 @@ router.post('/generate_pdf', (req, res) => {
     tasks, 
     projects, 
     // data,
-    reportType = 'task_completion', 
+    reportType = 'task-completion', 
     filterType = 'undefined',
     reportTitle = 'Report',
     timeFrame = 'Undefined' 
   } = req.body;
   
   // Validate based on report type
-  if (reportType === 'task_completion' && (!tasks || !Array.isArray(tasks))) {
+  if (reportType === 'task-completion' && (!tasks || !Array.isArray(tasks))) {
     return res.status(400).json({ 
       error: 'Invalid request data',
       details: 'Tasks array is required for task completion reports'
     });
   }
   
-  if (reportType === 'project_summary' && (!projects || !Array.isArray(projects))) {
+  if (reportType === 'team-summary' && (!projects || !Array.isArray(projects))) {
     return res.status(400).json({ 
       error: 'Invalid request data',
       details: 'Projects array is required for project summary reports'
@@ -146,7 +146,7 @@ router.post('/generate_pdf', (req, res) => {
 
 // GET endpoint for backward compatibility (uses default report type)
 router.get('/generate_pdf', (req, res) => {
-  const reportType = req.query.report_type || 'task_completion';
+  const reportType = req.query.report_type || 'task-completion';
   const tempFile = getTempFileName(reportType);
   const pythonScriptPath = path.join(__dirname, '../services/pdfReportService.py');
 
