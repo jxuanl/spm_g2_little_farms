@@ -666,6 +666,25 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
   }
 }
 
+export async function getAllTasks() {
+  try {
+    // Get all documents in the "Tasks" collection
+    const snapshot = await db.collection(TASK_COLLECTION).get();
+
+    // Map Firestore docs to JS objects
+    const tasks = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return tasks;
+  } catch (error) {
+    console.error('Error fetching tasks from Firestore:', error);
+    throw new Error('Failed to retrieve tasks from Firestore');
+  }
+}
+
+
 export const taskService = {
   getTasksForUser,
   createTask,
@@ -674,7 +693,8 @@ export const taskService = {
   getSubtaskById,
   updateSubtask,
   updateTask,
-  completeTask
+  completeTask,
+  getAllTasks
   // deleteTask,
 };
 

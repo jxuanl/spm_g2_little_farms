@@ -81,7 +81,7 @@ export default {
         const data = await response.json()
         if (!response.ok) throw new Error(data.error || 'Login verification failed')
 
-        // Step 4: Store session data
+        // Store session data
         // const sessionData = {
         //   uid: "/Users/"+user.uid,
         //   email: user.email,

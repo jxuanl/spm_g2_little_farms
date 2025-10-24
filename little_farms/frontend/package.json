@@ -10,6 +10,7 @@
   "dependencies": {
     "@vueform/slider": "^2.1.10",
     "@infectoone/vue-ganttastic": "^2.3.2",
+    "firebase": "^10.14.1",
     "firebase": "^10.0.0",
     "frappe-gantt": "^1.0.4",
     "lucide-vue-next": "^0.460.0",

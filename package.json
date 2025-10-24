@@ -1,7 +1,11 @@
 {
   "dependencies": {
     "@infectoone/vue-ganttastic": "^2.3.2",
+    "@sendgrid/mail": "^8.1.6",
     "cors": "^2.8.5",
-    "frappe-gantt": "^1.0.4"
+    "express": "^5.1.0",
+    "frappe-gantt": "^1.0.4",
+    "json2csv": "^6.0.0-alpha.2",
+    "ws": "^8.18.3"
   }
 }

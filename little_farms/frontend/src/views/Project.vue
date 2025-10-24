@@ -294,6 +294,7 @@ const handleCreateProject = async () => {
     }
 
     successMessage.value = 'Project created successfully!';
+    console.log(result);
     projects.value.push(result.project); // Update UI immediately
 
     setTimeout(() => {

@@ -1,7 +1,28 @@
 import express from 'express'
-import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask } from '../services/taskService.js'
+import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask, getAllTasks } from '../services/taskService.js'
 
 const router = express.Router()
+
+router.get('/allTasks', async (req, res) => {
+  try {
+    const tasks = await getAllTasks();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Tasks retrieved successfully',
+      data: tasks,
+      count: tasks.length
+    });
+  } catch (error) {
+    console.error('Error in /allTasks route:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error',
+      data: []
+    });
+  }
+});
+
 
 // ✅ GET /api/tasks/:id?userId=abc123  (must come first)
 router.get('/:id', async (req, res) => {
