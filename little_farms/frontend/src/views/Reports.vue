@@ -574,14 +574,15 @@ const handleIntervalChange = () => {
 
 // Export functions
 const mapReportData = (inputData) => ({
-  "Task Name": inputData.taskTitle,
-  "Owner of Task": inputData.taskOwner,
-  "Project Name": inputData.prjTitle,
+  "Task Name": inputData.taskTitle || '',
+  "Owner of Task": inputData.taskOwner|| '',
+  "Project Name": inputData.prjTitle|| '',
   "Assignee List": Array.isArray(inputData.assignedTo)
     ? inputData.assignedTo.join(', ')
     : inputData.assignedTo,
   "Status": inputData.status.toUpperCase(),
-  "Completion date": inputData.completedDate
+  "Completion date": inputData.completedDate|| '',
+  "Deadline": inputData.deadline|| ''
 });
 
 const formatDateDisplay = (timeFrame) => {
@@ -649,6 +650,7 @@ const exportPDF = async () => {
     }
 
     const mappedReports = reportData.value.map(mapReportData);
+    console.log(mappedReports);
     const cleanedTimeFrame = formatDateDisplay(filters.value);
 
     const response = await fetch('/api/report/generate_pdf', {
@@ -659,7 +661,7 @@ const exportPDF = async () => {
         reportTitle,
         timeFrame: cleanedTimeFrame,
         filterType: filters.value.filterBy,
-        tasks: mappedReports
+        data: mappedReports
       })
     });
 

@@ -1,5 +1,5 @@
 import express from 'express'
-import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask } from '../services/taskService.js'
+import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask, getAllTasks } from '../services/taskService.js'
 
 const router = express.Router()
 

@@ -693,7 +693,8 @@ export const taskService = {
   getSubtaskById,
   updateSubtask,
   updateTask,
-  completeTask
+  completeTask,
+  getAllTasks
   // deleteTask,
 };
 

@@ -149,22 +149,37 @@ def generate_project_summary_report(projects_data, filename="project_summary_rep
     )
     elements.append(Paragraph(f"Summary Report for {report_type} - Timeframe: {timeFrame}", subtitle_style))
 
+    def create_wrapped_text(text, style_name='Normal'):
+        style = ParagraphStyle(
+            style_name,
+            parent=styles['Normal'],
+            fontSize=9,
+            leading=11,
+            alignment=1,
+            wordWrap='CJK'
+        )
+        return Paragraph(str(text), style)
+
     # Add your project summary table logic here
-    project_data = [["Task Title", "Assignee", "Status", "Deadline"]]
+    project_header_data = [["Task Name", "Assignee List", "Status", "Deadline"]]
     
     for project in projects_data:
-        project_data.append([
-            project.get("Task Title", ""),
-            project.get("Assignee", ""),
-            project.get("Status", ""),
-            project.get("Deadline", ""),
+        project_header_data.append([
+            create_wrapped_text(project["Task Name"]),
+            create_wrapped_text(project["Assignee List"]),            create_wrapped_text(project["Task Name"]),
+            create_wrapped_text(project["Status"]),
+            create_wrapped_text(project["Deadline"])
+            # project.get("Task Title", ""),
+            # project.get("Assignee", ""),
+            # project.get("Status", ""),
+            # project.get("Deadline", ""),
             # str(project.get("Total Tasks", 0)),
             # str(project.get("Completed", 0)),
             # f"{project.get('Progress', 0)}%"
         ])
 
     col_widths = [2.0*inch, 1.5*inch, 1.0*inch, 1.0*inch, 1.0*inch]
-    project_table = Table(project_data, colWidths=col_widths, repeatRows=1)
+    project_table = Table(project_header_data, colWidths=col_widths, repeatRows=1)
 
     project_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495E')),
@@ -234,14 +249,14 @@ def main():
         
         # Call the appropriate function based on report type
         if report_type == 'task-completion':
-            tasks = config.get('tasks', [])
+            tasks = config.get('data', [])
             if not tasks:
                 print("Error: No tasks data provided for task completion report", file=sys.stderr)
                 sys.exit(1)
             success = report_function(tasks, filename, report_title, timeFrame, filter_type)
             
         elif report_type == 'team-summary':
-            projects = config.get('projects', [])
+            projects = config.get('data', [])
             if not projects:
                 print("Error: No projects data provided for project summary report", file=sys.stderr)
                 sys.exit(1)
