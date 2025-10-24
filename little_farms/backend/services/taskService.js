@@ -307,28 +307,28 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
   }
 }
 
-// === Notes Functions ===
-export async function getNotesForTask(taskId, subtaskId = null) {
+// === Comments Functions ===
+export async function getCommentsForTask(taskId, subtaskId = null) {
   try {
-    let notesRef;
+    let commentsRef;
     
     if (subtaskId) {
-      // Get notes for a subtask
-      notesRef = db
+      // Get comments for a subtask
+      commentsRef = db
         .collection(TASK_COLLECTION)
         .doc(taskId)
         .collection('Subtasks')
         .doc(subtaskId)
-        .collection('Notes');
+        .collection('Comments');
     } else {
-      // Get notes for a regular task
-      notesRef = db
+      // Get comments for a regular task
+      commentsRef = db
         .collection(TASK_COLLECTION)
         .doc(taskId)
-        .collection('Notes');
+        .collection('Comments');
     }
     
-    const snapshot = await notesRef.orderBy('createdDate', 'desc').get();
+    const snapshot = await commentsRef.orderBy('createdDate', 'desc').get();
     
     return snapshot.docs.map(doc => {
       const data = doc.data();
@@ -350,93 +350,93 @@ export async function getNotesForTask(taskId, subtaskId = null) {
       };
     });
   } catch (err) {
-    console.error("Error fetching notes:", err);
+    console.error("Error fetching comments:", err);
     return [];
   }
 }
 
-export async function createNote(taskId, noteData, subtaskId = null) {
+export async function createComment(taskId, commentData, subtaskId = null) {
   try {
     // Validate required fields
-    if (!noteData.content || !noteData.authorId) {
+    if (!commentData.content || !commentData.authorId) {
       throw new Error('Content and authorId are required');
     }
     
     // Convert author ID to Firestore user reference
     let authorRef = null;
-    if (noteData.authorId) {
-      const authorDoc = await db.collection('Users').doc(noteData.authorId).get();
+    if (commentData.authorId) {
+      const authorDoc = await db.collection('Users').doc(commentData.authorId).get();
       if (authorDoc.exists) {
-        authorRef = db.collection('Users').doc(noteData.authorId);
+        authorRef = db.collection('Users').doc(commentData.authorId);
       } else {
         throw new Error('Author not found');
       }
     }
     
     const now = new Date();
-    const newNote = {
-      content: noteData.content.trim(),
+    const newComment = {
+      content: commentData.content.trim(),
       author: authorRef,
       createdDate: now,
       modifiedDate: now
     };
     
-    let notesRef;
+    let commentsRef;
     if (subtaskId) {
-      // Create note for a subtask
-      notesRef = db
+      // Create comment for a subtask
+      commentsRef = db
         .collection(TASK_COLLECTION)
         .doc(taskId)
         .collection('Subtasks')
         .doc(subtaskId)
-        .collection('Notes');
+        .collection('Comments');
     } else {
-      // Create note for a regular task
-      notesRef = db
+      // Create comment for a regular task
+      commentsRef = db
         .collection(TASK_COLLECTION)
         .doc(taskId)
-        .collection('Notes');
+        .collection('Comments');
     }
     
-    const docRef = await notesRef.add(newNote);
+    const docRef = await commentsRef.add(newComment);
     
     return {
       id: docRef.id,
-      ...newNote,
+      ...newComment,
       author: { path: authorRef.path },
       createdDate: now,
       modifiedDate: now
     };
   } catch (err) {
-    console.error("Error creating note:", err);
+    console.error("Error creating comment:", err);
     throw err;
   }
 }
 
-export async function updateNote(taskId, noteId, updateData, subtaskId = null) {
+export async function updateComment(taskId, commentId, updateData, subtaskId = null) {
   try {
-    let noteRef;
+    let commentRef;
     if (subtaskId) {
-      // Update note for a subtask
-      noteRef = db
+      // Update comment for a subtask
+      commentRef = db
         .collection(TASK_COLLECTION)
         .doc(taskId)
         .collection('Subtasks')
         .doc(subtaskId)
-        .collection('Notes')
-        .doc(noteId);
+        .collection('Comments')
+        .doc(commentId);
     } else {
-      // Update note for a regular task
-      noteRef = db
+      // Update comment for a regular task
+      commentRef = db
         .collection(TASK_COLLECTION)
         .doc(taskId)
-        .collection('Notes')
-        .doc(noteId);
+        .collection('Comments')
+        .doc(commentId);
     }
     
-    // Check if note exists
-    const noteDoc = await noteRef.get();
-    if (!noteDoc.exists) {
+    // Check if comment exists
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
       return null;
     }
     
@@ -445,10 +445,10 @@ export async function updateNote(taskId, noteId, updateData, subtaskId = null) {
       modifiedDate: new Date()
     };
     
-    await noteRef.update(updatedFields);
+    await commentRef.update(updatedFields);
     
-    // Return the updated note
-    const updatedDoc = await noteRef.get();
+    // Return the updated comment
+    const updatedDoc = await commentRef.get();
     const data = updatedDoc.data();
     
     return {
@@ -458,42 +458,42 @@ export async function updateNote(taskId, noteId, updateData, subtaskId = null) {
       modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
     };
   } catch (err) {
-    console.error("Error updating note:", err);
+    console.error("Error updating comment:", err);
     throw err;
   }
 }
 
-export async function deleteNote(taskId, noteId, subtaskId = null) {
+export async function deleteComment(taskId, commentId, subtaskId = null) {
   try {
-    let noteRef;
+    let commentRef;
     if (subtaskId) {
-      // Delete note for a subtask
-      noteRef = db
+      // Delete comment for a subtask
+      commentRef = db
         .collection(TASK_COLLECTION)
         .doc(taskId)
         .collection('Subtasks')
         .doc(subtaskId)
-        .collection('Notes')
-        .doc(noteId);
+        .collection('Comments')
+        .doc(commentId);
     } else {
-      // Delete note for a regular task
-      noteRef = db
+      // Delete comment for a regular task
+      commentRef = db
         .collection(TASK_COLLECTION)
         .doc(taskId)
-        .collection('Notes')
-        .doc(noteId);
+        .collection('Comments')
+        .doc(commentId);
     }
     
-    // Check if note exists
-    const noteDoc = await noteRef.get();
-    if (!noteDoc.exists) {
+    // Check if comment exists
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
       return false;
     }
     
-    await noteRef.delete();
+    await commentRef.delete();
     return true;
   } catch (err) {
-    console.error("Error deleting note:", err);
+    console.error("Error deleting comment:", err);
     throw err;
   }
 }
@@ -504,10 +504,10 @@ export const taskService = {
   getSubtasksForTask,
   getSubtaskById,
   updateSubtask,
-  getNotesForTask,
-  createNote,
-  updateNote,
-  deleteNote,
+  getCommentsForTask,
+  createComment,
+  updateComment,
+  deleteComment,
   // updateTask,
   // deleteTask,
 };

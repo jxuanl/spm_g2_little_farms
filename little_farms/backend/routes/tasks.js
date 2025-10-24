@@ -1,5 +1,5 @@
 import express from 'express'
-import { getTasksForUser, createTask, getSubtasksForTask, getSubtaskById, updateSubtask, getNotesForTask, createNote, updateNote, deleteNote } from '../services/taskService.js'
+import { getTasksForUser, createTask, getSubtasksForTask, getSubtaskById, updateSubtask, getCommentsForTask, createComment, updateComment, deleteComment } from '../services/taskService.js'
 
 const router = express.Router()
 
@@ -128,10 +128,10 @@ router.put('/:taskId/subtasks/:subtaskId', async (req, res) => {
   }
 });
 
-// === Notes Routes ===
+// === Comments Routes ===
 
-// GET /api/tasks/:taskId/notes - Get notes for a regular task
-router.get('/:taskId/notes', async (req, res) => {
+// GET /api/tasks/:taskId/comments - Get comments for a regular task
+router.get('/:taskId/comments', async (req, res) => {
   try {
     const { taskId } = req.params;
     
@@ -139,16 +139,16 @@ router.get('/:taskId/notes', async (req, res) => {
       return res.status(400).json({ error: 'Missing taskId' });
     }
     
-    const notes = await getNotesForTask(taskId);
-    res.json(notes);
+    const comments = await getCommentsForTask(taskId);
+    res.json(comments);
   } catch (error) {
-    console.error('Backend error fetching notes:', error);
+    console.error('Backend error fetching comments:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/tasks/:taskId/subtasks/:subtaskId/notes - Get notes for a subtask
-router.get('/:taskId/subtasks/:subtaskId/notes', async (req, res) => {
+// GET /api/tasks/:taskId/subtasks/:subtaskId/comments - Get comments for a subtask
+router.get('/:taskId/subtasks/:subtaskId/comments', async (req, res) => {
   try {
     const { taskId, subtaskId } = req.params;
     
@@ -156,16 +156,16 @@ router.get('/:taskId/subtasks/:subtaskId/notes', async (req, res) => {
       return res.status(400).json({ error: 'Missing taskId or subtaskId' });
     }
     
-    const notes = await getNotesForTask(taskId, subtaskId);
-    res.json(notes);
+    const comments = await getCommentsForTask(taskId, subtaskId);
+    res.json(comments);
   } catch (error) {
-    console.error('Backend error fetching subtask notes:', error);
+    console.error('Backend error fetching subtask comments:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST /api/tasks/:taskId/notes - Create a note for a regular task
-router.post('/:taskId/notes', async (req, res) => {
+// POST /api/tasks/:taskId/comments - Create a comment for a regular task
+router.post('/:taskId/comments', async (req, res) => {
   try {
     const { taskId } = req.params;
     const { content, authorId } = req.body;
@@ -182,17 +182,17 @@ router.post('/:taskId/notes', async (req, res) => {
       return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
     }
     
-    const noteData = { content, authorId };
-    const newNote = await createNote(taskId, noteData);
-    res.status(201).json(newNote);
+    const commentData = { content, authorId };
+    const newComment = await createComment(taskId, commentData);
+    res.status(201).json(newComment);
   } catch (error) {
-    console.error('Backend error creating note:', error);
+    console.error('Backend error creating comment:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST /api/tasks/:taskId/subtasks/:subtaskId/notes - Create a note for a subtask
-router.post('/:taskId/subtasks/:subtaskId/notes', async (req, res) => {
+// POST /api/tasks/:taskId/subtasks/:subtaskId/comments - Create a comment for a subtask
+router.post('/:taskId/subtasks/:subtaskId/comments', async (req, res) => {
   try {
     const { taskId, subtaskId } = req.params;
     const { content, authorId } = req.body;
@@ -209,44 +209,44 @@ router.post('/:taskId/subtasks/:subtaskId/notes', async (req, res) => {
       return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
     }
     
-    const noteData = { content, authorId };
-    const newNote = await createNote(taskId, noteData, subtaskId);
-    res.status(201).json(newNote);
+    const commentData = { content, authorId };
+    const newComment = await createComment(taskId, commentData, subtaskId);
+    res.status(201).json(newComment);
   } catch (error) {
-    console.error('Backend error creating subtask note:', error);
+    console.error('Backend error creating subtask comment:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Add authorization helper function
-const verifyNoteAuthor = async (taskId, noteId, userId, subtaskId = null) => {
+const verifyCommentAuthor = async (taskId, commentId, userId, subtaskId = null) => {
   try {
-    let noteRef;
+    let commentRef;
     if (subtaskId) {
-      noteRef = db.collection('Tasks').doc(taskId).collection('Subtasks').doc(subtaskId).collection('Notes').doc(noteId);
+      commentRef = db.collection('Tasks').doc(taskId).collection('Subtasks').doc(subtaskId).collection('Comments').doc(commentId);
     } else {
-      noteRef = db.collection('Tasks').doc(taskId).collection('Notes').doc(noteId);
+      commentRef = db.collection('Tasks').doc(taskId).collection('Comments').doc(commentId);
     }
     
-    const noteDoc = await noteRef.get();
-    if (!noteDoc.exists) {
-      return { authorized: false, error: 'Note not found' };
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
+      return { authorized: false, error: 'Comment not found' };
     }
     
-    const noteData = noteDoc.data();
+    const commentData = commentDoc.data();
     
     // Extract author ID from the reference
     let authorId = null;
-    if (noteData.author?.path) {
-      authorId = noteData.author.path.split('/')[1]; // Extract ID from "Users/userId" path
-    } else if (noteData.author?.id) {
-      authorId = noteData.author.id;
+    if (commentData.author?.path) {
+      authorId = commentData.author.path.split('/')[1]; // Extract ID from "Users/userId" path
+    } else if (commentData.author?.id) {
+      authorId = commentData.author.id;
     }
     
-    console.log('Note author ID:', authorId, 'Requesting user ID:', userId);
+    console.log('Comment author ID:', authorId, 'Requesting user ID:', userId);
     
     if (authorId !== userId) {
-      return { authorized: false, error: 'Unauthorized: You can only edit your own notes' };
+      return { authorized: false, error: 'Unauthorized: You can only edit your own comments' };
     }
     
     return { authorized: true };
@@ -256,14 +256,14 @@ const verifyNoteAuthor = async (taskId, noteId, userId, subtaskId = null) => {
   }
 };
 
-// Update PUT route for regular task notes
-router.put('/:taskId/notes/:noteId', async (req, res) => {
+// Update PUT route for regular task comments
+router.put('/:taskId/comments/:commentId', async (req, res) => {
   try {
-    const { taskId, noteId } = req.params;
+    const { taskId, commentId } = req.params;
     const { content, userId } = req.body;
     
-    if (!taskId || !noteId) {
-      return res.status(400).json({ error: 'Missing taskId or noteId' });
+    if (!taskId || !commentId) {
+      return res.status(400).json({ error: 'Missing taskId or commentId' });
     }
     
     if (!content || !userId) {
@@ -271,7 +271,7 @@ router.put('/:taskId/notes/:noteId', async (req, res) => {
     }
     
     // Check authorization
-    const authCheck = await verifyNoteAuthor(taskId, noteId, userId);
+    const authCheck = await verifyCommentAuthor(taskId, commentId, userId);
     if (!authCheck.authorized) {
       return res.status(403).json({ error: authCheck.error });
     }
@@ -281,27 +281,27 @@ router.put('/:taskId/notes/:noteId', async (req, res) => {
     }
     
     const updateData = { content };
-    const updatedNote = await updateNote(taskId, noteId, updateData);
+    const updatedComment = await updateComment(taskId, commentId, updateData);
     
-    if (!updatedNote) {
-      return res.status(404).json({ error: 'Note not found' });
+    if (!updatedComment) {
+      return res.status(404).json({ error: 'Comment not found' });
     }
     
-    res.json(updatedNote);
+    res.json(updatedComment);
   } catch (error) {
-    console.error('Backend error updating note:', error);
+    console.error('Backend error updating comment:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update PUT route for subtask notes
-router.put('/:taskId/subtasks/:subtaskId/notes/:noteId', async (req, res) => {
+// Update PUT route for subtask comments
+router.put('/:taskId/subtasks/:subtaskId/comments/:commentId', async (req, res) => {
   try {
-    const { taskId, subtaskId, noteId } = req.params;
+    const { taskId, subtaskId, commentId } = req.params;
     const { content, userId } = req.body;
     
-    if (!taskId || !subtaskId || !noteId) {
-      return res.status(400).json({ error: 'Missing taskId, subtaskId, or noteId' });
+    if (!taskId || !subtaskId || !commentId) {
+      return res.status(400).json({ error: 'Missing taskId, subtaskId, or commentId' });
     }
     
     if (!content || !userId) {
@@ -309,7 +309,7 @@ router.put('/:taskId/subtasks/:subtaskId/notes/:noteId', async (req, res) => {
     }
     
     // Check authorization
-    const authCheck = await verifyNoteAuthor(taskId, noteId, userId, subtaskId);
+    const authCheck = await verifyCommentAuthor(taskId, commentId, userId, subtaskId);
     if (!authCheck.authorized) {
       return res.status(403).json({ error: authCheck.error });
     }
@@ -319,73 +319,73 @@ router.put('/:taskId/subtasks/:subtaskId/notes/:noteId', async (req, res) => {
     }
     
     const updateData = { content };
-    const updatedNote = await updateNote(taskId, noteId, updateData, subtaskId);
+    const updatedComment = await updateComment(taskId, commentId, updateData, subtaskId);
     
-    if (!updatedNote) {
-      return res.status(404).json({ error: 'Note not found' });
+    if (!updatedComment) {
+      return res.status(404).json({ error: 'Comment not found' });
     }
     
-    res.json(updatedNote);
+    res.json(updatedComment);
   } catch (error) {
-    console.error('Backend error updating subtask note:', error);
+    console.error('Backend error updating subtask comment:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update DELETE route for regular task notes
-router.delete('/:taskId/notes/:noteId', async (req, res) => {
+// Update DELETE route for regular task comments
+router.delete('/:taskId/comments/:commentId', async (req, res) => {
   try {
-    const { taskId, noteId } = req.params;
+    const { taskId, commentId } = req.params;
     const { userId } = req.body;
     
-    if (!taskId || !noteId || !userId) {
-      return res.status(400).json({ error: 'Missing taskId, noteId, or userId' });
+    if (!taskId || !commentId || !userId) {
+      return res.status(400).json({ error: 'Missing taskId, commentId, or userId' });
     }
     
     // Check authorization
-    const authCheck = await verifyNoteAuthor(taskId, noteId, userId);
+    const authCheck = await verifyCommentAuthor(taskId, commentId, userId);
     if (!authCheck.authorized) {
       return res.status(403).json({ error: authCheck.error });
     }
     
-    const deleted = await deleteNote(taskId, noteId);
+    const deleted = await deleteComment(taskId, commentId);
     
     if (!deleted) {
-      return res.status(404).json({ error: 'Note not found' });
+      return res.status(404).json({ error: 'Comment not found' });
     }
     
-    res.json({ message: 'Note deleted successfully' });
+    res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
-    console.error('Backend error deleting note:', error);
+    console.error('Backend error deleting comment:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update DELETE route for subtask notes
-router.delete('/:taskId/subtasks/:subtaskId/notes/:noteId', async (req, res) => {
+// Update DELETE route for subtask comments
+router.delete('/:taskId/subtasks/:subtaskId/comments/:commentId', async (req, res) => {
   try {
-    const { taskId, subtaskId, noteId } = req.params;
+    const { taskId, subtaskId, commentId } = req.params;
     const { userId } = req.body;
     
-    if (!taskId || !subtaskId || !noteId || !userId) {
-      return res.status(400).json({ error: 'Missing taskId, subtaskId, noteId, or userId' });
+    if (!taskId || !subtaskId || !commentId || !userId) {
+      return res.status(400).json({ error: 'Missing taskId, subtaskId, commentId, or userId' });
     }
     
     // Check authorization
-    const authCheck = await verifyNoteAuthor(taskId, noteId, userId, subtaskId);
+    const authCheck = await verifyCommentAuthor(taskId, commentId, userId, subtaskId);
     if (!authCheck.authorized) {
       return res.status(403).json({ error: authCheck.error });
     }
     
-    const deleted = await deleteNote(taskId, noteId, subtaskId);
+    const deleted = await deleteComment(taskId, commentId, subtaskId);
     
     if (!deleted) {
-      return res.status(404).json({ error: 'Note not found' });
+      return res.status(404).json({ error: 'Comment not found' });
     }
     
-    res.json({ message: 'Note deleted successfully' });
+    res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
-    console.error('Backend error deleting subtask note:', error);
+    console.error('Backend error deleting subtask comment:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -97,13 +97,13 @@
       @taskCreated="handleSubtaskCreated"
     />
     
-    <!-- === Notes Section === -->
-    <NotesSection 
+    <!-- === Comments Section === -->
+    <CommentsSection 
       v-if="task && currentUser"
       :taskId="taskId"
       :subtaskId="isSubtaskView ? subtaskId : null"
       :currentUserId="currentUser.uid"
-      @notesUpdated="handleNotesUpdated"
+      @commentsUpdated="handleCommentsUpdated"
     />
 
   </div>
@@ -118,7 +118,7 @@ import { db } from '../../firebase';
 import EditTaskModal from '../components/EditTaskModal.vue';
 import TaskList from '../components/TaskList.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
-import NotesSection from '../components/NotesSection.vue';
+import CommentsSection from '../components/CommentsSection.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -320,10 +320,10 @@ onMounted(() => {
   fetchSubtasks();
 });
 
-// === Handle Notes Updated ===
-const handleNotesUpdated = () => {
-  // Optional: refresh task data or perform other actions when notes are updated
-  console.log('Notes updated');
+// === Handle Comments Updated ===
+const handleCommentsUpdated = () => {
+  // Optional: refresh task data or perform other actions when comments are updated
+  console.log('Comments updated');
 };
 
 onMounted(() => {

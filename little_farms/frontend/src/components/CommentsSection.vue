@@ -1,26 +1,26 @@
 <template>
   <div class="mt-8 border-t pt-6">
-    <h3 class="text-xl font-semibold mb-4">Notes</h3>
+    <h3 class="text-xl font-semibold mb-4">Comments</h3>
     
-    <!-- Add Note Form -->
+    <!-- Add Comment Form -->
     <div class="mb-6 p-4 bg-gray-50 rounded-lg">
       <div class="mb-2">
         <textarea
-          v-model="newNoteContent"
-          placeholder="Add a note..."
+          v-model="newCommentContent"
+          placeholder="Add a comment..."
           class="w-full p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
           rows="3"
           :maxlength="2000"
-          @keydown.ctrl.enter="handleAddNote"
+          @keydown.ctrl.enter="handleAddComment"
         ></textarea>
       </div>
       <div class="flex justify-between items-center">
         <span class="text-sm text-gray-500">
-          {{ newNoteContent.length }}/2000 characters
+          {{ newCommentContent.length }}/2000 characters
         </span>
         <button
-          @click="handleAddNote"
-          :disabled="!newNoteContent.trim() || isSubmitting"
+          @click="handleAddComment"
+          :disabled="!newCommentContent.trim() || isSubmitting"
           class="px-4 py-2 bg-blue-600 text-black rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {{ isSubmitting ? 'Posting...' : 'Post' }}
@@ -28,46 +28,46 @@
       </div>
     </div>
 
-    <!-- Notes List -->
-    <div v-if="notes.length === 0" class="text-gray-500 text-center py-4">
-      No notes yet. Be the first to add one!
+    <!-- Comments List -->
+    <div v-if="comments.length === 0" class="text-gray-500 text-center py-4">
+      No comments yet. Be the first to add one!
     </div>
     
     <div v-else class="space-y-4">
       <div
-        v-for="note in notes"
-        :key="note.id"
+        v-for="comment in comments"
+        :key="comment.id"
         class="p-4 border rounded-lg bg-white"
       >
         <div class="flex justify-between items-start mb-2">
           <div class="flex items-center space-x-2">
-            <span class="font-medium text-gray-900">{{ note.authorName || 'Unknown User' }}</span>
+            <span class="font-medium text-gray-900">{{ comment.authorName || 'Unknown User' }}</span>
             <span class="text-sm text-gray-500">•</span>
-            <span class="text-sm text-gray-500">{{ formatDate(note.createdDate) }}</span>
-            <span v-if="note.modifiedDate && note.modifiedDate !== note.createdDate" class="text-sm text-gray-400">
-              (edited {{ formatDate(note.modifiedDate) }})
+            <span class="text-sm text-gray-500">{{ formatDate(comment.createdDate) }}</span>
+            <span v-if="comment.modifiedDate && comment.modifiedDate !== comment.createdDate" class="text-sm text-gray-400">
+              (edited {{ formatDate(comment.modifiedDate) }})
             </span>
           </div>
-          <div v-if="canEditNote(note)" class="flex space-x-2">
+          <div v-if="canEditComment(comment)" class="flex space-x-2">
             <button
-              @click="startEditNote(note)"
+              @click="startEditComment(comment)"
               class="text-sm text-blue-600 hover:text-blue-800"
             >
               Edit
             </button>
             <button
-              @click="handleDeleteNote(note.id)"
+              @click="handleDeleteComment(comment.id)"
               class="text-sm text-red-600 hover:text-red-800"
-              :disabled="isDeleting === note.id"
+              :disabled="isDeleting === comment.id"
             >
-              {{ isDeleting === note.id ? 'Deleting...' : 'Delete' }}
+              {{ isDeleting === comment.id ? 'Deleting...' : 'Delete' }}
             </button>
           </div>
         </div>
         
-        <!-- Note Content -->
-        <div v-if="editingNoteId !== note.id" class="whitespace-pre-wrap text-gray-800">
-          {{ note.content }}
+        <!-- Comment Content -->
+        <div v-if="editingCommentId !== comment.id" class="whitespace-pre-wrap text-gray-800">
+          {{ comment.content }}
         </div>
         
         <!-- Edit Form -->
@@ -90,7 +90,7 @@
                 Cancel
               </button>
               <button
-                @click="handleUpdateNote(note.id)"
+                @click="handleUpdateComment(comment.id)"
                 :disabled="!editContent.trim() || isUpdating"
                 class="px-3 py-1 text-sm bg-blue-600 text-black rounded-md hover:bg-blue-700 disabled:bg-gray-400"
               >
@@ -115,66 +115,66 @@ const props = defineProps({
   currentUserId: { type: String, required: true }
 });
 
-const emit = defineEmits(['notesUpdated']);
+const emit = defineEmits(['commentsUpdated']);
 
-const notes = ref([]);
-const newNoteContent = ref('');
-const editingNoteId = ref(null);
+const comments = ref([]);
+const newCommentContent = ref('');
+const editingCommentId = ref(null);
 const editContent = ref('');
 const isSubmitting = ref(false);
 const isUpdating = ref(false);
 const isDeleting = ref(null);
 
-// Check if current user can edit a note (only author can edit)
-const canEditNote = (note) => {
-  return note.authorId === props.currentUserId;
+// Check if current user can edit a comment (only author can edit)
+const canEditComment = (comment) => {
+  return comment.authorId === props.currentUserId;
 };
 
-// Fetch notes from backend
-const fetchNotes = async () => {
+// Fetch comments from backend
+const fetchComments = async () => {
   try {
     const endpoint = props.subtaskId
-      ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/notes`
-      : `http://localhost:3001/api/tasks/${props.taskId}/notes`;
+      ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/comments`
+      : `http://localhost:3001/api/tasks/${props.taskId}/comments`;
     
     const response = await fetch(endpoint);
     if (response.ok) {
-      const notesData = await response.json();
+      const commentsData = await response.json();
       
-      // Enrich notes with author names
-      const enrichedNotes = await Promise.all(
-        notesData.map(async (note) => {
+      // Enrich comments with author names
+      const enrichedComments = await Promise.all(
+        commentsData.map(async (comment) => {
           let authorName = 'Unknown User';
           let authorId = null;
           
-          if (note.author?.path) {
+          if (comment.author?.path) {
             try {
-              const authorSnap = await getDoc(doc(db, note.author.path));
+              const authorSnap = await getDoc(doc(db, comment.author.path));
               if (authorSnap.exists()) {
                 authorName = authorSnap.data().name || 'Unnamed User';
                 authorId = authorSnap.id;
               }
             } catch (err) {
-              console.error('Error loading note author:', err);
+              console.error('Error loading comment author:', err);
             }
           }
           
-          return { ...note, authorName, authorId };
+          return { ...comment, authorName, authorId };
         })
       );
       
-      notes.value = enrichedNotes;
+      comments.value = enrichedComments;
     } else {
-      console.error('Failed to fetch notes');
+      console.error('Failed to fetch comments');
     }
   } catch (error) {
-    console.error('Error fetching notes:', error);
+    console.error('Error fetching comments:', error);
   }
 };
 
-// Add a new note
-const handleAddNote = async () => {
-  if (!newNoteContent.value.trim()) return;
+// Add a new comment
+const handleAddComment = async () => {
+  if (!newCommentContent.value.trim()) return;
   
   const currentUser = getCurrentUser();
   if (!currentUser) {
@@ -185,8 +185,8 @@ const handleAddNote = async () => {
   isSubmitting.value = true;
   try {
     const endpoint = props.subtaskId
-      ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/notes`
-      : `http://localhost:3001/api/tasks/${props.taskId}/notes`;
+      ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/comments`
+      : `http://localhost:3001/api/tasks/${props.taskId}/comments`;
     
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -194,41 +194,41 @@ const handleAddNote = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        content: newNoteContent.value.trim(),
+        content: newCommentContent.value.trim(),
         authorId: currentUser.uid // Use session user ID
       })
     });
     
     if (response.ok) {
-      newNoteContent.value = '';
-      await fetchNotes();
-      emit('notesUpdated');
+      newCommentContent.value = '';
+      await fetchComments();
+      emit('commentsUpdated');
     } else {
       const error = await response.json();
-      alert('Failed to add note: ' + error.error);
+      alert('Failed to add comment: ' + error.error);
     }
   } catch (error) {
-    console.error('Error adding note:', error);
-    alert('Failed to add note');
+    console.error('Error adding comment:', error);
+    alert('Failed to add comment');
   } finally {
     isSubmitting.value = false;
   }
 };
 
-// Start editing a note
-const startEditNote = (note) => {
-  editingNoteId.value = note.id;
-  editContent.value = note.content;
+// Start editing a comment
+const startEditComment = (comment) => {
+  editingCommentId.value = comment.id;
+  editContent.value = comment.content;
 };
 
 // Cancel editing
 const cancelEdit = () => {
-  editingNoteId.value = null;
+  editingCommentId.value = null;
   editContent.value = '';
 };
 
-// Update a note
-const handleUpdateNote = async (noteId) => {
+// Update a comment
+const handleUpdateComment = async (commentId) => {
   if (!editContent.value.trim()) return;
   
   const currentUser = getCurrentUser();
@@ -240,8 +240,8 @@ const handleUpdateNote = async (noteId) => {
   isUpdating.value = true;
   try {
     const endpoint = props.subtaskId
-      ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/notes/${noteId}`
-      : `http://localhost:3001/api/tasks/${props.taskId}/notes/${noteId}`;
+      ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/comments/${commentId}`
+      : `http://localhost:3001/api/tasks/${props.taskId}/comments/${commentId}`;
     
     const response = await fetch(endpoint, {
       method: 'PUT',
@@ -256,23 +256,23 @@ const handleUpdateNote = async (noteId) => {
     
     if (response.ok) {
       cancelEdit();
-      await fetchNotes();
-      emit('notesUpdated');
+      await fetchComments();
+      emit('commentsUpdated');
     } else {
       const error = await response.json();
-      alert('Failed to update note: ' + error.error);
+      alert('Failed to update comment: ' + error.error);
     }
   } catch (error) {
-    console.error('Error updating note:', error);
-    alert('Failed to update note');
+    console.error('Error updating comment:', error);
+    alert('Failed to update comment');
   } finally {
     isUpdating.value = false;
   }
 };
 
-// Delete a note
-const handleDeleteNote = async (noteId) => {
-  if (!confirm('Are you sure you want to delete this note?')) return;
+// Delete a comment
+const handleDeleteComment = async (commentId) => {
+  if (!confirm('Are you sure you want to delete this comment?')) return;
   
   const currentUser = getCurrentUser();
   if (!currentUser) {
@@ -280,11 +280,11 @@ const handleDeleteNote = async (noteId) => {
     return;
   }
   
-  isDeleting.value = noteId;
+  isDeleting.value = commentId;
   try {
     const endpoint = props.subtaskId
-      ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/notes/${noteId}`
-      : `http://localhost:3001/api/tasks/${props.taskId}/notes/${noteId}`;
+      ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/comments/${commentId}`
+      : `http://localhost:3001/api/tasks/${props.taskId}/comments/${commentId}`;
     
     const response = await fetch(endpoint, {
       method: 'DELETE',
@@ -297,15 +297,15 @@ const handleDeleteNote = async (noteId) => {
     });
     
     if (response.ok) {
-      await fetchNotes();
-      emit('notesUpdated');
+      await fetchComments();
+      emit('commentsUpdated');
     } else {
       const error = await response.json();
-      alert('Failed to delete note: ' + error.error);
+      alert('Failed to delete comment: ' + error.error);
     }
   } catch (error) {
-    console.error('Error deleting note:', error);
-    alert('Failed to delete note');
+    console.error('Error deleting comment:', error);
+    alert('Failed to delete comment');
   } finally {
     isDeleting.value = null;
   }
@@ -333,11 +333,11 @@ const getCurrentUser = () => {
 };
 
 onMounted(() => {
-  fetchNotes();
+  fetchComments();
 });
 
-// Expose fetchNotes for parent component to refresh
+// Expose fetchComments for parent component to refresh
 defineExpose({
-  fetchNotes
+  fetchComments
 });
 </script>
