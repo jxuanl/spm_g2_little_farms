@@ -19,6 +19,7 @@ import generateReportRouter from './routes/reportGeneration.js'
 import { startDeadlineChecker } from './services/deadlineService.js';
 import { attachWebSocket, whenConnected } from './services/webSocketService.js';
 import notificationsRouter from './routes/notifications.js';
+import logTimeRouter from './routes/loggedTime.js';
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/api/timeline", timelineRouter);
 app.use('/api/report', generateReportRouter);
 app.use("/api/update", updateRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/logTime", logTimeRouter);
 
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
