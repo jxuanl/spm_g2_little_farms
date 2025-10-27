@@ -1,7 +1,5 @@
 <template>
   <div class="reporting-page">
-    <TaskSidebar :activeProject="activeProject" @projectChange="setActiveProject"
-      @createTask="() => setIsCreateModalOpen(true)" />
     <div class="layout">
       <!-- Left Sidebar -->
       <div class="sidebar">
@@ -189,7 +187,6 @@
 </template>
 
 <script>
-import TaskSidebar from '../components/TaskSidebar.vue';
 export default {
   name: 'ReportingPage',
   data() {

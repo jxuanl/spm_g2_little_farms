@@ -247,7 +247,7 @@
                       <td class="border p-3">
                         <span v-if="Array.isArray(task.assignedTo)">
                           <span v-for="(assignee, idx) in task.assignedTo" :key="idx">
-                            {{ assignee }}<span v-if="idx < task.assignedTo.length - 1">, </span>
+                            {{ assignee.name }}<span v-if="idx < task.assignedTo.length - 1">, </span>
                           </span>
                         </span>
                         <span v-else>
@@ -291,14 +291,14 @@
                     <tbody>
                       <tr v-for="task in reportData" :key="task.title" class="hover:bg-muted/50">
                         <td class="border p-3">{{ task.taskTitle }}</td>
-                        <td class="border p-3">{{ task.taskOwner || 'Unkown Owner' }}</td>
+                        <td class="border p-3">{{ task.taskOwner.name || 'Unkown Owner' }}</td>
                         <td v-if="filters.filterBy === 'user'" class="border p-3">{{ task.prjTitle || 'Unassigned' }}
                         </td>
                         <!-- <td v-else class="border p-3">{{ task.assignedTo || 'Unassigned' }}</td> -->
                         <td v-else class="border p-3">
                           <span v-if="Array.isArray(task.assignedTo)">
                             <span v-for="(assignee, idx) in task.assignedTo" :key="idx">
-                              {{ assignee }}<span v-if="idx < task.assignedTo.length - 1">, </span>
+                              {{ assignee.name }}<span v-if="idx < task.assignedTo.length - 1">, </span>
                             </span>
                           </span>
                           <span v-else>
@@ -356,7 +356,7 @@
                 </div>
               </div>
             </div>
-            
+
           </div>
         </div>
       </div>
@@ -424,8 +424,21 @@ const reportPeriod = computed(() => {
 // Utility functions
 const formatDate = (date) => {
   if (!date) return '-';
+  
+  // Handle Firestore timestamp objects
+  if (date._seconds !== undefined && date._nanoseconds !== undefined) {
+    // Convert Firestore timestamp to JavaScript Date
+    const d = new Date(date._seconds * 1000 + date._nanoseconds / 1000000);
+    return d.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+  
+  // Handle regular date strings or Date objects
   const d = new Date(date);
-  return d.toLocaleDateString('en-GB', {
+  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-GB', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -512,150 +525,97 @@ const filterTasks = (tasks) => {
   console.log(filteredTasks)
 
   // Process data for Task Compeletion
-  if (filters.value.reportType === 'task-completion') {
-    if (filters.value.filterBy === 'project' && filters.value.selectedProject) {
-      filteredTasks = filteredTasks.filter(task =>
-        task.projectId?._path?.segments?.[1] === filters.value.selectedProject
-      );
-    } else if (filters.value.filterBy === 'user' && filters.value.selectedUser) {
-      filteredTasks = filteredTasks.filter(task =>
-        task.assignedTo?.some(assignee =>
-          assignee?._path?.segments?.[1] === filters.value.selectedUser
-        )
-      );
-    }
-    filteredTasks = filteredTasks.filter(t => t.status === "done");
-  }
+  // if (filters.value.reportType === 'task-completion') {
+  //   if (filters.value.filterBy === 'project' && filters.value.selectedProject) {
+  //     filteredTasks = filteredTasks.filter(task =>
+  //       task.projectId?._path?.segments?.[1] === filters.value.selectedProject
+  //     );
+  //   } else if (filters.value.filterBy === 'user' && filters.value.selectedUser) {
+  //     filteredTasks = filteredTasks.filter(task =>
+  //       task.assignedTo?.some(assignee =>
+  //         assignee?._path?.segments?.[1] === filters.value.selectedUser
+  //       )
+  //     );
+  //   }
+  //   filteredTasks = filteredTasks.filter(t => t.status === "done");
+  // }
 
 
   // Process data for Team Summary
-  else if (filters.value.reportType === 'team-summary') {
-    filteredTasks = filteredTasks.filter(task =>
-      task.projectId?._path?.segments?.[1] === filters.value.selectedProject
-    );
-    console.log(filteredTasks);
-  }
+  // else if (filters.value.reportType === 'team-summary') {
+  //   filteredTasks = filteredTasks.filter(task =>
+  //     task.projectId?._path?.segments?.[1] === filters.value.selectedProject
+  //   );
+  //   console.log(filteredTasks);
+  // }
 
   return filteredTasks;
-};
-
-const processTaskSummaryData = async (task) => {
-  const data = {
-    taskTitle: task.title,
-    status: task.status,
-    completedDate: formatDate(task.modifiedDate._seconds * 1000)
-  };
-
-  // Get task owner
-  const taskOwnerId = task.taskCreatedBy._path.segments[1];
-  const taskOwnerDetails = await getUser(taskOwnerId);
-  data.taskOwner = taskOwnerDetails.user.name;
-
-  // Get project details
-  const projectId = task.projectId._path.segments[1];
-  const projectDetails = await getProject(projectId);
-  data.prjTitle = projectDetails.title;
-
-  // Get assignees
-  const assigneePromises = task.assignedTo.map(async (assignee) => {
-    const assigneeId = assignee._path.segments[1];
-    const assigneeDetails = await getUser(assigneeId);
-    return assigneeDetails.user.name;
-  });
-
-  data.assignedTo = await Promise.all(assigneePromises);
-
-  return data;
-};
-
-const processTaskCompletionData = async (task) => {
-  const data = {
-    taskTitle: task.title,
-    status: task.status,
-    deadline: formatDate(task.deadline._seconds * 1000)
-  };
-
-  // Get assignees
-  const assigneePromises = task.assignedTo.map(async (assignee) => {
-    const assigneeId = assignee._path.segments[1];
-    const assigneeDetails = await getUser(assigneeId);
-    return assigneeDetails.user.name;
-  });
-
-  data.assignedTo = await Promise.all(assigneePromises);
-
-  return data;
 };
 
 // Main functions
 const generateReport = async () => {
   loading.value = true;
   reportData.value = [];
-  if (filters.value.reportType === 'logged-time') {
-
-    try {
-      let url = '/api/logTime/details';
-
-      if (filters.value.selectedProject) {
-        const prjId = filters.value.selectedProject;
-        url = '/api/logTime/details/project/' + prjId;
-      } else if (filters.value.selectedDepartment) {
-        const deptID = filters.value.selectedDepartment;
-        url = '/api/logTime/details/department/' + deptID;
+  
+  try {
+    const { reportType, selectedProject, selectedUser, selectedDepartment } = filters.value;
+    
+    // Define report configurations
+    const reportConfigs = {
+      'team-summary': {
+        urlBuilder: () => selectedProject ? `/api/reportData/project/${selectedProject}` : null,
+        requiresFilter: true
+      },
+      'task-completion': {
+        urlBuilder: () => {
+          if (selectedProject) return `/api/reportData/project/${selectedProject}/filtered?status=done`;
+          if (selectedUser) return `/api/reportData/${selectedUser}/filtered?status=done`;
+          return '/api/reportData';
+        },
+        requiresFilter: true
+      },
+      'logged-time': {
+        urlBuilder: () => {
+          if (selectedProject) return `/api/logTime/details/project/${selectedProject}`;
+          if (selectedDepartment) return `/api/logTime/details/department/${selectedDepartment}`;
+          return '/api/logTime/details';
+        },
+        requiresFilter: true
       }
+    };
 
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch tasks');
-
-      const data = await response.json();
-      let tasks = data || [];
-      console.log(data)
-
-      tasks = filterTasks(tasks);
-      reportData.value = tasks;
-      console.log(reportData)
-      console.log(filters.value.selectedProject);
+    const config = reportConfigs[reportType];
+    if (!config) {
+      throw new Error(`Unsupported report type: ${reportType}`);
     }
-    catch (error) {
-      console.error('Error generating logged time  report:', error);
-      alert('Failed to generate report. Please try again.');
-    } finally {
-      loading.value = false;
+
+    const url = config.urlBuilder();
+    if (!url) {
+      throw new Error('Missing required filters for this report type');
     }
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch report data');
+
+    let data = await response.json();
+    data = data || [];
+
+    // Apply filtering if required
+    const tasks = config.requiresFilter ? filterTasks(data) : data;
+    
+    reportData.value = tasks;
+    
+    // Debug logging
+    console.log('Fetched data:', data);
+    console.log('Processed report data:', reportData.value);
+    console.log('Selected project:', selectedProject);
+
+  } catch (error) {
+    console.error('Error generating report:', error);
+    alert('Failed to generate report. Please try again.');
+  } finally {
+    loading.value = false;
   }
-  else {
-    try {
-      const response = await fetch('/api/tasks/allTasks');
-      if (!response.ok) throw new Error('Failed to fetch tasks');
-
-      const data = await response.json();
-      let tasks = data.data || [];
-
-      tasks = filterTasks(tasks);
-
-      if (filters.value.reportType === 'task-completion') {
-        const processedTasks = await Promise.all(
-          tasks.map(task => processTaskSummaryData(task))
-        );
-        reportData.value = processedTasks;
-        console.log(reportData)
-      }
-      else if (filters.value.reportType === 'team-summary') {
-        const processedTasks = await Promise.all(
-          tasks.map(task => processTaskCompletionData(task))
-        );
-        reportData.value = processedTasks;
-      }
-
-    } catch (error) {
-      console.error('Error generating report:', error);
-      alert('Failed to generate report. Please try again.');
-    } finally {
-      loading.value = false;
-    }
-  }
-
-
 };
 
 const handleIntervalChange = () => {
@@ -676,14 +636,14 @@ const handleIntervalChange = () => {
 // Export functions
 const mapReportData = (inputData) => ({
   "Task Name": inputData.taskTitle || '',
-  "Owner of Task": inputData.taskOwner || '',
+  "Owner of Task": inputData.taskOwner.name || '',
   "Project Name": inputData.prjTitle || '',
-  "Assignee List": Array.isArray(inputData.assignedTo)
-    ? inputData.assignedTo.join(', ')
-    : inputData.assignedTo,
+  "Assignee List": Array.isArray(inputData.assignedTo) 
+    ? inputData.assignedTo.map(person => person.name).join(', ')
+    : inputData.assignedTo?.name || 'Unassigned',
   "Status": inputData.status.toUpperCase(),
-  "Completion date": inputData.completedDate || '',
-  "Deadline": inputData.deadline || ''
+  "Completion date": formatDate(inputData.completedDate) || '',
+  "Deadline": formatDate(inputData.deadline) || ''
 });
 
 const formatDateDisplay = (timeFrame) => {
