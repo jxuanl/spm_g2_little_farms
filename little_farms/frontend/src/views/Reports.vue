@@ -119,7 +119,7 @@
             </div>
           </div>
 
-          <!-- Filter By (only for Task Completion Report) -->
+          <!-- Filter By (only for Team Summary Report) -->
           <div v-if="filters.reportType === 'team-summary'" class="mb-6">
             <label class="block text-sm font-medium mb-2">Filter By Project</label>
 
@@ -132,6 +132,40 @@
                 <option value="">Select Project</option>
                 <option v-for="project in projects" :key="project.id" :value="project.id">
                   {{ project.title || project.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Filter By (only for Logged Time Report) -->
+          <div v-if="filters.reportType === 'logged-time'" class="mb-6">
+            <label class="block text-sm font-medium mb-2">Filter By</label>
+            <select v-model="filters.filterBy" class="w-full px-3 py-2 border border-border rounded-md bg-background">
+              <option value="all">All Tasks</option>
+              <option value="project">Project</option>
+              <option value="departments">Department</option>
+            </select>
+
+
+            <!-- Project Selection -->
+            <div v-if="filters.filterBy === 'project'" class="mt-3">
+              <select v-model="filters.selectedProject"
+                class="w-full px-3 py-2 border border-border rounded-md bg-background">
+                <option value="">Select Project</option>
+                <option v-for="project in projects" :key="project.id" :value="project.id">
+                  {{ project.title || project.name }}
+                </option>
+              </select>
+            </div>
+
+
+            <!-- User Selection -->
+            <div v-if="filters.filterBy === 'departments'" class="mt-3">
+              <select v-model="filters.selectedDepartment"
+                class="w-full px-3 py-2 border border-border rounded-md bg-background">
+                <option value="">Select Department</option>
+                <option v-for="dept in departments" :key="dept" :value="dept">
+                  {{ dept }}
                 </option>
               </select>
             </div>
@@ -210,16 +244,16 @@
                     <tr v-for="task in reportData" :key="task.id" class="hover:bg-muted/50">
                       <td class="border p-3">{{ task.taskTitle }}</td>
                       <!-- <td class="border p-3">{{ task.assignedTo || 'Unassigned' }}</td> -->
-                       <td class="border p-3">
-                          <span v-if="Array.isArray(task.assignedTo)">
-                            <span v-for="(assignee, idx) in task.assignedTo" :key="idx">
-                              {{ assignee }}<span v-if="idx < task.assignedTo.length - 1">, </span>
-                            </span>
+                      <td class="border p-3">
+                        <span v-if="Array.isArray(task.assignedTo)">
+                          <span v-for="(assignee, idx) in task.assignedTo" :key="idx">
+                            {{ assignee }}<span v-if="idx < task.assignedTo.length - 1">, </span>
                           </span>
-                          <span v-else>
-                            {{ task.assignedTo || 'Unassigned' }}
-                          </span>
-                        </td>
+                        </span>
+                        <span v-else>
+                          {{ task.assignedTo || 'Unassigned' }}
+                        </span>
+                      </td>
                       <td class="border p-3">
                         <span :class="getStatusBadgeClass(task.status)" class="px-2 py-1 rounded text-xs">
                           {{ task.status }}
@@ -287,21 +321,46 @@
 
 
             <!-- Logged Time Report (Placeholder) -->
-            <div v-if="filters.reportType === 'logged-time'" class="bg-card border border-border rounded-lg p-6">
+            <!-- <div v-if="filters.reportType === 'logged-time'" class="bg-card border border-border rounded-lg p-6">
               <h4 class="text-lg font-semibold mb-4">Logged Time Report</h4>
               <p class="text-muted-foreground">Time tracking feature coming soon...</p>
+            </div> -->
+
+            <div v-if="filters.reportType === 'logged-time'" class="space-y-4">
+
+
+              <!-- Task Details -->
+              <div class="bg-card border border-border rounded-lg p-6">
+                <h4 class="text-lg font-semibold mb-4">Logged Time</h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full border-collapse">
+                    <thead>
+                      <tr class="bg-muted">
+                        <th class="border p-3 text-left">Project</th>
+                        <th class="border p-3 text-left">Task</th>
+                        <th class="border p-3 text-left">Staff Name</th>
+                        <th class="border p-3 text-left">Department</th>
+                        <th class="border p-3 text-left">No. of Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="task in reportData" :key="task.loggedTimeId" class="hover:bg-muted/50">
+                        <td class="border p-3">{{ task.prjName }}</td>
+                        <td class="border p-3">{{ task.taskName || 'Unkown Owner' }}</td>
+                        <td class="border p-3">{{ task.userName || 'Unassigned' }}</td>
+                        <td class="border p-3">{{ task.userDept || 'Unassigned' }}</td>
+                        <td class="border p-3">{{ task.amtOfTime || 'Unassigned' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
+            
           </div>
         </div>
       </div>
     </div>
-
-
-    <!-- <CreateTaskModal
-      :isOpen="isCreateModalOpen"
-      @close="() => setIsCreateModalOpen(false)"
-      @createTask="handleCreateTask"
-    /> -->
   </div>
 </template>
 
@@ -319,6 +378,7 @@ const loading = ref(false);
 const reportData = ref([]);
 const projects = ref([]);
 const users = ref([]);
+const departments = ref([]);
 const error = ref('');
 
 const filters = ref({
@@ -330,7 +390,8 @@ const filters = ref({
   endDate: '',
   filterBy: 'all',
   selectedProject: '',
-  selectedUser: ''
+  selectedUser: '',
+  selectedDepartment: ''
 });
 
 // Auth helper
@@ -410,13 +471,15 @@ const getProject = async (pid) => {
 
 const loadProjectsAndUsers = async () => {
   try {
-    const [projectsRes, usersRes] = await Promise.all([
+    const [projectsRes, usersRes, departmentsRes] = await Promise.all([
       fetchWithAuth('/api/allProjects'),
-      fetchWithAuth('/api/users/users')
+      fetchWithAuth('/api/users/users'),
+      fetchWithAuth('/api/users/departments'),
     ]);
 
     projects.value = projectsRes.data || projectsRes.projects || [];
     users.value = usersRes.data || usersRes.users || [];
+    departments.value = departmentsRes.departments || departmentsRes.data || [];
   } catch (error) {
     console.error('Error loading projects/users:', error);
   }
@@ -440,10 +503,13 @@ const getDateRange = () => {
 const filterTasks = (tasks) => {
   const { startDate, endDate } = getDateRange();
 
+  console.log(startDate);
+  console.log(endDate);
   let filteredTasks = tasks.filter(task => {
     const taskDate = new Date(task.createdDate._seconds * 1000);
     return taskDate >= startDate && taskDate <= endDate;
   });
+  console.log(filteredTasks)
 
   // Process data for Task Compeletion
   if (filters.value.reportType === 'task-completion') {
@@ -525,36 +591,71 @@ const processTaskCompletionData = async (task) => {
 const generateReport = async () => {
   loading.value = true;
   reportData.value = [];
+  if (filters.value.reportType === 'logged-time') {
 
-  try {
-    const response = await fetch('/api/tasks/allTasks');
-    if (!response.ok) throw new Error('Failed to fetch tasks');
+    try {
+      let url = '/api/logTime/details';
 
-    const data = await response.json();
-    let tasks = data.data || [];
+      if (filters.value.selectedProject) {
+        const prjId = filters.value.selectedProject;
+        url = '/api/logTime/details/project/' + prjId;
+      } else if (filters.value.selectedDepartment) {
+        const deptID = filters.value.selectedDepartment;
+        url = '/api/logTime/details/department/' + deptID;
+      }
 
-    tasks = filterTasks(tasks);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch tasks');
 
-    if (filters.value.reportType === 'task-completion') {
-      const processedTasks = await Promise.all(
-        tasks.map(task => processTaskSummaryData(task))
-      );
-      reportData.value = processedTasks;
+      const data = await response.json();
+      let tasks = data || [];
+      console.log(data)
+
+      tasks = filterTasks(tasks);
+      reportData.value = tasks;
       console.log(reportData)
+      console.log(filters.value.selectedProject);
     }
-    else if(filters.value.reportType === 'team-summary'){
-      const processedTasks = await Promise.all(
-        tasks.map(task => processTaskCompletionData(task))
-      );
-      reportData.value = processedTasks;
+    catch (error) {
+      console.error('Error generating logged time  report:', error);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      loading.value = false;
     }
-
-  } catch (error) {
-    console.error('Error generating report:', error);
-    alert('Failed to generate report. Please try again.');
-  } finally {
-    loading.value = false;
   }
+  else {
+    try {
+      const response = await fetch('/api/tasks/allTasks');
+      if (!response.ok) throw new Error('Failed to fetch tasks');
+
+      const data = await response.json();
+      let tasks = data.data || [];
+
+      tasks = filterTasks(tasks);
+
+      if (filters.value.reportType === 'task-completion') {
+        const processedTasks = await Promise.all(
+          tasks.map(task => processTaskSummaryData(task))
+        );
+        reportData.value = processedTasks;
+        console.log(reportData)
+      }
+      else if (filters.value.reportType === 'team-summary') {
+        const processedTasks = await Promise.all(
+          tasks.map(task => processTaskCompletionData(task))
+        );
+        reportData.value = processedTasks;
+      }
+
+    } catch (error) {
+      console.error('Error generating report:', error);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      loading.value = false;
+    }
+  }
+
+
 };
 
 const handleIntervalChange = () => {
@@ -575,14 +676,14 @@ const handleIntervalChange = () => {
 // Export functions
 const mapReportData = (inputData) => ({
   "Task Name": inputData.taskTitle || '',
-  "Owner of Task": inputData.taskOwner|| '',
-  "Project Name": inputData.prjTitle|| '',
+  "Owner of Task": inputData.taskOwner || '',
+  "Project Name": inputData.prjTitle || '',
   "Assignee List": Array.isArray(inputData.assignedTo)
     ? inputData.assignedTo.join(', ')
     : inputData.assignedTo,
   "Status": inputData.status.toUpperCase(),
-  "Completion date": inputData.completedDate|| '',
-  "Deadline": inputData.deadline|| ''
+  "Completion date": inputData.completedDate || '',
+  "Deadline": inputData.deadline || ''
 });
 
 const formatDateDisplay = (timeFrame) => {

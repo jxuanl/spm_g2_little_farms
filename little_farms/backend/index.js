@@ -15,7 +15,7 @@ import projectsRouter from './routes/projects.js'
 import updateRouter from './routes/update.js'
 import allProjectsRouter from './routes/allProjects.js'
 import timelineRouter from "./routes/timeline.js";
-import generateReportRouter from './routes/reportGeneration.js'
+import generateReportRouter from './routes/reportExporting.js'
 import { startDeadlineChecker } from './services/deadlineService.js';
 import { attachWebSocket, whenConnected } from './services/webSocketService.js';
 import notificationsRouter from './routes/notifications.js';
