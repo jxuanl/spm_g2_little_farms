@@ -342,6 +342,18 @@ export async function getCommentsForTask(taskId, subtaskId = null) {
         serializedData.author = { path: data.author.path };
       }
       
+      // Serialize mentioned users references
+      if (data.mentionedUsers && Array.isArray(data.mentionedUsers)) {
+        serializedData.mentionedUsers = data.mentionedUsers.map(ref => {
+          if (ref && ref._path && ref._path.segments) {
+            return { path: ref._path.segments.join('/') };
+          } else if (ref && ref.path) {
+            return { path: ref.path };
+          }
+          return ref;
+        });
+      }
+      
       return {
         id: doc.id,
         ...serializedData,
@@ -373,10 +385,24 @@ export async function createComment(taskId, commentData, subtaskId = null) {
       }
     }
     
+    // Convert mentioned user IDs to Firestore user references
+    const mentionedUsersRefs = [];
+    if (commentData.mentionedUsers && Array.isArray(commentData.mentionedUsers)) {
+      for (const userId of commentData.mentionedUsers) {
+        if (userId) {
+          const userDoc = await db.collection('Users').doc(userId).get();
+          if (userDoc.exists) {
+            mentionedUsersRefs.push(db.collection('Users').doc(userId));
+          }
+        }
+      }
+    }
+    
     const now = new Date();
     const newComment = {
       content: commentData.content.trim(),
       author: authorRef,
+      mentionedUsers: mentionedUsersRefs,
       createdDate: now,
       modifiedDate: now
     };
@@ -404,6 +430,7 @@ export async function createComment(taskId, commentData, subtaskId = null) {
       id: docRef.id,
       ...newComment,
       author: { path: authorRef.path },
+      mentionedUsers: mentionedUsersRefs.map(ref => ({ path: ref.path })),
       createdDate: now,
       modifiedDate: now
     };

@@ -4,6 +4,24 @@
     
     <!-- Add Comment Form -->
     <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+      <!-- Mentioned Users Display -->
+      <div v-if="mentionedUsers.length > 0" class="mb-3 flex flex-wrap gap-2">
+        <span class="text-sm font-medium text-gray-700">Mentioning:</span>
+        <div
+          v-for="userId in mentionedUsers"
+          :key="userId"
+          class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm"
+        >
+          <span>{{ getUserName(userId) }}</span>
+          <button
+            @click="removeMention(userId)"
+            class="hover:bg-blue-200 rounded-full p-0.5"
+          >
+            <X class="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+      
       <div class="mb-2">
         <textarea
           v-model="newCommentContent"
@@ -15,9 +33,47 @@
         ></textarea>
       </div>
       <div class="flex justify-between items-center">
-        <span class="text-sm text-gray-500">
-          {{ newCommentContent.length }}/2000 characters
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-500">
+            {{ newCommentContent.length }}/2000 characters
+          </span>
+          <!-- Mention Users Dropdown -->
+          <div class="relative">
+            <button
+              @click="toggleMentionDropdown"
+              class="px-3 py-1 text-sm border rounded-md hover:bg-gray-100 flex items-center gap-1"
+              type="button"
+            >
+              <span>@</span>
+              <span>Mention</span>
+              <ChevronDown class="w-4 h-4" />
+            </button>
+            
+            <div
+              v-if="showMentionDropdown"
+              class="absolute left-0 mt-1 w-64 bg-white border rounded-md shadow-lg z-10 max-h-60 overflow-y-auto"
+            >
+              <div
+                v-for="user in availableUsers"
+                :key="user.uid"
+                @click="addMention(user.uid)"
+                class="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
+              >
+                <div>
+                  <div class="font-medium text-sm">{{ user.name }}</div>
+                  <div class="text-xs text-gray-500">{{ user.email }}</div>
+                </div>
+                <Check
+                  v-if="mentionedUsers.includes(user.uid)"
+                  class="w-4 h-4 text-blue-600"
+                />
+              </div>
+              <div v-if="availableUsers.length === 0" class="px-3 py-2 text-sm text-gray-500">
+                No users available
+              </div>
+            </div>
+          </div>
+        </div>
         <button
           @click="handleAddComment"
           :disabled="!newCommentContent.trim() || isSubmitting"
@@ -40,13 +96,26 @@
         class="p-4 border rounded-lg bg-white"
       >
         <div class="flex justify-between items-start mb-2">
-          <div class="flex items-center space-x-2">
-            <span class="font-medium text-gray-900">{{ comment.authorName || 'Unknown User' }}</span>
-            <span class="text-sm text-gray-500">•</span>
-            <span class="text-sm text-gray-500">{{ formatDate(comment.createdDate) }}</span>
-            <span v-if="comment.modifiedDate && comment.modifiedDate !== comment.createdDate" class="text-sm text-gray-400">
-              (edited {{ formatDate(comment.modifiedDate) }})
-            </span>
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center space-x-2">
+              <span class="font-medium text-gray-900">{{ comment.authorName || 'Unknown User' }}</span>
+              <span class="text-sm text-gray-500">•</span>
+              <span class="text-sm text-gray-500">{{ formatDate(comment.createdDate) }}</span>
+              <span v-if="comment.modifiedDate && comment.modifiedDate !== comment.createdDate" class="text-sm text-gray-400">
+                (edited {{ formatDate(comment.modifiedDate) }})
+              </span>
+            </div>
+            <!-- Display mentioned users -->
+            <div v-if="comment.mentionedUserNames && comment.mentionedUserNames.length > 0" class="flex flex-wrap gap-1">
+              <span class="text-xs text-gray-600">Mentioned:</span>
+              <span
+                v-for="(userName, index) in comment.mentionedUserNames"
+                :key="index"
+                class="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded"
+              >
+                @{{ userName }}
+              </span>
+            </div>
           </div>
           <div v-if="canEditComment(comment)" class="flex space-x-2">
             <button
@@ -105,9 +174,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { X, ChevronDown, Check } from 'lucide-vue-next';
 
 const props = defineProps({
   taskId: { type: String, required: true },
@@ -124,6 +194,9 @@ const editContent = ref('');
 const isSubmitting = ref(false);
 const isUpdating = ref(false);
 const isDeleting = ref(null);
+const mentionedUsers = ref([]);
+const showMentionDropdown = ref(false);
+const availableUsers = ref([]);
 
 // Check if current user can edit a comment (only author can edit)
 const canEditComment = (comment) => {
@@ -141,7 +214,7 @@ const fetchComments = async () => {
     if (response.ok) {
       const commentsData = await response.json();
       
-      // Enrich comments with author names
+      // Enrich comments with author names and mentioned user names
       const enrichedComments = await Promise.all(
         commentsData.map(async (comment) => {
           let authorName = 'Unknown User';
@@ -159,7 +232,28 @@ const fetchComments = async () => {
             }
           }
           
-          return { ...comment, authorName, authorId };
+          // Fetch mentioned user names
+          let mentionedUserNames = [];
+          if (comment.mentionedUsers && Array.isArray(comment.mentionedUsers)) {
+            const names = await Promise.all(
+              comment.mentionedUsers.map(async (userRef) => {
+                if (userRef?.path) {
+                  try {
+                    const userSnap = await getDoc(doc(db, userRef.path));
+                    if (userSnap.exists()) {
+                      return userSnap.data().name || 'Unnamed User';
+                    }
+                  } catch (err) {
+                    console.error('Error loading mentioned user:', err);
+                  }
+                }
+                return null;
+              })
+            );
+            mentionedUserNames = names.filter(name => name !== null);
+          }
+          
+          return { ...comment, authorName, authorId, mentionedUserNames };
         })
       );
       
@@ -170,6 +264,44 @@ const fetchComments = async () => {
   } catch (error) {
     console.error('Error fetching comments:', error);
   }
+};
+
+// Fetch available users for mentions
+const fetchUsers = async () => {
+  try {
+    const response = await fetch('http://localhost:3001/api/users/users');
+    if (response.ok) {
+      const data = await response.json();
+      availableUsers.value = data.data || data.users || [];
+    }
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    availableUsers.value = [];
+  }
+};
+
+// Toggle mention dropdown
+const toggleMentionDropdown = () => {
+  showMentionDropdown.value = !showMentionDropdown.value;
+};
+
+// Add a user mention
+const addMention = (userId) => {
+  if (!mentionedUsers.value.includes(userId)) {
+    mentionedUsers.value.push(userId);
+  }
+  showMentionDropdown.value = false;
+};
+
+// Remove a user mention
+const removeMention = (userId) => {
+  mentionedUsers.value = mentionedUsers.value.filter(id => id !== userId);
+};
+
+// Get user name by ID
+const getUserName = (userId) => {
+  const user = availableUsers.value.find(u => u.uid === userId);
+  return user ? user.name : 'Unknown User';
 };
 
 // Add a new comment
@@ -195,12 +327,14 @@ const handleAddComment = async () => {
       },
       body: JSON.stringify({
         content: newCommentContent.value.trim(),
-        authorId: currentUser.uid // Use session user ID
+        authorId: currentUser.uid,
+        mentionedUsers: mentionedUsers.value
       })
     });
     
     if (response.ok) {
       newCommentContent.value = '';
+      mentionedUsers.value = [];
       await fetchComments();
       emit('commentsUpdated');
     } else {
@@ -334,7 +468,27 @@ const getCurrentUser = () => {
 
 onMounted(() => {
   fetchComments();
+  fetchUsers();
 });
+
+// Refetch comments when parent switches between task and subtask
+watch(
+  () => [props.taskId, props.subtaskId],
+  async (newVals, oldVals) => {
+    // reset UI/editing state to avoid showing stale data
+    editingCommentId.value = null;
+    editContent.value = '';
+    newCommentContent.value = '';
+    mentionedUsers.value = [];
+    showMentionDropdown.value = false;
+    isSubmitting.value = false;
+    isUpdating.value = false;
+    isDeleting.value = null;
+
+    // fetch comments for the newly selected task/subtask
+    await fetchComments();
+  }
+);
 
 // Expose fetchComments for parent component to refresh
 defineExpose({

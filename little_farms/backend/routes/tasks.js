@@ -1,4 +1,5 @@
 import express from 'express'
+import { db } from '../adminFirebase.js'
 import { getTasksForUser, createTask, getSubtasksForTask, getSubtaskById, updateSubtask, getCommentsForTask, createComment, updateComment, deleteComment } from '../services/taskService.js'
 
 const router = express.Router()
@@ -168,7 +169,7 @@ router.get('/:taskId/subtasks/:subtaskId/comments', async (req, res) => {
 router.post('/:taskId/comments', async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { content, authorId } = req.body;
+    const { content, authorId, mentionedUsers } = req.body;
     
     if (!taskId) {
       return res.status(400).json({ error: 'Missing taskId' });
@@ -182,7 +183,7 @@ router.post('/:taskId/comments', async (req, res) => {
       return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
     }
     
-    const commentData = { content, authorId };
+    const commentData = { content, authorId, mentionedUsers: mentionedUsers || [] };
     const newComment = await createComment(taskId, commentData);
     res.status(201).json(newComment);
   } catch (error) {
@@ -195,7 +196,7 @@ router.post('/:taskId/comments', async (req, res) => {
 router.post('/:taskId/subtasks/:subtaskId/comments', async (req, res) => {
   try {
     const { taskId, subtaskId } = req.params;
-    const { content, authorId } = req.body;
+    const { content, authorId, mentionedUsers } = req.body;
     
     if (!taskId || !subtaskId) {
       return res.status(400).json({ error: 'Missing taskId or subtaskId' });
@@ -209,7 +210,7 @@ router.post('/:taskId/subtasks/:subtaskId/comments', async (req, res) => {
       return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
     }
     
-    const commentData = { content, authorId };
+    const commentData = { content, authorId, mentionedUsers: mentionedUsers || [] };
     const newComment = await createComment(taskId, commentData, subtaskId);
     res.status(201).json(newComment);
   } catch (error) {
