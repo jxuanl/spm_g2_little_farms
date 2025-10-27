@@ -643,7 +643,10 @@ const mapReportData = (inputData) => ({
     : inputData.assignedTo?.name || 'Unassigned',
   "Status": inputData.status.toUpperCase(),
   "Completion date": formatDate(inputData.completedDate) || '',
-  "Deadline": formatDate(inputData.deadline) || ''
+  "Deadline": formatDate(inputData.deadline) || '',
+  "Staff Name": inputData.userName || '',
+  "Department": inputData.userDept || '',
+  "No. of Hours": inputData.amtOfTime || '',
 });
 
 const formatDateDisplay = (timeFrame) => {
@@ -708,6 +711,8 @@ const exportPDF = async () => {
     } else if (filters.value.filterBy === "user") {
       const user = await getUser(filters.value.selectedUser);
       reportTitle = user.user.name;
+    } else if(filters.value.filterBy === "department"){
+      reportTitle = filters.value.selectedDepartment
     }
 
     const mappedReports = reportData.value.map(mapReportData);
