@@ -26,31 +26,40 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/createProject', async (req, res) => {
-    try {
+  try {
     const { title, desc, userId } = req.body;
-    
+
+    const userRef = admin.firestore().collection('Users').doc(userId);
+
     const projectData = {
       title: title.trim(),
       description: desc.trim(),
-      owner: userId, // Don't prefix with "/Projects/"
+      owner: userRef, // Don't prefix with "/Projects/"
       taskList: []
     };
 
     // Use admin firestore correctly
     const docRef = await admin.firestore().collection('Projects').add(projectData);
-    
+    const projectDoc = await docRef.get(); // Fetch the created project
+
+    // res.status(201).json({
+    //   success: true,
+    //   projectId: docRef.id,
+    //   message: "Project created successfully"
+    // });
     res.status(201).json({
       success: true,
       projectId: docRef.id,
+      project: { id: docRef.id, ...projectDoc.data() }, // Include full project data
       message: "Project created successfully"
     });
   } catch (error) {
-        console.error("Error adding project: ", error);
-        res.status(500).json({
-            success: false,
-            error: error.message || 'Internal server error'
-        });
-    }
+    console.error("Error adding project: ", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Internal server error'
+    });
+  }
 });
 
 // GET /api/projects/:id
