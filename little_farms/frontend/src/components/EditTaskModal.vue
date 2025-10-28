@@ -619,6 +619,15 @@ const validateForm = () => {
   return !errors.title && !errors.priority && !errors.deadline && !errors.recurrenceValue && !errors.recurrenceInterval;
 };
 
+const getRecurrenceIntervalLabel = () => {
+  const labels = {
+    days: 'Day(s)',
+    weeks: 'Week(s)',
+    months: 'Month(s)'
+  };
+  return formData.recurrenceInterval ? labels[formData.recurrenceInterval] : 'Select interval';
+};
+
 
 // === Dropdown helpers ===
 const toggleDropdown = (key) => {
