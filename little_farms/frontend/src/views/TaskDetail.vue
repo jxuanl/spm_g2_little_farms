@@ -101,16 +101,6 @@
       </button>
     </div> -->
 
-
-
-    <!-- === Edit Modal === -->
-    <EditTaskModal
-      :isOpen="isEditModalOpen"
-      :task="{ id: route.params.id, ...task }"
-      @close="isEditModalOpen = false"
-      @updated="refreshTask"
-    />
-
     <div v-if="!isSubtaskView" class="flex-1 flex flex-col">
       <TaskList 
         :tasks="subtasks" 
@@ -183,6 +173,7 @@ const fetchTask = async () => {
     const userRes = await fetch(`/api/users/${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+
     const userData = await userRes.json();
     userRole.value = (userData.user?.role || 'staff').toLowerCase();
 
@@ -245,7 +236,7 @@ const fetchSubtasks = async () => {
   }
 
   try {
-    const response = await fetch(`http://localhost:3001/api/tasks/${taskId.value}/subtasks`);
+    const response = await fetch(`/api/tasks/${taskId.value}/subtasks`);
     const rawSubtasks = response.ok ? await response.json() : [];
 
     const auth = getAuth();
@@ -264,7 +255,7 @@ const fetchSubtasks = async () => {
           if (sub.projectId?.path) {
             const projectPathParts = sub.projectId.path.split('/');
             const projectId = projectPathParts[projectPathParts.length - 1];
-            const projectRes = await fetch(`http://localhost:3001/api/projects/${projectId}`, {
+            const projectRes = await fetch(`/api/projects/${projectId}`, {
               headers: token ? { Authorization: `Bearer ${token}` } : {}
             });
             if (projectRes.ok) {
@@ -277,7 +268,7 @@ const fetchSubtasks = async () => {
           if (sub.taskCreatedBy?.path) {
             const userPathParts = sub.taskCreatedBy.path.split('/');
             const creatorId = userPathParts[userPathParts.length - 1];
-            const creatorRes = await fetch(`http://localhost:3001/api/users/${creatorId}`, {
+            const creatorRes = await fetch(`/api/users/${creatorId}`, {
               headers: token ? { Authorization: `Bearer ${token}` } : {}
             });
             if (creatorRes.ok) {
@@ -292,7 +283,7 @@ const fetchSubtasks = async () => {
               const pathParts = ref.path?.split('/') || [];
               const assigneeId = pathParts[pathParts.length - 1];
               if (assigneeId) {
-                const assigneeRes = await fetch(`http://localhost:3001/api/users/${assigneeId}`, {
+                const assigneeRes = await fetch(`/api/users/${assigneeId}`, {
                   headers: token ? { Authorization: `Bearer ${token}` } : {}
                 });
                 if (assigneeRes.ok) {

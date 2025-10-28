@@ -21,7 +21,7 @@ export async function verifyUserToken(idToken) {
     return { message: "Login verified", user: userData };
   } catch (error) {
     console.error("Error verifying token:", error.message);
-    throw new Error("Invalid or expired token");
+    throw new Error("User not verified");
   }
 }
 

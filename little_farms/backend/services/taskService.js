@@ -94,6 +94,7 @@ export async function getTasksForUser(userId) {
 
       const allTasksSnap = await db.collection("Tasks").get()
       const allTasks = allTasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .filter((t) => t.isCurrentInstance !== false); // show only current instance
 
       // ✅ Enrich tasks (project, creator, assignees)
       const enriched = await Promise.all(allTasks.map((t) => enrichTaskData(t)))
@@ -133,6 +134,7 @@ export async function getTasksForUser(userId) {
       createdSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
 
       const tasks = Array.from(taskMap.values())
+        .filter((t) => t.isCurrentInstance !== false); // show only current instance
       const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
 
       console.log(`✅ Returning ${enriched.length} tasks for manager ${userId}`)
@@ -157,6 +159,7 @@ export async function getTasksForUser(userId) {
     createdSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
 
     const tasks = Array.from(taskMap.values())
+      .filter((t) => t.isCurrentInstance !== false); // show only current instance
     const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
     console.log(`✅ Returning ${enriched.length} staff tasks for user ${userId}`)
     return enriched
@@ -219,7 +222,12 @@ export async function createTask(taskData) {
       status: taskData.status || 'To Do',
       tags: taskData.tags || [],
       taskCreatedBy: taskCreatedByRef,
-      title: taskData.title
+      title: taskData.title,
+      recurring: taskData.recurring || false,
+      recurrenceInterval: taskData.recurrenceInterval || null, // 'days', 'weeks', 'months'
+      recurrenceValue: taskData.recurrenceValue || 1, // integer, e.g., every 2 weeks
+      isCurrentInstance: true,
+      parentTaskId: taskData.parentTaskId || null // reference to original task if subtask
     };
     
     let docRef;
@@ -372,6 +380,89 @@ export async function updateTask(taskId, updates) {
 //   const taskRef = doc(db, TASK_COLLECTION, taskId);
 //   await deleteDoc(taskRef);
 // }
+
+export async function completeTask(taskId, userId) {
+  try {
+    const taskRef = db.collection('Tasks').doc(taskId);
+    const taskSnap = await taskRef.get();
+    
+    if (!taskSnap.exists) {
+      throw new Error('Task not found');
+    }
+
+    const taskData = taskSnap.data();
+    const now = new Date();
+
+    // Mark current task as done and hide it from current instances
+    await taskRef.update({ 
+      status: 'Done', 
+      isCurrentInstance: false, 
+      modifiedDate: now 
+    });
+
+    // If recurring, create next instance
+    if (taskData.recurring && taskData.recurrenceInterval && taskData.recurrenceValue) {
+      let baseDate;
+      
+      // Get the original deadline
+      if (taskData.deadline && taskData.deadline.toDate) {
+        baseDate = taskData.deadline.toDate();
+      } else if (taskData.deadline instanceof Date) {
+        baseDate = new Date(taskData.deadline);
+      } else {
+        baseDate = now;
+      }
+
+      // Check if task is overdue - if so, start from now instead of old deadline
+      let nextDeadline;
+      if (baseDate < now) {
+        // Task was overdue - start interval from now
+        nextDeadline = new Date(now);
+      } else {
+        // Task completed on time - start from original deadline
+        nextDeadline = new Date(baseDate);
+      }
+
+      // Calculate next deadline based on interval
+      switch (taskData.recurrenceInterval) {
+        case 'days':
+          nextDeadline.setDate(nextDeadline.getDate() + taskData.recurrenceValue);
+          break;
+        case 'weeks':
+          nextDeadline.setDate(nextDeadline.getDate() + (7 * taskData.recurrenceValue));
+          break;
+        case 'months':
+          nextDeadline.setMonth(nextDeadline.getMonth() + taskData.recurrenceValue);
+          break;
+        default:
+          console.error('Invalid recurrence interval:', taskData.recurrenceInterval);
+          return;
+      }
+
+      // Create new task instance
+      const newTask = {
+        ...taskData,
+        status: 'To Do',
+        createdDate: now,
+        deadline: nextDeadline,
+        isCurrentInstance: true,
+        modifiedDate: now,
+        isOverdue: false
+      };
+
+      // Remove the id field as it will be auto-generated
+      delete newTask.id;
+
+      await db.collection('Tasks').add(newTask);
+      console.log(`✅ Created new recurring task instance with deadline: ${nextDeadline.toISOString()}`);
+    }
+
+    return { success: true, message: 'Task completed successfully' };
+  } catch (error) {
+    console.error('❌ Error completing task:', error);
+    throw error;
+  }
+}
 
 export async function getTaskById(taskId) {
   try {
@@ -575,6 +666,25 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
   }
 }
 
+export async function getAllTasks() {
+  try {
+    // Get all documents in the "Tasks" collection
+    const snapshot = await db.collection(TASK_COLLECTION).get();
+
+    // Map Firestore docs to JS objects
+    const tasks = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return tasks;
+  } catch (error) {
+    console.error('Error fetching tasks from Firestore:', error);
+    throw new Error('Failed to retrieve tasks from Firestore');
+  }
+}
+
+
 export const taskService = {
   getTasksForUser,
   createTask,
@@ -583,6 +693,8 @@ export const taskService = {
   getSubtaskById,
   updateSubtask,
   updateTask,
+  completeTask,
+  getAllTasks
   // deleteTask,
 };
 

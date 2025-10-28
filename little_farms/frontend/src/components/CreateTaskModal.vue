@@ -1,19 +1,7 @@
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" @click="closeDropdowns">
     <div 
-      class="create-task-modal fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:s    // Map frontend form data to backend API format
-    const taskData = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      priority: Number(formData.priority) || null,
-      status: formData.status || 'To Do',
-      deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-      assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [currentUser.uid],
-      projectId: formData.projectId,
-      createdBy: currentUser.uid || 'default-user',
-      tags: formData.tags || [],
-      ...(props.parentTaskId && { parentTaskId: props.parentTaskId })
-    };top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]"
+      class="create-task-modal fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]"
       @click.stop
     >
       <div class="flex flex-col space-y-1.5 text-center sm:text-left">
@@ -306,6 +294,112 @@
           </div>
         </div>
 
+        <!-- Recurring Task Section -->
+        <div class="space-y-3 border border-gray-300 rounded-md p-4 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Recurring Task
+            </label>
+            <button
+              type="button"
+              @click="formData.recurring = !formData.recurring"
+              :class="[
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                formData.recurring ? 'bg-primary' : 'bg-gray-300'
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                  formData.recurring ? 'translate-x-6' : 'translate-x-1'
+                ]"
+              />
+            </button>
+          </div>
+
+          <div v-if="formData.recurring" class="space-y-3 pt-2">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Repeat Every *
+                </label>
+                <input
+                  v-model.number="formData.recurrenceValue"
+                  type="number"
+                  min="1"
+                  placeholder="e.g., 2"
+                  required
+                  :class="[
+                    'flex h-9 w-full rounded-md border bg-white px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+                    errors.recurrenceValue ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+                  ]"
+                  @input="validateRecurrence"
+                />
+                <div v-if="errors.recurrenceValue" class="text-sm text-red-500 mt-1">
+                  {{ errors.recurrenceValue }}
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Interval *
+                </label>
+                <div class="relative">
+                  <button
+                    type="button"
+                    @click="toggleDropdown('recurrenceInterval')"
+                    :class="[
+                      'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-white px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+                      errors.recurrenceInterval ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                    ]"
+                  >
+                    <span :class="formData.recurrenceInterval ? 'text-foreground' : 'text-muted-foreground'">
+                      {{ getRecurrenceIntervalLabel() }}
+                    </span>
+                    <ChevronDown class="h-4 w-4 opacity-50" />
+                  </button>
+                  <div 
+                    v-if="dropdownStates.recurrenceInterval"
+                    class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+                  >
+                    <div class="p-1">
+                      <button
+                        type="button"
+                        @click="selectOption('recurrenceInterval', 'days')"
+                        class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                      >
+                        Day(s)
+                      </button>
+                      <button
+                        type="button"
+                        @click="selectOption('recurrenceInterval', 'weeks')"
+                        class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                      >
+                        Week(s)
+                      </button>
+                      <button
+                        type="button"
+                        @click="selectOption('recurrenceInterval', 'months')"
+                        class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                      >
+                        Month(s)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="errors.recurrenceInterval" class="text-sm text-red-500 mt-1">
+                  {{ errors.recurrenceInterval }}
+                </div>
+              </div>
+            </div>
+
+            <div v-if="formData.recurrenceValue && formData.recurrenceInterval" class="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
+              This task will repeat every {{ formData.recurrenceValue }} {{ formData.recurrenceInterval }}. 
+              A new instance will be created only when you mark the current one as complete.
+            </div>
+          </div>
+        </div>
+
         <div class="flex justify-end gap-2 pt-4">
           <button 
             type="button" 
@@ -338,7 +432,7 @@ const emit = defineEmits(['close', 'taskCreated']);
 const createTaskAPI = async (taskData) => {
   try {
     const token = await auth.currentUser?.getIdToken();
-    const response = await fetch('http://localhost:3001/api/tasks', {
+    const response = await fetch('/api/tasks', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -370,7 +464,7 @@ const fetchProjects = async () => {
     const token = await auth.currentUser.getIdToken();
     console.log('Auth token for projects:', token ? 'Token exists' : 'No token');
     
-    const response = await fetch('http://localhost:3001/api/allProjects', {
+    const response = await fetch('/api/allProjects', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -404,7 +498,7 @@ const fetchUsers = async () => {
     console.log('Auth token for users:', token ? 'Token exists' : 'No token');
     console.log('Making request to: http://localhost:3001/api/users/users');
     
-    const response = await fetch('http://localhost:3001/api/users', {
+    const response = await fetch('/api/users', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -452,7 +546,9 @@ const errors = reactive({
   title: '',
   dueDate: '',
   projectId: '',
-  priority: ''
+  priority: '',
+  recurrenceValue: '',
+  recurrenceInterval: ''
 });
 
 const showSuccessMessage = ref(false);
@@ -466,6 +562,13 @@ const formData = reactive({
   assigneeIds: [], // Array for multi-select assignees
   dueDate: "",
   tags: [],
+  recurring: false,
+  recurrenceValue: null,
+  recurrenceInterval: ""
+});
+// Watcher to debug recurring task
+watch(() => formData.recurring, (newVal) => {
+  console.log('Recurring changed to:', newVal);
 });
 
 // Dropdown states
@@ -473,7 +576,8 @@ const dropdownStates = reactive({
   priority: false,
   status: false,
   project: false,
-  assignees: false
+  assignees: false,
+  recurrenceInterval: false
 });
 
 const newTag = ref("");
@@ -539,12 +643,41 @@ const validatePriority = () => {
   }
 };
 
+const validateRecurrence = () => {
+  console.log('Validating recurrence:', formData.recurring, formData.recurrenceValue, formData.recurrenceInterval); // ADD THIS DEBUG LINE
+  
+  errors.recurrenceValue = '';
+  errors.recurrenceInterval = '';
+  
+  if (formData.recurring) {
+    if (!formData.recurrenceValue || formData.recurrenceValue < 1) {
+      errors.recurrenceValue = 'Must be at least 1';
+    }
+    if (!formData.recurrenceInterval) {
+      errors.recurrenceInterval = 'Please select an interval';
+    }
+    if (formData.recurring && !formData.dueDate) {
+      errors.dueDate = 'Due date is required for recurring tasks';
+    }
+  }
+};
+
+const getRecurrenceIntervalLabel = () => {
+  const labels = {
+    days: 'Day(s)',
+    weeks: 'Week(s)',
+    months: 'Month(s)'
+  };
+  return formData.recurrenceInterval ? labels[formData.recurrenceInterval] : 'Select interval';
+};
+
 const validateForm = () => {
   validateTitle();
   validateDueDate();
   validateProject();
   validatePriority();
-  return !errors.title && !errors.dueDate && !errors.projectId && !errors.priority;
+  validateRecurrence();
+  return !errors.title && !errors.dueDate && !errors.projectId && !errors.priority && !errors.recurrenceValue && !errors.recurrenceInterval;
 };
 
 // Dropdown helper functions
@@ -558,6 +691,9 @@ const toggleDropdown = (dropdown) => {
 const selectOption = (dropdown, value) => {
   if (dropdown === 'project') {
     formData.projectId = value;
+  } else if (dropdown === 'recurrenceInterval') {
+    formData.recurrenceInterval = value;
+    validateRecurrence();
   } else {
     formData[dropdown] = value;
   }
@@ -679,18 +815,28 @@ const handleSubmit = async () => {
   try {
     // Clear any previous error messages
     errors.title = '';
+
+    // Debug log to check form data before sending
+    console.log('Form data before submit:', {
+      recurring: formData.recurring,
+      recurrenceInterval: formData.recurrenceInterval,
+      recurrenceValue: formData.recurrenceValue
+    });
     
     // Map frontend form data to backend API format
     const taskData = {
       title: formData.title.trim(),
       description: formData.description.trim(),
-      priority: Number(formData.priority),
-      status: formData.status || null,
+      priority: Number(formData.priority) || null,
+      status: formData.status || 'todo',
       deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-      assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [null],
+      assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [getCurrentUser()?.uid],
       projectId: formData.projectId,
       createdBy: currentUser.uid || 'default-user',
       tags: formData.tags || [],
+      recurring: Boolean(formData.recurring),
+      recurrenceInterval: formData.recurring ? formData.recurrenceInterval : null,
+      recurrenceValue: formData.recurring ? Number(formData.recurrenceValue) : null,
       ...(props.parentTaskId && { parentTaskId: props.parentTaskId })
     };
 
@@ -730,6 +876,9 @@ const resetForm = () => {
     assigneeIds: [],
     dueDate: "",
     tags: [],
+    recurring: false,
+    recurrenceValue: null,
+    recurrenceInterval: ""
   });
   newTag.value = "";
   showCalendar.value = false;
@@ -737,6 +886,8 @@ const resetForm = () => {
   errors.dueDate = '';
   errors.projectId = '';
   errors.priority = '';
+  errors.recurrenceValue = '';
+  errors.recurrenceInterval = ''; 
   closeDropdowns();
 };
 

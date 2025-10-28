@@ -2,76 +2,118 @@
   <div class="p-6 space-y-4">
     <h2 class="text-2xl font-semibold text-gray-800">Project Timeline</h2>
 
+    <!-- Filter by project (labels provided by backend via task.projectTitle) -->
+    <div class="flex items-center gap-3">
+      <label class="text-sm text-gray-600">Filter by project</label>
+      <select v-model="selectedProjectId" class="border rounded px-2 py-1 text-sm">
+        <option value="">All projects</option>
+        <option
+          v-for="p in projectOptions"
+          :key="p.value"
+          :value="p.value"
+        >
+          {{ p.label }}
+        </option>
+      </select>
+    </div>
+
     <div v-if="loading" class="text-gray-500 text-sm">Loading timeline...</div>
 
-    <!-- ✅ Attach ref instead of id -->
     <div v-else ref="ganttContainer" class="border rounded-lg bg-white shadow-sm"></div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import Gantt from 'frappe-gantt'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 
-const tasks = ref([])
+const tasks = ref([])                 // server returns tasks with projectId, projectTitle, assignedUsers[]
 const loading = ref(true)
 const ganttContainer = ref(null)
+const selectedProjectId = ref('')     // empty = all
 let gantt = null
 
-// === Fetch data from backend ===
-// === Fetch data from backend (respect role-based access) ===
+// One color per project
+const palette = ['#3b82f6', '#10b981', '#f59e0b', '#29E6BD', '#8b5cf6', '#14b8a6', '#ec4899', '#84cc16']
+const projectColorCache = new Map()
+function getProjectColor(pid) {
+  const key = pid || 'no-project'
+  if (!projectColorCache.has(key)) {
+    projectColorCache.set(key, palette[projectColorCache.size % palette.length])
+  }
+  return projectColorCache.get(key)
+}
+
+// Unique dropdown options
+const projectOptions = computed(() => {
+  const seen = new Set()
+  const opts = []
+  for (const t of tasks.value) {
+    const pid = t.projectId || 'no-project'
+    if (seen.has(pid)) continue
+    seen.add(pid)
+    const label = t.projectTitle || pid
+    opts.push({ value: pid, label })
+  }
+  opts.sort((a, b) => a.label.localeCompare(b.label))
+  return opts
+})
+
+// Filtered list for the chart
+const filteredTasks = computed(() =>
+  selectedProjectId.value
+    ? tasks.value.filter(t => t.projectId === selectedProjectId.value)
+    : tasks.value
+)
+
+// Fetch tasks; expect the backend to enrich:
+// - projectTitle (string)
+// - assignedUsers: [{ id, name?, displayName?, email?, photoURL? }, ...]
 const fetchData = async (userId) => {
   try {
-    console.log('📡 Fetching tasks (role-based) for user:', userId)
-    const res = await fetch(`/api/tasks?userId=${encodeURIComponent(userId)}`)
-    const data = await res.json()
+    loading.value = true
+    const params = new URLSearchParams({ userId })
+    // if (selectedProjectId.value) params.set('projectId', selectedProjectId.value) // optional server-side filter
 
+    const res = await fetch(`/api/tasks?${params.toString()}`)
+    const data = await res.json()
     if (!data.success || !Array.isArray(data.tasks)) {
       throw new Error(data.message || 'Failed to fetch tasks')
     }
 
-    // Map backend enriched tasks to Frappe Gantt format
-    const palette = ['#3b82f6', '#10b981', '#f59e0b', '#29E6BD', '#8b5cf6', '#14b8a6', '#ec4899', '#84cc16']
-    const projectColorCache = new Map()
-
-    tasks.value = data.tasks.map((t, i) => {
-      // Normalize dates to YYYY-MM-DD
+    tasks.value = data.tasks.map((t) => {
       const toYmd = (v) => {
         if (!v) return null
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v
         const d = typeof v === 'string' ? new Date(v) : v instanceof Date ? v : null
         if (!d || Number.isNaN(d.getTime())) return null
         return d.toISOString().split('T')[0]
       }
 
-      const start = toYmd(t.createdDate) || toYmd(t.modifiedDate) || toYmd(new Date())
-      // default end: +3 days if missing or invalid
-      const end = toYmd(t.deadline) || toYmd(new Date(new Date(start).getTime() + 3 * 86400000))
+      const start = toYmd(t.start) || toYmd(t.createdDate) || toYmd(new Date())
+      const end =
+        toYmd(t.end) ||
+        toYmd(t.deadline) ||
+        toYmd(new Date(new Date(start).getTime() + 3 * 86400000))
 
-      // Derive stable color per project reference/path
       const projectKey = typeof t.projectId === 'string'
         ? t.projectId
         : t.projectId?.path || t.projectId?._path?.segments?.join('/') || 'no-project'
-      if (!projectColorCache.has(projectKey)) {
-        projectColorCache.set(projectKey, palette[projectColorCache.size % palette.length])
-      }
-      const color = projectColorCache.get(projectKey)
-
-      // Normalize status to match your popup logic
-      const status = (t.status || 'Not started')
+      const color = t.color || getProjectColor(projectKey)
 
       return {
         id: t.id,
-        name: t.title || 'Untitled Task',
+        name: t.name || t.title || 'Untitled Task',
         start,
         end,
-        status,
+        status: t.status || 'Not started',
         color,
-        projectId: projectKey
+        projectId: projectKey,
+        projectTitle: t.projectTitle || 'No Project',
+        assigneeNames: Array.isArray(t.assigneeNames) ? t.assigneeNames : [] // <- from server
       }
     })
-
-    console.log('✅ Timeline tasks loaded (role-filtered):', tasks.value.length)
   } catch (err) {
     console.error('❌ Error fetching tasks:', err)
   } finally {
@@ -79,13 +121,16 @@ const fetchData = async (userId) => {
   }
 }
 
-// === Render Gantt chart ===
+// Render Gantt
 const renderGantt = () => {
-  if (!ganttContainer.value || !tasks.value.length) return
+  if (!ganttContainer.value || !filteredTasks.value.length) {
+    if (ganttContainer.value) ganttContainer.value.innerHTML = ''
+    return
+  }
 
   ganttContainer.value.innerHTML = ''
 
-  gantt = new Gantt(ganttContainer.value, tasks.value, {
+  gantt = new Gantt(ganttContainer.value, filteredTasks.value, {
     view_mode: 'Day',
     view_mode_select: true,
     date_format: 'YYYY-MM-DD',
@@ -102,25 +147,25 @@ const renderGantt = () => {
     popup(task) {
       const t = task.task
 
-      // --- Format popup dates ---
       const startDate = new Date(t.start)
       const endDate = new Date(t.end)
       const options = { month: 'short', day: 'numeric' }
       const startFormatted = startDate.toLocaleDateString('en-US', options)
       const endFormatted = endDate.toLocaleDateString('en-US', options)
-
       const durationDays = Math.max(
         1,
         Math.round((endDate - startDate) / (1000 * 60 * 60 * 24))
       )
 
-      // --- Status color ---
       let statusColor = '#9ca3af'
       if (t.status?.toLowerCase() === 'done') statusColor = '#16a34a'
       else if (t.status?.toLowerCase() === 'in-progress') statusColor = '#f59e0b'
       else if (t.status?.toLowerCase() === 'not started') statusColor = '#ef4444'
 
-      // --- Popup content ---
+      // Build assigned users text
+      const names = Array.isArray(t.assigneeNames) ? t.assigneeNames.filter(Boolean) : []
+      const assignedText = names.length ? names.join(', ') : 'Unassigned'
+
       return `
         <div class="p-2 text-sm">
           <div class="font-medium text-gray-900">${t.name}</div>
@@ -130,38 +175,42 @@ const renderGantt = () => {
           <div class="text-xs mt-1" style="color:${statusColor}">
             ${t.status || 'No status'}
           </div>
+          <div class="text-xs text-gray-500 mt-1">
+            Assigned: ${assignedText}
+          </div>
         </div>
       `
     },
   })
 
-  // === Apply bar colors and overdue overlays ===
+  // Apply colors and overdue overlays
   setTimeout(() => {
     const today = new Date()
-    const pxPerDay = gantt.options.column_width /
-      (gantt.options.view_mode === 'Day' ? 1
-        : gantt.options.view_mode === 'Week' ? 7
-        : gantt.options.view_mode === 'Month' ? 30
+    const pxPerDay =
+      gantt.options.column_width /
+      (gantt.options.view_mode === 'Day'
+        ? 1
+        : gantt.options.view_mode === 'Week'
+        ? 7
+        : gantt.options.view_mode === 'Month'
+        ? 30
         : 1)
 
-    tasks.value.forEach((t) => {
+    filteredTasks.value.forEach((t) => {
       const barWrapper = ganttContainer.value.querySelector(`.bar-wrapper[data-id="${t.id}"]`)
       if (!barWrapper) return
 
       const barRect = barWrapper.querySelector('rect.bar')
       if (!barRect) return
 
-      // Base color
-      barRect.setAttribute('fill', t.color)
+      // Ensure stable project color
+      barRect.setAttribute('fill', t.color || getProjectColor(t.projectId))
 
-      // Remove old overlays
       const oldOverlay = barWrapper.querySelector('.overdue-overlay')
       if (oldOverlay) oldOverlay.remove()
 
       const endDate = new Date(t.end)
-      const startDate = new Date(t.start)
       const isOverdue = today > endDate && t.status?.toLowerCase() !== 'done'
-
       if (isOverdue) {
         const overdueDays = Math.floor((today - endDate) / (1000 * 60 * 60 * 24))
         const overdueWidth = overdueDays * pxPerDay
@@ -176,23 +225,24 @@ const renderGantt = () => {
         redOverlay.setAttribute('opacity', '0.85')
         redOverlay.setAttribute('rx', '4')
         redOverlay.setAttribute('ry', '4')
-
         barWrapper.appendChild(redOverlay)
       }
     })
   }, 400)
 }
 
-// === Firebase Auth listener ===
+// Re-render on source change
+watch(filteredTasks, () => {
+  renderGantt()
+})
+
 onMounted(() => {
   const auth = getAuth()
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      console.log('✅ Authenticated user:', user.uid)
       await fetchData(user.uid)
       renderGantt()
     } else {
-      console.warn('⚠️ No user logged in, redirecting...')
       window.location.href = '/login'
     }
   })

@@ -368,12 +368,8 @@ onMounted(async () => {
 
 
     const [projectRes, userRes] = await Promise.all([
-      fetch('http://localhost:3001/api/allProjects', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }),
-      fetch('http://localhost:3001/api/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }),
+      fetch('/api/allProjects', { headers: { 'Authorization': `Bearer ${token}` }}),
+      fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` }}), // <-- correct mount
     ]);
 
 
@@ -624,8 +620,9 @@ const handleUpdate = async () => {
 
 
     const endpoint = props.isSubtask
-      ? `http://localhost:3001/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`
-      : `http://localhost:3001/api/tasks/${props.task.id}`;
+      ? `/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`
+      : `/api/tasks/${props.task.id}`;
+
 
 
     const res = await fetch(endpoint, {

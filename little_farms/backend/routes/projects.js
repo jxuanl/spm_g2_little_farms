@@ -10,7 +10,8 @@ router.get('/', async (req, res) => {
     console.log("hit backend")
     // const userId = req.user?.uid;
     const userId = req.query.userId || req.user?.uid;
-    console.log("Request received for user:", userId);
+    const userRole = req.query.userRole;
+    console.log("Request received for user:", userId, "with role:", userRole);
     const result = await projectService.getProjectsForUser(userId);
     console.log("Projects result:", result);
     res.status(200).json(result);
@@ -57,6 +58,8 @@ router.get('/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     const userId = req.query.userId || req.user?.uid;
+    const userRole = req.query.userRole;
+    console.log('Route params:', { projectId, userId, userRole });
 
     const project = await projectService.getProjectDetailForUser(projectId, userId);
     if (!project) {
