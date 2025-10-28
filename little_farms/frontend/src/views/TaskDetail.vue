@@ -170,7 +170,7 @@ const fetchTask = async () => {
     let res;
 
     // Fetch user role
-    const userRes = await fetch(`/api/users/users/${userId}`, {
+    const userRes = await fetch(`/api/users/${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -268,7 +268,7 @@ const fetchSubtasks = async () => {
           if (sub.taskCreatedBy?.path) {
             const userPathParts = sub.taskCreatedBy.path.split('/');
             const creatorId = userPathParts[userPathParts.length - 1];
-            const creatorRes = await fetch(`/api/auth/users/${creatorId}`, {
+            const creatorRes = await fetch(`/api/users/${creatorId}`, {
               headers: token ? { Authorization: `Bearer ${token}` } : {}
             });
             if (creatorRes.ok) {
@@ -283,7 +283,7 @@ const fetchSubtasks = async () => {
               const pathParts = ref.path?.split('/') || [];
               const assigneeId = pathParts[pathParts.length - 1];
               if (assigneeId) {
-                const assigneeRes = await fetch(`/api/users/users/${assigneeId}`, {
+                const assigneeRes = await fetch(`/api/users/${assigneeId}`, {
                   headers: token ? { Authorization: `Bearer ${token}` } : {}
                 });
                 if (assigneeRes.ok) {

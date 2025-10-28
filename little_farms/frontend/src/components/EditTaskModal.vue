@@ -369,7 +369,7 @@ onMounted(async () => {
 
     const [projectRes, userRes] = await Promise.all([
       fetch('/api/allProjects', { headers: { 'Authorization': `Bearer ${token}` }}),
-      fetch('/api/users/users', { headers: { 'Authorization': `Bearer ${token}` }}), // <-- correct mount
+      fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` }}), // <-- correct mount
     ]);
 
 
