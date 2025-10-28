@@ -331,10 +331,47 @@ export async function updateTask(taskId, updates) {
     if (typeof updates.status !== 'undefined') updateData.status = updates.status
     if (Array.isArray(updates.tags)) updateData.tags = updates.tags
 
+    // --- Recurrence fields ---
+    if (typeof updates.recurring !== 'undefined') {
+      updateData.recurring = updates.recurring
+      
+      // If disabling recurring, clear recurrence fields
+      if (!updates.recurring) {
+        updateData.recurrenceInterval = null
+        updateData.recurrenceValue = null
+      } else {
+        // If enabling recurring, validate fields
+        if (!updates.recurrenceInterval && !existingTask.recurrenceInterval) {
+          throw new Error('Recurrence interval is required for recurring tasks')
+        }
+        if (!updates.recurrenceValue && !existingTask.recurrenceValue) {
+          throw new Error('Recurrence value is required for recurring tasks')
+        }
+        if (!updateData.deadline && !existingTask.deadline) {
+          throw new Error('Deadline is required for recurring tasks')
+        }
+      }
+    }
+
+    if (typeof updates.recurrenceInterval !== 'undefined') {
+      if (updates.recurrenceInterval && !['days', 'weeks', 'months'].includes(updates.recurrenceInterval)) {
+        throw new Error('Recurrence interval must be days, weeks, or months')
+      }
+      updateData.recurrenceInterval = updates.recurrenceInterval
+    }
+
+    if (typeof updates.recurrenceValue !== 'undefined') {
+      const value = Number(updates.recurrenceValue)
+      if (updates.recurrenceValue && (isNaN(value) || value < 1)) {
+        throw new Error('Recurrence value must be a number >= 1')
+      }
+      updateData.recurrenceValue = updates.recurrenceValue
+    }
+
     // --- Project reference ---
     if (typeof updates.projectId === 'string' && updates.projectId.trim() !== '') {
       updateData.projectId = db.collection('Projects').doc(updates.projectId)
-    } else {
+    } else if (updates.projectId === null) {
       updateData.projectId = null
     }
 
@@ -348,14 +385,14 @@ export async function updateTask(taskId, updates) {
     // --- Deadline ---
     if (updates.deadline) {
       updateData.deadline = new Date(updates.deadline)
-    } else {
+    } else if (updates.deadline === null) {
       updateData.deadline = null
     }
 
     // --- Overdue check ---
     if (updateData.deadline) {
       const now = new Date()
-      const isOverdue = now > updateData.deadline && updateData.status !== 'done'
+      const isOverdue = now > updateData.deadline && updateData.status !== 'Done'
       updateData.isOverdue = isOverdue
     } else {
       updateData.isOverdue = false

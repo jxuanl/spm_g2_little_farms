@@ -282,6 +282,112 @@
                 </button>
               </div>
             </div>
+
+            <!-- === Recurring Task Section === -->
+            <div class="space-y-3 border border-gray-300 rounded-md p-4 bg-gray-50">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium leading-none">
+                  Recurring Task
+                </label>
+                <button
+                  type="button"
+                  @click="formData.recurring = !formData.recurring"
+                  :class="[
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                    formData.recurring ? 'bg-primary' : 'bg-gray-300'
+                  ]"
+                >
+                  <span
+                    :class="[
+                      'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                      formData.recurring ? 'translate-x-6' : 'translate-x-1'
+                    ]"
+                  />
+                </button>
+              </div>
+
+              <div v-if="formData.recurring" class="space-y-3 pt-2">
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none">
+                      Repeat Every *
+                    </label>
+                    <input
+                      v-model.number="formData.recurrenceValue"
+                      type="number"
+                      min="1"
+                      placeholder="e.g., 2"
+                      required
+                      :class="[
+                        'flex h-9 w-full rounded-md border bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                        errors.recurrenceValue ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+                      ]"
+                      @input="validateRecurrence"
+                    />
+                    <div v-if="errors.recurrenceValue" class="text-sm text-red-500 mt-1">
+                      {{ errors.recurrenceValue }}
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none">
+                      Interval *
+                    </label>
+                    <div class="relative">
+                      <button
+                        type="button"
+                        @click="toggleDropdown('recurrenceInterval')"
+                        :class="[
+                          'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring',
+                          errors.recurrenceInterval ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                        ]"
+                      >
+                        <span :class="formData.recurrenceInterval ? 'text-foreground' : 'text-muted-foreground'">
+                          {{ getRecurrenceIntervalLabel() }}
+                        </span>
+                        <ChevronDown class="h-4 w-4 opacity-50" />
+                      </button>
+                      <div 
+                        v-if="dropdownStates.recurrenceInterval"
+                        class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+                      >
+                        <div class="p-1">
+                          <button
+                            type="button"
+                            @click="selectOption('recurrenceInterval', 'days')"
+                            class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                          >
+                            Day(s)
+                          </button>
+                          <button
+                            type="button"
+                            @click="selectOption('recurrenceInterval', 'weeks')"
+                            class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                          >
+                            Week(s)
+                          </button>
+                          <button
+                            type="button"
+                            @click="selectOption('recurrenceInterval', 'months')"
+                            class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                          >
+                            Month(s)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="errors.recurrenceInterval" class="text-sm text-red-500 mt-1">
+                      {{ errors.recurrenceInterval }}
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="formData.recurrenceValue && formData.recurrenceInterval" class="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
+                  ℹ️ This task will repeat every {{ formData.recurrenceValue }} {{ formData.recurrenceInterval }}. 
+                  Changes will only affect future instances, not the current one.
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -326,11 +432,13 @@ const props = defineProps({
 const showSuccessMessage = ref(false);
 const projects = ref([]);
 const users = ref([]);
-const dropdownStates = reactive({ status: false, project: false, assignees: false });
+const dropdownStates = reactive({ status: false, project: false, assignees: false, recurrenceInterval: false });
 const errors = reactive({
   title: '',
   priority: '',
-  deadline: ''
+  deadline: '',
+  recurrenceValue: '',
+  recurrenceInterval: ''
 });
 
 
@@ -342,7 +450,10 @@ const formData = reactive({
   projectId: '',
   assignedTo: [],
   deadline: '',
-  tags: []
+  tags: [],
+  recurring: false,
+  recurrenceValue: null,
+  recurrenceInterval: ''
 });
 
 
@@ -438,6 +549,9 @@ watch(
         ? new Date(task.deadline).toISOString().split('T')[0]
         : '';
       formData.tags = Array.isArray(task.tags) ? [...task.tags] : [];
+      formData.recurring = task.recurring || false;
+      formData.recurrenceValue = task.recurrenceValue || null;
+      formData.recurrenceInterval = task.recurrenceInterval || '';
     }
   },
   { immediate: true }
@@ -479,12 +593,39 @@ const validateDueDate = () => {
   }
 };
 
+const validateRecurrence = () => {
+  errors.recurrenceValue = '';
+  errors.recurrenceInterval = '';
+  
+  if (formData.recurring) {
+    if (!formData.recurrenceValue || formData.recurrenceValue < 1) {
+      errors.recurrenceValue = 'Must be at least 1';
+    }
+    if (!formData.recurrenceInterval) {
+      errors.recurrenceInterval = 'Please select an interval';
+    }
+    if (formData.recurring && !formData.deadline) {
+      errors.deadline = 'Due date is required for recurring tasks';
+    }
+  }
+};
+
 
 const validateForm = () => {
   validateTitle();
   validatePriority();
   validateDueDate();
-  return !errors.title && !errors.priority && !errors.deadline;
+  validateRecurrence();
+  return !errors.title && !errors.priority && !errors.deadline && !errors.recurrenceValue && !errors.recurrenceInterval;
+};
+
+const getRecurrenceIntervalLabel = () => {
+  const labels = {
+    days: 'Day(s)',
+    weeks: 'Week(s)',
+    months: 'Month(s)'
+  };
+  return formData.recurrenceInterval ? labels[formData.recurrenceInterval] : 'Select interval';
 };
 
 
@@ -504,7 +645,12 @@ const closeDropdowns = () => {
 
 
 const selectOption = (key, value) => {
-  formData[key] = value;
+  if (key === 'recurrenceInterval') {  // ADD THIS BLOCK
+    formData.recurrenceInterval = value;
+    validateRecurrence();
+  } else {
+    formData[key] = value;
+  }
   closeDropdowns();
 };
 
@@ -615,7 +761,10 @@ const handleUpdate = async () => {
       projectId: formData.projectId || null,
       deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
       tags: tagsArray,
-      userId: user.uid // for backend access control
+      userId: user.uid, // for backend access control
+      recurring: Boolean(formData.recurring),
+      recurrenceInterval: formData.recurring ? formData.recurrenceInterval : null,
+      recurrenceValue: formData.recurring ? Number(formData.recurrenceValue) : null
     };
 
 
