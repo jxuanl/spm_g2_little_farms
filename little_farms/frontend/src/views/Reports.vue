@@ -558,8 +558,9 @@ const generateReport = async () => {
   reportData.value = [];
   
   try {
-    const { reportType, selectedProject, selectedUser, selectedDepartment } = filters.value;
+    const { reportType, selectedProject, selectedUser, selectedDepartment, filterBy } = filters.value;
     
+    console.log(filterBy)
     // Define report configurations
     const reportConfigs = {
       'team-summary': {
@@ -568,16 +569,16 @@ const generateReport = async () => {
       },
       'task-completion': {
         urlBuilder: () => {
-          if (selectedProject) return `/api/reportData/project/${selectedProject}/filtered?status=done`;
-          if (selectedUser) return `/api/reportData/${selectedUser}/filtered?status=done`;
+          if (filterBy == 'project') return `/api/reportData/project/${selectedProject}/filtered?status=done`;
+          if (filterBy == 'user') return `/api/reportData/user/${selectedUser}/filtered?status=done`;
           return '/api/reportData';
         },
         requiresFilter: true
       },
       'logged-time': {
         urlBuilder: () => {
-          if (selectedProject) return `/api/logTime/details/project/${selectedProject}`;
-          if (selectedDepartment) return `/api/logTime/details/department/${selectedDepartment}`;
+          if (filterBy == 'project') return `/api/logTime/details/project/${selectedProject}`;
+          if (filterBy == 'departments') return `/api/logTime/details/department/${selectedDepartment}`;
           return '/api/logTime/details';
         },
         requiresFilter: true
@@ -588,8 +589,8 @@ const generateReport = async () => {
     if (!config) {
       throw new Error(`Unsupported report type: ${reportType}`);
     }
-
     const url = config.urlBuilder();
+    console.log("URL: " + url)
     if (!url) {
       throw new Error('Missing required filters for this report type');
     }
@@ -633,21 +634,6 @@ const handleIntervalChange = () => {
   }
 };
 
-// Export functions
-const mapReportData = (inputData) => ({
-  "Task Name": inputData.taskTitle || '',
-  "Owner of Task": inputData.taskOwner.name || '',
-  "Project Name": inputData.prjTitle || '',
-  "Assignee List": Array.isArray(inputData.assignedTo) 
-    ? inputData.assignedTo.map(person => person.name).join(', ')
-    : inputData.assignedTo?.name || 'Unassigned',
-  "Status": inputData.status.toUpperCase(),
-  "Completion date": formatDate(inputData.completedDate) || '',
-  "Deadline": formatDate(inputData.deadline) || '',
-  "Staff Name": inputData.userName || '',
-  "Department": inputData.userDept || '',
-  "No. of Hours": inputData.amtOfTime || '',
-});
 
 const formatDateDisplay = (timeFrame) => {
   const data = timeFrame?.__v_raw || timeFrame;
@@ -676,23 +662,64 @@ const exportReport = async () => {
   }
 };
 
+// const exportCSV = async () => {
+//   loading.value = true;
+//   error.value = '';
+
+//   try {
+//     const response = await fetch('/api/report/generate_csv', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify(reportData.value)
+//     });
+
+//     if (!response.ok) throw new Error('Failed to generate CSV');
+
+//     const blob = await response.blob();
+//     downloadBlob(blob, 'report.csv');
+
+//   } catch (e) {
+//     error.value = e.message || 'Unknown error';
+//   } finally {
+//     loading.value = false;
+//   }
+// };
+
 const exportCSV = async () => {
   loading.value = true;
   error.value = '';
 
   try {
+    // Reuse the same mapper!
+    const mappedData = reportMappers[filters.value.reportType](reportData.value);
+    
+    console.log(`Exporting ${filters.value.reportType} CSV:`);
+    console.log('Mapped data count:', mappedData.length);
+    console.log('Sample data:', mappedData.slice(0, 2));
+
     const response = await fetch('/api/report/generate_csv', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reportData.value)
+      body: JSON.stringify({
+        reportType: filters.value.reportType,
+        data: mappedData
+      })
     });
 
-    if (!response.ok) throw new Error('Failed to generate CSV');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.details || 'Failed to generate CSV');
+    }
 
     const blob = await response.blob();
-    downloadBlob(blob, 'report.csv');
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `${filters.value.reportType}_report_${timestamp}.csv`;
+    
+    downloadBlob(blob, filename);
 
   } catch (e) {
+    console.error('CSV export error:', e);
     error.value = e.message || 'Unknown error';
   } finally {
     loading.value = false;
@@ -700,24 +727,24 @@ const exportCSV = async () => {
 };
 
 const exportPDF = async () => {
+  console.log("Export PDF");
   loading.value = true;
   error.value = '';
 
   try {
-    let reportTitle = "";
-    if (filters.value.filterBy === "project") {
-      const project = await getProject(filters.value.selectedProject);
-      reportTitle = project.title;
-    } else if (filters.value.filterBy === "user") {
-      const user = await getUser(filters.value.selectedUser);
-      reportTitle = user.user.name;
-    } else if(filters.value.filterBy === "department"){
-      reportTitle = filters.value.selectedDepartment
-    }
-
-    const mappedReports = reportData.value.map(mapReportData);
-    console.log(mappedReports);
+    const reportTitle = await getReportTitle();
     const cleanedTimeFrame = formatDateDisplay(filters.value);
+    
+    // Get properly mapped data for the specific report type
+    const mappedData = getMappedReportData(reportData.value, filters.value.reportType);
+    
+    console.log('Sending data:', {
+      reportType: filters.value.reportType,
+      reportTitle,
+      timeFrame: cleanedTimeFrame,
+      filterType: filters.value.filterBy,
+      data: mappedData
+    });
 
     const response = await fetch('/api/report/generate_pdf', {
       method: 'POST',
@@ -727,23 +754,86 @@ const exportPDF = async () => {
         reportTitle,
         timeFrame: cleanedTimeFrame,
         filterType: filters.value.filterBy,
-        data: mappedReports
+        data: mappedData
       })
     });
 
-    if (!response.ok) throw new Error('Failed to generate PDF');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.details || 'Failed to generate PDF');
+    }
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     window.open(url, '_blank');
-
     setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 
   } catch (e) {
+    console.error('PDF export error:', e);
     error.value = e.message || 'Unknown error';
   } finally {
     loading.value = false;
   }
+};
+
+// Helper function to get report title
+const getReportTitle = async () => {
+  switch (filters.value.filterBy) {
+    case "project":
+      const project = await getProject(filters.value.selectedProject);
+      return project.title;
+    case "user":
+      const user = await getUser(filters.value.selectedUser);
+      return user.user.name;
+    case "department":
+      return filters.value.selectedDepartment;
+    default:
+      return "Report";
+  }
+};
+
+// Report-specific data mappers
+const reportMappers = {
+  'task-completion': (data) => data.map(item => ({
+    "Task Name": item.taskTitle || item.taskName || '',
+    "Owner of Task": item.taskOwner?.name || '',
+    "Assignee List": Array.isArray(item.assignedTo) 
+      ? item.assignedTo.map(person => person.name).join(', ')
+      : item.assignedTo?.name || 'Unassigned',
+    "Status": (item.status || '').toUpperCase(),
+    "Completion date": formatDate(item.completedDate) || '',
+    "Project Name": item.prjTitle || item.prjName || '' // Only for project filter
+  })),
+
+  'team-summary': (data) => data.map(item => ({
+    "Task Name": item.taskTitle || item.taskName || '',
+    "Assignee List": Array.isArray(item.assignedTo) 
+      ? item.assignedTo.map(person => person.name).join(', ')
+      : item.assignedTo?.name || 'Unassigned',
+    "Status": (item.status || '').toUpperCase(),
+    "Deadline": formatDate(item.deadline) || ''
+  })),
+
+  'logged-time': (data) => data.map(item => ({
+    "Project Name": item.prjTitle || item.prjName || '',
+    "Task Name": item.taskTitle || item.taskName || '',
+    "Staff Name": item.userName || item.taskOwner?.name || '',
+    "Department": item.userDept || '',
+    "No. of Hours": item.amtOfTime || '0'
+  }))
+};
+
+// Main mapping function
+const getMappedReportData = (inputData, reportType) => {
+  const mapper = reportMappers[reportType];
+  if (!mapper) {
+    console.warn(`No mapper found for report type: ${reportType}, using default`);
+    return inputData;
+  }
+  
+  const mappedData = mapper(inputData);
+  console.log(`Mapped ${reportType} data:`, mappedData);
+  return mappedData;
 };
 
 const downloadBlob = (blob, filename) => {

@@ -205,13 +205,47 @@ router.get('/generate_pdf', (req, res) => {
 
 router.post('/generate_csv', (req, res) => {
   try {
-    const jsonData = req.body;
-    const csv = createCSV(jsonData);
+    const { data, reportType = 'task-completion' } = req.body;
+    
+    console.log('=== CSV GENERATION REQUEST ===');
+    console.log('Report type:', reportType);
+    console.log('Data received:', data);
+
+    // Validate the request
+    if (!data || !Array.isArray(data)) {
+      return res.status(400).json({
+        error: 'Invalid request data',
+        details: 'Data array is required for CSV export'
+      });
+    }
+
+    // Check if data is empty
+    if (data.length === 0) {
+      return res.status(400).json({
+        error: 'No data to export',
+        details: 'The report contains no data to generate CSV'
+      });
+    }
+
+    console.log('Generating CSV with fields:', Object.keys(data[0]));
+    
+    const csv = createCSV(data);
+    
+    // Generate appropriate filename
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `${reportType}_report_${timestamp}.csv`;
+    
     res.header('Content-Type', 'text/csv');
-    res.attachment('routes.csv');
+    res.attachment(filename);
     res.send(csv);
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('CSV generation error:', err.message);
+    console.error('Error stack:', err.stack);
+    res.status(500).json({ 
+      error: 'Failed to generate CSV',
+      details: err.message 
+    });
   }
 });
 
