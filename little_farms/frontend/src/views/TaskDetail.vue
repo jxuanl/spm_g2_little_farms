@@ -80,6 +80,19 @@
             No assignees
           </template>
         </p>
+
+        <p><strong>Recurring:</strong> 
+          <span v-if="task.recurring" class="text-blue-600 font-semibold">
+            Yes - Every {{ task.recurrenceValue }} {{ task.recurrenceInterval }}
+          </span>
+          <span v-else class="text-gray-600">
+            No
+          </span>
+        </p>
+
+        <p v-if="task.recurring && task.isCurrentInstance" class="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+          This is the current instance. A new task will be created when marked as complete.
+        </p>
       </div>
     </div>
 

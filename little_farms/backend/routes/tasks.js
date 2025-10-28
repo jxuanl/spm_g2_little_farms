@@ -150,6 +150,23 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params
     const updates = req.body
+
+    // Validate recurrence fields if recurring is being enabled
+    if (updates.recurring) {
+      if (!updates.recurrenceInterval || !['days', 'weeks', 'months'].includes(updates.recurrenceInterval)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid recurrence interval (days, weeks, or months) is required for recurring tasks'
+        });
+      }
+      if (!updates.recurrenceValue || updates.recurrenceValue < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Recurrence value must be at least 1'
+        });
+      }
+    }
+
     const updatedTask = await updateTask(id, updates)
     res.status(200).json({ success: true, task: updatedTask })
   } catch (error) {
