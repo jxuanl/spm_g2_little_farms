@@ -1,40 +1,179 @@
 <template>
-  <div class="p-6 space-y-4">
-    <h2 class="text-2xl font-semibold text-gray-800">Project Timeline</h2>
+  <div class="h-screen bg-background flex">
+    <!-- Left: Sidebar (exactly like Project.vue) -->
+    <TaskSidebar
+      :activeProject="activeProject"
+      :projects="projects"
+      @projectChange="setActiveProject"
+      @createTask="() => setIsCreateModalOpen(true)"
+    />
 
-    <!-- Filter by project (labels provided by backend via task.projectTitle) -->
-    <div class="flex items-center gap-3">
-      <label class="text-sm text-gray-600">Filter by project</label>
-      <select v-model="selectedProjectId" class="border rounded px-2 py-1 text-sm">
-        <option value="">All projects</option>
-        <option
-          v-for="p in projectOptions"
-          :key="p.value"
-          :value="p.value"
+    <!-- Right: Page content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Header (same shell as Project.vue) -->
+      <div class="bg-card border-b border-border p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-semibold">Timeline</h2>
+            <p class="text-sm text-muted-foreground mt-1">
+              View project timelines and filter by project and assignees
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="flex-1 p-6 overflow-auto">
+        <!-- Authentication Error (same pattern) -->
+        <div
+          v-if="authError && !isLoggedIn"
+          class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6"
         >
-          {{ p.label }}
-        </option>
-      </select>
+          <div class="flex items-start gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none"
+              stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="lucide lucide-triangle-alert-icon lucide-triangle-alert">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a 2 2 0 0 0 1.73-3"></path>
+              <path d="M12 9v4"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+            <div>
+              <h4 class="font-semibold text-red-800 dark:text-red-200" style="color: red;">Authentication Required</h4>
+              <p class="text-sm text-red-700 dark:text-red-300 mt-1">{{ authError }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <label class="text-sm text-gray-600">Filter by project</label>
+          <select v-model="selectedProjectId" class="border rounded px-2 py-1 text-sm">
+            <option value="">All projects</option>
+            <option
+              v-for="p in projectOptions"
+              :key="p.value"
+              :value="p.value"
+            >
+              {{ p.label }}
+            </option>
+          </select>
+
+          <label class="text-sm text-gray-600 ml-4">Assigned</label>
+          <select v-model="selectedAssigneeName" class="border rounded px-2 py-1 text-sm">
+            <option
+              v-for="a in assigneeOptions"
+              :key="a.value || 'all'"
+              :value="a.value"
+            >
+              {{ a.label }}
+            </option>
+          </select>
+        </div>
+
+        <div v-if="loadingTimeline" class="text-gray-500 text-sm">Loading timeline...</div>
+        <div v-else ref="ganttContainer" class="border rounded-lg bg-white shadow-sm"></div>
+      </div>
     </div>
 
-    <div v-if="loading" class="text-gray-500 text-sm">Loading timeline...</div>
-
-    <div v-else ref="ganttContainer" class="border rounded-lg bg-white shadow-sm"></div>
+    <!-- Create Task Modal (hooked from sidebar action to keep UX parity) -->
+    <CreateTaskModal
+      :isOpen="isCreateModalOpen"
+      @close="() => setIsCreateModalOpen(false)"
+      @createTask="handleCreateTask"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import Gantt from 'frappe-gantt'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import TaskSidebar from '../components/TaskSidebar.vue'
+import CreateTaskModal from '../components/CreateTaskModal.vue'
 
-const tasks = ref([])                 // server returns tasks with projectId, projectTitle, assignedUsers[]
-const loading = ref(true)
+// ----------------------------
+// Sidebar & page scaffolding
+// ----------------------------
+const activeProject = ref('all')
+const isCreateModalOpen = ref(false)
+
+const projects = ref([])
+const loadingProjects = ref(false) // reserved (matches Project.vue), not shown here but kept for parity
+const isLoggedIn = ref(false)
+const authError = ref('')
+const userRole = ref('')
+
+// timeline state
+const tasks = ref([]) // server returns tasks with projectId, projectTitle, assigneeNames[]
+const loadingTimeline = ref(true)
 const ganttContainer = ref(null)
 const selectedProjectId = ref('')     // empty = all
+const selectedAssigneeName = ref('')  // empty = all
 let gantt = null
 
-// One color per project
+// auth/session (copied pattern from Project.vue)
+const checkAuth = () => {
+  try {
+    const userSessionStr = sessionStorage.getItem('userSession')
+    if (!userSessionStr) {
+      isLoggedIn.value = false
+      authError.value = 'You must be logged in to view timelines'
+      userRole.value = ''
+      return null
+    }
+    const userSession = JSON.parse(userSessionStr)
+    if (!userSession.uid) {
+      isLoggedIn.value = false
+      authError.value = 'Invalid user session. Please log in again.'
+      userRole.value = ''
+      return null
+    }
+    isLoggedIn.value = true
+    authError.value = ''
+    userRole.value = userSession.role || ''
+    return userSession
+  } catch (err) {
+    isLoggedIn.value = false
+    authError.value = 'Authentication error. Please log in again.'
+    userRole.value = ''
+    return null
+  }
+}
+
+const setActiveProject = (projectId) => {
+  activeProject.value = projectId || 'all'
+  // Keep dropdown in sync with sidebar selection
+  selectedProjectId.value = activeProject.value === 'all' ? '' : activeProject.value
+}
+
+const setIsCreateModalOpen = (open) => {
+  isCreateModalOpen.value = open
+}
+
+const handleCreateTask = (newTask) => {
+  // You can refresh timeline or show toast; keeping it simple.
+  isCreateModalOpen.value = false
+}
+
+// ----------------------------
+// Projects (for sidebar)
+// ----------------------------
+const loadProjects = async (uid, role) => {
+  loadingProjects.value = true
+  try {
+    const res = await fetch(`http://localhost:3001/api/projects?userId=${uid}&userRole=${role}`)
+    if (!res.ok) throw new Error(`Failed to fetch projects: ${res.statusText}`)
+    const userProjects = await res.json()
+    projects.value = userProjects
+  } catch (err) {
+    console.error('Error loading projects:', err)
+  } finally {
+    loadingProjects.value = false
+  }
+}
+
+// ----------------------------
+// Timeline filters & options
+// ----------------------------
 const palette = ['#3b82f6', '#10b981', '#f59e0b', '#29E6BD', '#8b5cf6', '#14b8a6', '#ec4899', '#84cc16']
 const projectColorCache = new Map()
 function getProjectColor(pid) {
@@ -45,7 +184,6 @@ function getProjectColor(pid) {
   return projectColorCache.get(key)
 }
 
-// Unique dropdown options
 const projectOptions = computed(() => {
   const seen = new Set()
   const opts = []
@@ -60,28 +198,53 @@ const projectOptions = computed(() => {
   return opts
 })
 
-// Filtered list for the chart
-const filteredTasks = computed(() =>
-  selectedProjectId.value
+const assigneeOptions = computed(() => {
+  const base = selectedProjectId.value
+    ? tasks.value.filter(x => x.projectId === selectedProjectId.value)
+    : tasks.value
+
+  const nameSet = new Set()
+  for (const t of base) {
+    (t.assigneeNames || []).forEach(n => n && nameSet.add(n))
+  }
+
+  const opts = [{ value: '', label: 'All assignees' }]
+  Array.from(nameSet).sort((a, b) => a.localeCompare(b)).forEach(n => {
+    opts.push({ value: n, label: n })
+  })
+  return opts
+})
+
+const filteredTasks = computed(() => {
+  let list = selectedProjectId.value
     ? tasks.value.filter(t => t.projectId === selectedProjectId.value)
     : tasks.value
-)
 
-// Fetch tasks; expect the backend to enrich:
-// - projectTitle (string)
-// - assignedUsers: [{ id, name?, displayName?, email?, photoURL? }, ...]
-const fetchData = async (userId) => {
+  if (selectedAssigneeName.value) {
+    list = list.filter(
+      t => Array.isArray(t.assigneeNames) && t.assigneeNames.includes(selectedAssigneeName.value)
+    )
+  }
+  return list
+})
+
+// ----------------------------
+// Data fetch & rendering
+// ----------------------------
+const fetchTimeline = async (uid) => {
   try {
-    loading.value = true
-    const params = new URLSearchParams({ userId })
-    // if (selectedProjectId.value) params.set('projectId', selectedProjectId.value) // optional server-side filter
+    loadingTimeline.value = true
+    const params = new URLSearchParams({ userId: uid })
+    // if you later add server-side assignee filtering by ID:
+    // if (selectedAssigneeId.value) params.set('assigned', selectedAssigneeId.value)
 
-    const res = await fetch(`/api/tasks?${params.toString()}`)
+    const res = await fetch(`/api/timeline?${params.toString()}`)
     const data = await res.json()
     if (!data.success || !Array.isArray(data.tasks)) {
       throw new Error(data.message || 'Failed to fetch tasks')
     }
 
+    // Normalize server payload
     tasks.value = data.tasks.map((t) => {
       const toYmd = (v) => {
         if (!v) return null
@@ -111,17 +274,16 @@ const fetchData = async (userId) => {
         color,
         projectId: projectKey,
         projectTitle: t.projectTitle || 'No Project',
-        assigneeNames: Array.isArray(t.assigneeNames) ? t.assigneeNames : [] // <- from server
+        assigneeNames: Array.isArray(t.assigneeNames) ? t.assigneeNames : []
       }
     })
   } catch (err) {
-    console.error('❌ Error fetching tasks:', err)
+    console.error('❌ Error fetching timeline:', err)
   } finally {
-    loading.value = false
+    loadingTimeline.value = false
   }
 }
 
-// Render Gantt
 const renderGantt = () => {
   if (!ganttContainer.value || !filteredTasks.value.length) {
     if (ganttContainer.value) ganttContainer.value.innerHTML = ''
@@ -162,7 +324,6 @@ const renderGantt = () => {
       else if (t.status?.toLowerCase() === 'in-progress') statusColor = '#f59e0b'
       else if (t.status?.toLowerCase() === 'not started') statusColor = '#ef4444'
 
-      // Build assigned users text
       const names = Array.isArray(t.assigneeNames) ? t.assigneeNames.filter(Boolean) : []
       const assignedText = names.length ? names.join(', ') : 'Unassigned'
 
@@ -183,7 +344,7 @@ const renderGantt = () => {
     },
   })
 
-  // Apply colors and overdue overlays
+  // Overdue overlays
   setTimeout(() => {
     const today = new Date()
     const pxPerDay =
@@ -203,7 +364,6 @@ const renderGantt = () => {
       const barRect = barWrapper.querySelector('rect.bar')
       if (!barRect) return
 
-      // Ensure stable project color
       barRect.setAttribute('fill', t.color || getProjectColor(t.projectId))
 
       const oldOverlay = barWrapper.querySelector('.overdue-overlay')
@@ -231,21 +391,21 @@ const renderGantt = () => {
   }, 400)
 }
 
-// Re-render on source change
 watch(filteredTasks, () => {
   renderGantt()
 })
 
-onMounted(() => {
-  const auth = getAuth()
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      await fetchData(user.uid)
-      renderGantt()
-    } else {
-      window.location.href = '/login'
-    }
-  })
+// ----------------------------
+// Mount
+// ----------------------------
+onMounted(async () => {
+  const session = checkAuth()
+  if (!session) return
+  await Promise.all([
+    loadProjects(session.uid, session.role),
+    fetchTimeline(session.uid),
+  ])
+  renderGantt()
 })
 </script>
 

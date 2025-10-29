@@ -21,6 +21,12 @@ async function getUserDisplayNameByRefOrId(refOrId) {
       const u = snap.exists ? snap.data() : null
       return u?.displayName || u?.name || u?.email || null
     }
+    // Firestore DocumentReference (admin SDK) branch
+    if (typeof refOrId.get === 'function' && refOrId.id) {
+      const snap = await refOrId.get()
+      const u = snap.exists ? snap.data() : null
+      return u?.displayName || u?.name || u?.email || null
+    }
   } catch (e) {
     console.warn('Failed to resolve user name:', e)
   }
@@ -29,21 +35,34 @@ async function getUserDisplayNameByRefOrId(refOrId) {
 
 async function resolveAssigneeNames(assignedTo) {
   if (!Array.isArray(assignedTo) || !assignedTo.length) return []
-  // Resolve sequentially; if you have many, consider Promise.all with small concurrency.
   const names = []
   for (const refOrId of assignedTo) {
     const n = await getUserDisplayNameByRefOrId(refOrId)
     if (n) names.push(n)
   }
-  // Deduplicate
   return Array.from(new Set(names))
 }
 
-async function getTasksForUser(userId) {
-  try {
-    console.log(`[TimelineService] Getting tasks for user: ${userId}`)
+// Helper: chunk an array
+function chunk(arr, size) {
+  const out = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
+}
 
-    // Projects for color/title maps
+/**
+ * Visibility model:
+ * - A user can view ALL tasks that belong to ANY project where the user is assigned to at least one task.
+ * - PLUS: The user should always see tasks they CREATED, even if they’re not assigned.
+ * - Optional server-side filter by assigned users (IDs) via opts.assignedUserIds
+ */
+async function getTasksForUser(userId, opts = {}) {
+  try {
+    console.log(`[TimelineService] Getting timeline for user: ${userId}`)
+    const { assignedUserIds = [] } = opts
+    const userRef = db.collection('Users').doc(userId)
+
+    // ==== Build project color/title maps ====
     const projectSnap = await db.collection('Projects').get()
     const projectColors = {}
     const projectTitles = new Map()
@@ -53,31 +72,80 @@ async function getTasksForUser(userId) {
       projectTitles.set(doc.id, pdata.title || pdata.name || 'Untitled Project')
     })
 
-    // Load tasks
-    const taskSnap = await db.collection('Tasks').get()
-    console.log(`[TimelineService] Total tasks found: ${taskSnap.size}`)
+    // ==== 1) Projects the user is involved in (assigned to any task) ====
+    const involvementSnap = await db
+      .collection('Tasks')
+      .where('assignedTo', 'array-contains', userRef)
+      .get()
 
+    // Collect unique, non-null project DocumentReferences
+    const involvedProjectRefs = Array.from(
+      new Set(
+        involvementSnap.docs
+          .map(d => d.data()?.projectId)
+          .filter(ref => ref && typeof ref.get === 'function')
+      )
+    )
+
+    // ==== 2) Fetch ALL tasks from those projects (any assignee) ====
+    // Firestore 'in' supports up to 10 values; batch if necessary.
+    const taskDocs = []
+    if (involvedProjectRefs.length) {
+      const projectBatches = chunk(involvedProjectRefs, 10)
+      for (const batch of projectBatches) {
+        const snap = await db.collection('Tasks').where('projectId', 'in', batch).get()
+        taskDocs.push(...snap.docs)
+      }
+    }
+
+    // ==== 3) ALSO include tasks CREATED by the user (even if not assigned / not in involved projects) ====
+    const createdSnap = await db
+      .collection('Tasks')
+      .where('taskCreatedBy', '==', userRef)
+      .get()
+
+    // Deduplicate by doc id
+    const seenIds = new Set(taskDocs.map(d => d.id))
+    createdSnap.docs.forEach(d => {
+      if (!seenIds.has(d.id)) {
+        taskDocs.push(d)
+        seenIds.add(d.id)
+      }
+    })
+
+    console.log(`[TimelineService] Total tasks after merging project + created: ${taskDocs.length}`)
+
+    // ==== 4) Build response items ====
     const userTasks = []
 
-    for (const docSnap of taskSnap.docs) {
+    for (const docSnap of taskDocs) {
       const data = docSnap.data()
       const assignedTo = data.assignedTo || []
 
-      // keep same role filter: only tasks where user is assigned
-      const isUserAssigned =
-        Array.isArray(assignedTo) &&
-        assignedTo.some(ref => (ref?.path || '') === `Users/${userId}` || ref === userId)
-      if (!isUserAssigned) continue
+      // Optional server-side filter: assigned user IDs
+      if (assignedUserIds.length) {
+        const keep = assignedTo.some(ref => {
+          const path = ref?.path || ref?._path?.segments?.join('/')
+          const id = ref?.id || (Array.isArray(ref?._path?.segments) ? ref._path.segments.at(-1) : null)
+          return assignedUserIds.includes(id) || assignedUserIds.some(u => path === `Users/${u}`)
+        })
+        if (!keep) continue
+      }
 
       const startDate = getSafeDate(data.createdDate, new Date())
       const endDate = getSafeDate(data.deadline, new Date(startDate.getTime() + 3 * 86400000))
       const validEnd = endDate < startDate ? new Date(startDate.getTime() + 86400000) : endDate
 
-      const pid = data.projectId || null
-      const projectColor = projectColors[pid] || '#9ca3af'
-      const projectTitle = pid ? (projectTitles.get(pid) || pid) : 'No Project'
+      // Normalize project key from DocumentReference/string
+      const pid =
+        data.projectId?.id ||
+        data.projectId?._path?.segments?.at(-1) ||
+        (typeof data.projectId === 'string' ? data.projectId : null)
 
-      // NEW: resolve assignee names
+      const projectColor = projectColors[pid] || '#9ca3af'
+      const projectTitle = pid ? (projectTitles.get(pid) || 'Untitled Project') : 'No Project'
+
+      // Resolve assignee names for popup/filtering
       const assigneeNames = await resolveAssigneeNames(assignedTo)
 
       userTasks.push({
@@ -89,7 +157,7 @@ async function getTasksForUser(userId) {
         color: projectColor,
         projectId: pid,
         projectTitle,
-        assigneeNames // <-- used by UI
+        assigneeNames // array of strings
       })
     }
 
