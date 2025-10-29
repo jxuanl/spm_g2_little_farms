@@ -2,9 +2,11 @@ name: Integration Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    # branches: [ main, develop ]
+    branches: [ task-management-aiden ]
   pull_request:
-    branches: [ main, develop ]
+    # branches: [ main, develop ]
+    branches: [ task-management-aiden ]
   workflow_dispatch:
 
 jobs:
