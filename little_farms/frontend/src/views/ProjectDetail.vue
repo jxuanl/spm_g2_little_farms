@@ -5,7 +5,7 @@
         <div>
           <h1 class="text-2xl font-semibold">{{ project?.title || 'Project Details' }}</h1>
           <p class="text-sm text-muted-foreground mt-1">
-            <strong>Owner:</strong> {{ ownerName || 'Unknown' }}
+            <strong>Owner:</strong> {{ project?.ownerName || 'Unknown' }}
           </p>
           <p class="text-sm text-muted-foreground">
             <strong>Description:</strong> {{ project?.description || 'No description' }}
@@ -89,7 +89,6 @@ const project = ref(null);
 const isCreateModalOpen = ref(false);
 const currentUserId = ref('');
 const userRole = ref('');
-const ownerName = ref('');
 const showPermissionMessage = ref(false);
 const permissionMessage = ref('');
 
@@ -178,7 +177,7 @@ const loadProject = async () => {
 
     console.log('🔐 User role:', userRole.value);
 
-    // Fetch project details
+    // Fetch project details (backend now returns ownerName)
     const projectId = route.params.id;
     const res = await fetch(`http://localhost:3001/api/projects/${projectId}?userId=${user.uid}`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -187,33 +186,8 @@ const loadProject = async () => {
     if (!res.ok) throw new Error('Failed to load project');
     
     project.value = await res.json();
-
-    // Fetch owner name if owner is a DocumentReference
-    if (project.value.owner) {
-      try {
-        let ownerId;
-        if (typeof project.value.owner === 'string') {
-          ownerId = project.value.owner;
-        } else if (project.value.owner.path) {
-          const pathParts = project.value.owner.path.split('/');
-          ownerId = pathParts[pathParts.length - 1];
-        }
-
-        if (ownerId) {
-          const ownerRes = await fetch(`http://localhost:3001/api/users/${ownerId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          if (ownerRes.ok) {
-            const ownerData = await ownerRes.json();
-            ownerName.value = ownerData.user?.name || ownerData.name || 'Unknown';
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to fetch owner name:', err);
-        ownerName.value = 'Unknown';
-      }
-    }
+    
+    console.log('✅ Project loaded with owner:', project.value.ownerName);
 
   } catch (error) {
     console.error('Error loading project:', error);
