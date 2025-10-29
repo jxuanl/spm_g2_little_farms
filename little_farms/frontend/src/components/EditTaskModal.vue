@@ -645,6 +645,27 @@ const handleUpdate = async () => {
       changes: changes // This is what your friend needs!
     };
 
+
+  // Jovan's edit for notification sending. Commented out because I changed file & route structure
+  //   const sendUpdatedData = {
+  //   id: props.task.id,
+  //     ...changes
+  //   }
+  //   console.log('Logging changes:', sendUpdatedData);
+
+  //   const response = await fetch('/api/update/tasks/manager', {
+  //   method: 'POST',
+  //   headers: {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': `Bearer ${token}`, 
+  //   },
+  //   body: JSON.stringify(sendUpdatedData),
+  // });
+  // if (!response.ok) {
+  //   const text = await response.text();
+  //   throw new Error(`Failed to log changes: ${response.status} ${text}`);
+  // }
+
     const endpoint = props.isSubtask
       ? `/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`
       : `/api/tasks/${props.task.id}`;
