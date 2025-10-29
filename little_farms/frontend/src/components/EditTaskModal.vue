@@ -8,11 +8,9 @@
         <h2 class="text-lg font-semibold leading-none tracking-tight">{{ isSubtask ? 'Edit Subtask' : 'Edit Task' }}</h2>
       </div>
 
-
       <div v-if="showSuccessMessage" class="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
         <div class="text-sm text-green-800">✓ {{ isSubtask ? 'Subtask' : 'Task' }} updated successfully!</div>
       </div>
-
 
       <form @submit.prevent="handleUpdate" class="space-y-4">
         <!-- === Title === -->
@@ -38,7 +36,6 @@
           </div>
         </div>
 
-
         <!-- === Description === -->
         <div class="space-y-2">
           <label class="text-sm font-medium">Description</label>
@@ -49,7 +46,6 @@
             class="flex min-h-[60px] w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
-
 
         <!-- === Priority & Status (Side by Side) === -->
         <div class="grid grid-cols-2 gap-4">
@@ -73,7 +69,6 @@
             </div>
           </div>
 
-
           <!-- Status Dropdown -->
           <div class="space-y-2">
             <label class="text-sm font-medium">Status</label>
@@ -88,7 +83,6 @@
                 </span>
                 <ChevronDown class="h-4 w-4 opacity-50" />
               </button>
-
 
               <div
                 v-if="dropdownStates.status"
@@ -111,8 +105,6 @@
           </div>
         </div>
 
-
-       
         <!-- === Project & Assignees (Side by Side) === -->
         <div class="grid grid-cols-2 gap-4">
           <!-- Project Dropdown -->
@@ -133,7 +125,6 @@
                 </span>
                 <ChevronDown class="h-4 w-4 opacity-50" />
               </button>
-
 
               <div
                 v-if="dropdownStates.project && !isSubtask"
@@ -158,7 +149,6 @@
             </div>
           </div>
 
-
           <!-- Assignees Dropdown -->
           <div class="space-y-2">
             <label class="text-sm font-medium">Assignees</label>
@@ -173,7 +163,6 @@
                 </span>
                 <ChevronDown class="h-4 w-4 opacity-50" />
               </button>
-
 
               <div
                 v-if="dropdownStates.assignees"
@@ -200,8 +189,6 @@
           </div>
         </div>
 
-
-       
         <!-- === Due Date === -->
         <div class="space-y-2">
           <label class="text-sm font-medium">Due Date</label>
@@ -218,7 +205,6 @@
             {{ errors.deadline }}
           </div>
         </div>
-
 
         <!-- === Tags === -->
         <div class="space-y-2">
@@ -241,7 +227,6 @@
               </button>
             </span>
           </div>
-
 
           <!-- Add new tag input -->
           <div class="relative">
@@ -282,115 +267,8 @@
                 </button>
               </div>
             </div>
-
-            <!-- === Recurring Task Section === -->
-            <div class="space-y-3 border border-gray-300 rounded-md p-4 bg-gray-50">
-              <div class="flex items-center justify-between">
-                <label class="text-sm font-medium leading-none">
-                  Recurring Task
-                </label>
-                <button
-                  type="button"
-                  @click="formData.recurring = !formData.recurring"
-                  :class="[
-                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                    formData.recurring ? 'bg-primary' : 'bg-gray-300'
-                  ]"
-                >
-                  <span
-                    :class="[
-                      'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                      formData.recurring ? 'translate-x-6' : 'translate-x-1'
-                    ]"
-                  />
-                </button>
-              </div>
-
-              <div v-if="formData.recurring" class="space-y-3 pt-2">
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="space-y-2">
-                    <label class="text-sm font-medium leading-none">
-                      Repeat Every *
-                    </label>
-                    <input
-                      v-model.number="formData.recurrenceValue"
-                      type="number"
-                      min="1"
-                      placeholder="e.g., 2"
-                      required
-                      :class="[
-                        'flex h-9 w-full rounded-md border bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                        errors.recurrenceValue ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
-                      ]"
-                      @input="validateRecurrence"
-                    />
-                    <div v-if="errors.recurrenceValue" class="text-sm text-red-500 mt-1">
-                      {{ errors.recurrenceValue }}
-                    </div>
-                  </div>
-
-                  <div class="space-y-2">
-                    <label class="text-sm font-medium leading-none">
-                      Interval *
-                    </label>
-                    <div class="relative">
-                      <button
-                        type="button"
-                        @click="toggleDropdown('recurrenceInterval')"
-                        :class="[
-                          'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring',
-                          errors.recurrenceInterval ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
-                        ]"
-                      >
-                        <span :class="formData.recurrenceInterval ? 'text-foreground' : 'text-muted-foreground'">
-                          {{ getRecurrenceIntervalLabel() }}
-                        </span>
-                        <ChevronDown class="h-4 w-4 opacity-50" />
-                      </button>
-                      <div 
-                        v-if="dropdownStates.recurrenceInterval"
-                        class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
-                      >
-                        <div class="p-1">
-                          <button
-                            type="button"
-                            @click="selectOption('recurrenceInterval', 'days')"
-                            class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                          >
-                            Day(s)
-                          </button>
-                          <button
-                            type="button"
-                            @click="selectOption('recurrenceInterval', 'weeks')"
-                            class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                          >
-                            Week(s)
-                          </button>
-                          <button
-                            type="button"
-                            @click="selectOption('recurrenceInterval', 'months')"
-                            class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                          >
-                            Month(s)
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div v-if="errors.recurrenceInterval" class="text-sm text-red-500 mt-1">
-                      {{ errors.recurrenceInterval }}
-                    </div>
-                  </div>
-                </div>
-
-                <div v-if="formData.recurrenceValue && formData.recurrenceInterval" class="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
-                  ℹ️ This task will repeat every {{ formData.recurrenceValue }} {{ formData.recurrenceInterval }}. 
-                  Changes will only affect future instances, not the current one.
-                </div>
-              </div>
-            </div>
           </div>
         </div>
-
 
         <!-- === Buttons === -->
         <div class="flex justify-end gap-2 pt-4">
@@ -413,12 +291,10 @@
   </div>
 </template>
 
-
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue';
 import { ChevronDown, Check, X } from 'lucide-vue-next';
 import { getAuth } from 'firebase/auth';
-
 
 const emit = defineEmits(['close', 'updated']);
 const props = defineProps({
@@ -428,19 +304,15 @@ const props = defineProps({
   parentTaskId: { type: String, default: null }
 });
 
-
 const showSuccessMessage = ref(false);
 const projects = ref([]);
 const users = ref([]);
-const dropdownStates = reactive({ status: false, project: false, assignees: false, recurrenceInterval: false });
+const dropdownStates = reactive({ status: false, project: false, assignees: false });
 const errors = reactive({
   title: '',
   priority: '',
-  deadline: '',
-  recurrenceValue: '',
-  recurrenceInterval: ''
+  deadline: ''
 });
-
 
 const formData = reactive({
   title: '',
@@ -450,24 +322,30 @@ const formData = reactive({
   projectId: '',
   assignedTo: [],
   deadline: '',
-  tags: [],
-  recurring: false,
-  recurrenceValue: null,
-  recurrenceInterval: ''
+  tags: []
 });
 
+// Store original values for comparison
+const originalValues = reactive({
+  title: '',
+  description: '',
+  priority: null,
+  status: '',
+  projectId: '',
+  assignedTo: [],
+  deadline: '',
+  tags: []
+});
 
 // Tag-related reactive data
 const newTag = ref('');
 const showTagSuggestions = ref(false);
 const tagSuggestions = ref([]);
 
-
 // Existing tags for auto-suggestion
 const existingTags = ref([
   'Frontend', 'Backend', 'Bug Fix', 'Feature', 'Testing', 'Documentation', 'UI/UX', 'API', 'Database', 'Performance'
 ]);
-
 
 // Load dropdown data
 onMounted(async () => {
@@ -477,34 +355,28 @@ onMounted(async () => {
     if (!user) return console.warn('⚠️ User not logged in');
     const token = await user.getIdToken();
 
-
     const [projectRes, userRes] = await Promise.all([
       fetch('/api/allProjects', { headers: { 'Authorization': `Bearer ${token}` }}),
-      fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` }}), // <-- correct mount
+      fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` }}),
     ]);
-
 
     const projectData = await projectRes.json();
     const userData = await userRes.json();
-
 
     projects.value = Array.isArray(projectData.data)
       ? projectData.data.map(p => ({ id: p.id, name: p.name || p.title || 'Unnamed Project' }))
       : (projectData.projects || []).map(p => ({ id: p.id, name: p.name || p.title || 'Unnamed Project' }));
 
-
     users.value = Array.isArray(userData.data)
       ? userData.data.map(u => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }))
       : (userData.users || []).map(u => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }));
-
 
   } catch (err) {
     console.error('❌ Error fetching dropdown data:', err);
   }
 });
 
-
-// Prefill form from props
+// Prefill form from props and store original values
 watch(
   () => props.task,
   (task) => {
@@ -549,14 +421,20 @@ watch(
         ? new Date(task.deadline).toISOString().split('T')[0]
         : '';
       formData.tags = Array.isArray(task.tags) ? [...task.tags] : [];
-      formData.recurring = task.recurring || false;
-      formData.recurrenceValue = task.recurrenceValue || null;
-      formData.recurrenceInterval = task.recurrenceInterval || '';
+
+      // Store original values for comparison
+      originalValues.title = formData.title;
+      originalValues.description = formData.description;
+      originalValues.priority = formData.priority;
+      originalValues.status = formData.status;
+      originalValues.projectId = formData.projectId;
+      originalValues.assignedTo = [...formData.assignedTo];
+      originalValues.deadline = formData.deadline;
+      originalValues.tags = [...formData.tags];
     }
   },
   { immediate: true }
 );
-
 
 // === Validation functions ===
 const validateTitle = () => {
@@ -568,7 +446,6 @@ const validateTitle = () => {
   }
 };
 
-
 const validatePriority = () => {
   errors.priority = '';
   const priority = Number(formData.priority);
@@ -576,7 +453,6 @@ const validatePriority = () => {
     errors.priority = 'Priority must be a number between 1 and 10';
   }
 };
-
 
 const validateDueDate = () => {
   errors.deadline = '';
@@ -593,41 +469,12 @@ const validateDueDate = () => {
   }
 };
 
-const validateRecurrence = () => {
-  errors.recurrenceValue = '';
-  errors.recurrenceInterval = '';
-  
-  if (formData.recurring) {
-    if (!formData.recurrenceValue || formData.recurrenceValue < 1) {
-      errors.recurrenceValue = 'Must be at least 1';
-    }
-    if (!formData.recurrenceInterval) {
-      errors.recurrenceInterval = 'Please select an interval';
-    }
-    if (formData.recurring && !formData.deadline) {
-      errors.deadline = 'Due date is required for recurring tasks';
-    }
-  }
-};
-
-
 const validateForm = () => {
   validateTitle();
   validatePriority();
   validateDueDate();
-  validateRecurrence();
-  return !errors.title && !errors.priority && !errors.deadline && !errors.recurrenceValue && !errors.recurrenceInterval;
+  return !errors.title && !errors.priority && !errors.deadline;
 };
-
-const getRecurrenceIntervalLabel = () => {
-  const labels = {
-    days: 'Day(s)',
-    weeks: 'Week(s)',
-    months: 'Month(s)'
-  };
-  return formData.recurrenceInterval ? labels[formData.recurrenceInterval] : 'Select interval';
-};
-
 
 // === Dropdown helpers ===
 const toggleDropdown = (key) => {
@@ -637,23 +484,15 @@ const toggleDropdown = (key) => {
   dropdownStates[key] = !dropdownStates[key];
 };
 
-
 const closeDropdowns = () => {
   Object.keys(dropdownStates).forEach((k) => (dropdownStates[k] = false));
   showTagSuggestions.value = false;
 };
 
-
 const selectOption = (key, value) => {
-  if (key === 'recurrenceInterval') {  // ADD THIS BLOCK
-    formData.recurrenceInterval = value;
-    validateRecurrence();
-  } else {
-    formData[key] = value;
-  }
+  formData[key] = value;
   closeDropdowns();
 };
-
 
 const toggleAssignee = (id) => {
   const index = formData.assignedTo.indexOf(id);
@@ -661,24 +500,20 @@ const toggleAssignee = (id) => {
   else formData.assignedTo.push(id);
 };
 
-
 const getStatusLabel = () => {
   const map = { todo: 'To Do', 'in-progress': 'In Progress', review: 'In Review', done: 'Done' };
   return formData.status ? map[formData.status] : 'Select status';
 };
-
 
 const getProjectPlaceholder = () => {
   const project = projects.value.find((p) => p.id === formData.projectId);
   return project ? project.name : 'Select project';
 };
 
-
 const getAssigneesPlaceholder = () =>
   formData.assignedTo.length
     ? users.value.filter((u) => formData.assignedTo.includes(u.id)).map((u) => u.name).join(', ')
     : 'Select assignees';
-
 
 const statusOptions = [
   { value: 'todo', label: 'To Do' },
@@ -686,7 +521,6 @@ const statusOptions = [
   { value: 'review', label: 'In Review' },
   { value: 'done', label: 'Done' }
 ];
-
 
 // === Tag management functions ===
 const updateTagSuggestions = () => {
@@ -702,7 +536,6 @@ const updateTagSuggestions = () => {
   }
 };
 
-
 const selectTagSuggestion = (tag) => {
   if (!formData.tags.includes(tag)) {
     formData.tags.push(tag);
@@ -711,7 +544,6 @@ const selectTagSuggestion = (tag) => {
   showTagSuggestions.value = false;
   tagSuggestions.value = [];
 };
-
 
 const addTag = () => {
   if (newTag.value.trim() && !formData.tags.includes(newTag.value.trim())) {
@@ -722,7 +554,6 @@ const addTag = () => {
   }
 };
 
-
 const removeTag = (tagToRemove) => {
   const index = formData.tags.indexOf(tagToRemove);
   if (index > -1) {
@@ -730,6 +561,54 @@ const removeTag = (tagToRemove) => {
   }
 };
 
+// Helper function to compare arrays
+const arraysEqual = (a, b) => {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((val, idx) => val === sortedB[idx]);
+};
+
+// Generate changes object with old and new values
+const getChanges = () => {
+  const changes = {};
+  
+  if (formData.title !== originalValues.title) {
+    changes.title = { old: originalValues.title, new: formData.title };
+  }
+  
+  if (formData.description !== originalValues.description) {
+    changes.description = { old: originalValues.description, new: formData.description };
+  }
+  
+  if (formData.priority !== originalValues.priority) {
+    changes.priority = { old: originalValues.priority, new: formData.priority };
+  }
+  
+  if (formData.status !== originalValues.status) {
+    changes.status = { old: originalValues.status, new: formData.status };
+  }
+  
+  if (formData.projectId !== originalValues.projectId) {
+    changes.projectId = { old: originalValues.projectId, new: formData.projectId };
+  }
+  
+  if (!arraysEqual(formData.assignedTo, originalValues.assignedTo)) {
+    changes.assignedTo = { old: originalValues.assignedTo, new: formData.assignedTo };
+  }
+  
+  if (formData.deadline !== originalValues.deadline) {
+    const oldDeadline = originalValues.deadline ? new Date(originalValues.deadline).toISOString() : null;
+    const newDeadline = formData.deadline ? new Date(formData.deadline).toISOString() : null;
+    changes.deadline = { old: oldDeadline, new: newDeadline };
+  }
+  
+  if (!arraysEqual(formData.tags, originalValues.tags)) {
+    changes.tags = { old: originalValues.tags, new: formData.tags };
+  }
+  
+  return changes;
+};
 
 // === Handle Update ===
 const handleUpdate = async () => {
@@ -737,7 +616,6 @@ const handleUpdate = async () => {
   if (!validateForm()) {
     return;
   }
-
 
   try {
     const auth = getAuth();
@@ -748,11 +626,13 @@ const handleUpdate = async () => {
     }
     const token = await user.getIdToken();
 
-
     const tagsArray = Array.isArray(formData.tags) ? formData.tags : [];
 
+    // Get all changes with old and new values
+    const changes = getChanges();
 
     const updateData = {
+      id: props.task.id,
       title: formData.title.trim(),
       description: formData.description.trim(),
       priority: formData.priority ? Number(formData.priority) : null,
@@ -761,18 +641,34 @@ const handleUpdate = async () => {
       projectId: formData.projectId || null,
       deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
       tags: tagsArray,
-      userId: user.uid, // for backend access control
-      recurring: Boolean(formData.recurring),
-      recurrenceInterval: formData.recurring ? formData.recurrenceInterval : null,
-      recurrenceValue: formData.recurring ? Number(formData.recurrenceValue) : null
+      userId: user.uid,
+      changes: changes // This is what your friend needs!
     };
 
+
+  // Jovan's edit for notification sending. Commented out because I changed file & route structure
+  //   const sendUpdatedData = {
+  //   id: props.task.id,
+  //     ...changes
+  //   }
+  //   console.log('Logging changes:', sendUpdatedData);
+
+  //   const response = await fetch('/api/update/tasks/manager', {
+  //   method: 'POST',
+  //   headers: {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': `Bearer ${token}`, 
+  //   },
+  //   body: JSON.stringify(sendUpdatedData),
+  // });
+  // if (!response.ok) {
+  //   const text = await response.text();
+  //   throw new Error(`Failed to log changes: ${response.status} ${text}`);
+  // }
 
     const endpoint = props.isSubtask
       ? `/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`
       : `/api/tasks/${props.task.id}`;
-
-
 
     const res = await fetch(endpoint, {
       method: 'PUT',
@@ -783,12 +679,10 @@ const handleUpdate = async () => {
       body: JSON.stringify(updateData),
     });
 
-
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`Failed to update: ${res.status} ${text}`);
     }
-
 
     showSuccessMessage.value = true;
     setTimeout(() => {
@@ -797,20 +691,16 @@ const handleUpdate = async () => {
       emit('close');
     }, 1500);
 
-
   } catch (error) {
     console.error('❌ Error updating task:', error);
     errors.title = error.message || `Failed to update ${props.isSubtask ? 'subtask' : 'task'}. Please try again.`;
   }
 };
 
-
 </script>
-
 
 <style scoped>
 @import '../../styles/CreateTaskModal.css';
-
 
 /* Component-specific border overrides */
 .border-gray-300 {
@@ -818,18 +708,15 @@ const handleUpdate = async () => {
   border-width: 1px !important;
 }
 
-
 .border-gray-200 {
   border-color: #e5e7eb !important;
   border-width: 1px !important;
 }
 
-
 /* Ensure all input elements have visible borders */
 input, textarea, button[type="button"] {
   border-width: 1px !important;
 }
-
 
 /* Focus ring for better accessibility */
 .focus-visible\:ring-1:focus-visible {
@@ -837,15 +724,12 @@ input, textarea, button[type="button"] {
   box-shadow: var(--tw-ring-shadow);
 }
 
-
 /* Dark mode border adjustments */
 .dark .border-gray-300 {
   border-color: #6b7280 !important;
 }
 
-
 .dark .border-gray-200 {
   border-color: #4b5563 !important;
 }
 </style>
-
