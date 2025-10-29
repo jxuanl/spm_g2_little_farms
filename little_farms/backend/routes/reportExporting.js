@@ -28,13 +28,13 @@ router.post('/generate_pdf', (req, res) => {
   } = req.body;
 
 
-  console.log('=== INCOMING REQUEST DATA ===');
-  console.log('Full req.body:', JSON.stringify(req.body, null, 2));
-  console.log('Report type:', reportType);
-  console.log('Filter type:', filterType);
-  console.log('Report title:', reportTitle);
-  console.log('Time frame:', timeFrame);
-  console.log('Data Count:', data ? data.length : 0);
+  // console.log('=== INCOMING REQUEST DATA ===');
+  // console.log('Full req.body:', JSON.stringify(req.body, null, 2));
+  // console.log('Report type:', reportType);
+  // console.log('Filter type:', filterType);
+  // console.log('Report title:', reportTitle);
+  // console.log('Time frame:', timeFrame);
+  // console.log('Data Count:', data ? data.length : 0);
 
   // Validate based on report type
   if (reportType === 'task-completion' && (!data || !Array.isArray(data))) {
@@ -54,10 +54,10 @@ router.post('/generate_pdf', (req, res) => {
   const tempFile = getTempFileName(reportType);
   const pythonScriptPath = path.join(__dirname, '../services/pdfReportService.py');
 
-  console.log('Generating', reportType, 'report with data...');
-  console.log('Python script path:', pythonScriptPath);
-  console.log('Output file:', tempFile);
-  console.log('Time frame:', timeFrame);
+  // console.log('Generating', reportType, 'report with data...');
+  // console.log('Python script path:', pythonScriptPath);
+  // console.log('Output file:', tempFile);
+  // console.log('Time frame:', timeFrame);
 
   // Check if Python script exists
   if (!fs.existsSync(pythonScriptPath)) {
@@ -105,7 +105,7 @@ router.post('/generate_pdf', (req, res) => {
 
     if (code === 0 && fs.existsSync(tempFile)) {
       const stats = fs.statSync(tempFile);
-      console.log('Generated PDF file size:', stats.size, 'bytes');
+      // console.log('Generated PDF file size:', stats.size, 'bytes');
 
       // Set headers to open in browser instead of download
       res.setHeader('Content-Type', 'application/pdf');
@@ -207,9 +207,9 @@ router.post('/generate_csv', (req, res) => {
   try {
     const { data, reportType = 'task-completion' } = req.body;
     
-    console.log('=== CSV GENERATION REQUEST ===');
-    console.log('Report type:', reportType);
-    console.log('Data received:', data);
+    // console.log('=== CSV GENERATION REQUEST ===');
+    // console.log('Report type:', reportType);
+    // console.log('Data received:', data);
 
     // Validate the request
     if (!data || !Array.isArray(data)) {
@@ -227,7 +227,7 @@ router.post('/generate_csv', (req, res) => {
       });
     }
 
-    console.log('Generating CSV with fields:', Object.keys(data[0]));
+    // console.log('Generating CSV with fields:', Object.keys(data[0]));
     
     const csv = createCSV(data);
     

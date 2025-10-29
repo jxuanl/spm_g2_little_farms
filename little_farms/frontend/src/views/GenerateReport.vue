@@ -10,61 +10,27 @@
         <!-- Report Type -->
         <div class="form-group">
           <label>Report Type</label>
-          <select v-model="reportType" class="select-field">
-            <option value="">Select Report Type</option>
-            <option value="task-completion">Task Completion</option>
+          <select v-model="filters.reportType" class="select-field">
             <option value="team-summary">Team Summary</option>
-            <option value="time-logged">Logged Time</option>
+            <option value="task-completion">Task Completion</option>
+            <option value="logged-time">Logged Time</option>
           </select>
         </div>
 
-        <!-- Report By (for task completion and time logged) -->
-        <div class="form-group" v-if="reportType === 'task-completion' || reportType === 'logged-time'">
-          <label>Report By</label>
-          <select v-model="reportBy" class="select-field">
-            <option value="">Select</option>
-            <option v-if="reportType === 'task-completion'" value="user">User</option>
-            <option value="project">Project</option>
-            <option v-if="reportType === 'logged-time'" value="department">Department</option>
-          </select>
-        </div>
-
-        <!-- Specific Selection (User/Project/Department) -->
-        <div class="form-group" v-if="reportBy">
-          <label>{{ reportBy === 'user' ? 'User' : reportBy === 'project' ? 'Project' : 'Department' }}</label>
-          <select v-model="selectedItem" class="select-field">
-            <option value="">Select {{ reportBy }}</option>
-            <option v-for="item in getItemsList" :key="item.value" :value="item.value">
-              {{ item.label }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Task Status (for task completion) -->
-        <div class="form-group" v-if="reportType === 'task-completion'">
-          <label>Task Status</label>
-          <select v-model="taskStatus" class="select-field">
-            <option value="all">All</option>
-            <option value="completed">Completed</option>
-            <option value="in-progress">In Progress</option>
-            <option value="overdue">Overdue</option>
-          </select>
-        </div>
-
-        <!-- Period Type -->
-        <div class="form-group" v-if="reportType === 'team-summary' || reportType === 'logged-time'">
-          <label>Period</label>
+        <!-- Interval -->
+        <div class="form-group">
+          <label>Interval</label>
           <div class="button-group">
             <button 
-              @click="periodType = 'weekly'" 
-              :class="{ active: periodType === 'weekly' }"
+              @click="filters.interval = 'weekly'; handleIntervalChange()" 
+              :class="{ active: filters.interval === 'weekly' }"
               class="btn-period"
             >
               Weekly
             </button>
             <button 
-              @click="periodType = 'monthly'" 
-              :class="{ active: periodType === 'monthly' }"
+              @click="filters.interval = 'monthly'; handleIntervalChange()" 
+              :class="{ active: filters.interval === 'monthly' }"
               class="btn-period"
             >
               Monthly
@@ -72,87 +38,63 @@
           </div>
         </div>
 
-        <!-- Date Selection -->
-        <div v-if="reportType === 'team-summary' || reportType === 'time-logged'">
-          <div v-if="periodType === 'weekly'" class="date-row">
+        <!-- Time Frame -->
+        <div class="form-group">
+          <label>Time Frame</label>
+          <div v-if="filters.interval === 'monthly'">
+            <input v-model="filters.month" type="month" class="input-field" />
+          </div>
+          <div v-else class="date-row">
             <div class="form-group half">
               <label>Start Date</label>
-              <input 
-                type="date" 
-                v-model="startDate" 
-                @change="calculateEndDate"
-                class="input-field"
-              />
+              <input v-model="filters.startDate" type="date" class="input-field" />
             </div>
             <div class="form-group half">
               <label>End Date</label>
-              <input 
-                type="date" 
-                v-model="endDate" 
-                class="input-field"
-                readonly
-              />
+              <input v-model="filters.endDate" type="date" class="input-field" />
             </div>
-          </div>
-
-          <div v-if="periodType === 'monthly'" class="form-group">
-            <label>Month</label>
-            <input 
-              type="month" 
-              v-model="selectedMonth"
-              class="input-field"
-            />
           </div>
         </div>
 
-        <!-- Date Selection for Task Completion -->
-        <div v-if="reportType === 'task-completion'" class="date-row">
-          <div class="form-group half">
-            <label>Start Date</label>
-            <input 
-              type="date" 
-              v-model="startDate" 
-              class="input-field"
-            />
-          </div>
-          <div class="form-group half">
-            <label>End Date</label>
-            <input 
-              type="date" 
-              v-model="endDate" 
-              class="input-field"
-            />
-          </div>
+        <!-- Filter By Project -->
+        <div class="form-group">
+          <label>Filter By Project</label>
+          <select v-model="filters.selectedProject" class="select-field">
+            <option value="">Select Project</option>
+            <option v-for="project in projects" :key="project.id" :value="project.id">
+              {{ project.title || project.name }}
+            </option>
+          </select>
         </div>
 
         <!-- Generate Button -->
         <button 
           @click="generateReport" 
           class="btn-generate" 
-          :disabled="!canGenerateReport"
+          :disabled="loading"
         >
           <span class="icon">📊</span>
-          Generate Report
+          {{ loading ? 'Generating...' : 'Generate Report' }}
         </button>
       </div>
 
       <!-- Right Content Area -->
       <div class="content">
         <div class="content-header">
-          <h1>{{ reportGenerated ? reportTitle : 'Logged Time Report' }}</h1>
+          <h1>{{ reportData && !loading ? reportTitle : 'Report Generator' }}</h1>
           
           <!-- Export Dropdown -->
-          <div class="export-dropdown" v-if="reportGenerated">
+          <div class="export-dropdown" v-if="reportData && reportData.length > 0">
             <button @click="toggleExportMenu" class="btn-export-main">
               Export
               <span class="arrow">▼</span>
             </button>
             <div class="export-menu" v-if="showExportMenu">
-              <button @click="exportCSV" class="export-option">
+              <button @click="exportReport('csv')" class="export-option">
                 <span class="icon">📄</span>
                 Export as CSV
               </button>
-              <button @click="exportPDF" class="export-option">
+              <button @click="exportReport('pdf')" class="export-option">
                 <span class="icon">📑</span>
                 Export as PDF
               </button>
@@ -162,25 +104,57 @@
 
         <div class="content-body">
           <!-- Empty State -->
-          <div v-if="!reportGenerated" class="empty-state">
-            <div class="error-icon">⚠️</div>
-            <p class="error-message">Could not connect to the API. Please ensure the server is running and accessible.</p>
+          <div v-if="!reportData && !loading" class="empty-state">
+            <div class="report-icon">📊</div>
+            <h3>No Report Generated</h3>
+            <p>Select filters and click "Generate Report" to view analytics</p>
           </div>
 
-          <!-- Report Table -->
-          <div v-else class="table-container">
-            <table class="report-table">
-              <thead>
-                <tr>
-                  <th v-for="header in reportHeaders" :key="header">{{ header }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, idx) in reportData" :key="idx">
-                  <td v-for="(value, key) in row" :key="key">{{ value }}</td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- Loading State -->
+          <div v-if="loading" class="empty-state">
+            <div class="loading-spinner"></div>
+            <p>Generating report...</p>
+          </div>
+
+          <!-- Report Display -->
+          <div v-if="reportData && !loading" class="report-display">
+            <!-- Team Summary Report -->
+            <div v-if="filters.reportType === 'team-summary'" class="table-container">
+              <h3 class="report-subtitle">Team Summary</h3>
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>Task Name</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>Deadline</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="task in reportData" :key="task.id">
+                    <td>{{ task.taskTitle }}</td>
+                    <td>
+                      <span v-if="Array.isArray(task.assignedTo)">
+                        <span v-for="(assignee, idx) in task.assignedTo" :key="idx">
+                          {{ assignee.name }}<span v-if="idx < task.assignedTo.length - 1">, </span>
+                        </span>
+                      </span>
+                      <span v-else>
+                        {{ task.assignedTo || 'Unassigned' }}
+                      </span>
+                    </td>
+                    <td>
+                      <span :class="getStatusBadgeClass(task.status)" class="status-badge">
+                        {{ task.status }}
+                      </span>
+                    </td>
+                    <td>{{ formatDate(task.deadline) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Add other report types here as needed -->
           </div>
         </div>
       </div>
@@ -189,202 +163,237 @@
 </template>
 
 <script>
+import { ref, computed, onMounted } from 'vue';
+import { getAuth } from 'firebase/auth';
 import TaskSidebar from '../components/TaskSidebar.vue';
+
 export default {
-  name: 'ReportingPage',
-  data() {
-    return {
-      reportType: '',
-      reportBy: '',
-      selectedItem: '',
-      taskStatus: 'all',
-      periodType: 'weekly',
+  name: 'EnhancedReportingPage',
+  components: {
+    TaskSidebar
+  },
+  setup() {
+    // Reactive state
+    const activeProject = ref("all");
+    const isCreateModalOpen = ref(false);
+    const loading = ref(false);
+    const reportData = ref(null);
+    const projects = ref([]);
+    const users = ref([]);
+    const departments = ref([]);
+    const showExportMenu = ref(false);
+    const error = ref('');
+
+    const filters = ref({
+      reportType: 'team-summary',
+      interval: 'monthly',
+      month: new Date().toISOString().slice(0, 7),
       startDate: '',
       endDate: '',
-      selectedMonth: '',
-      reportGenerated: false,
-      reportData: [],
-      reportHeaders: [],
-      showExportMenu: false,
-      
-      // Mock data
-      users: [
-        { value: 'user1', label: 'John Doe' },
-        { value: 'user2', label: 'Jane Smith' },
-        { value: 'user3', label: 'Mike Johnson' },
-        { value: 'user4', label: 'Sarah Williams' }
-      ],
-      projects: [
-        { value: 'proj1', label: 'Project kX1TzL...' },
-        { value: 'proj2', label: 'Website Redesign' },
-        { value: 'proj3', label: 'Mobile App' },
-        { value: 'proj4', label: 'API Integration' }
-      ],
-      departments: [
-        { value: 'dept1', label: 'Engineering' },
-        { value: 'dept2', label: 'Design' },
-        { value: 'dept3', label: 'Marketing' },
-        { value: 'dept4', label: 'Sales' }
-      ]
-    };
-  },
-  computed: {
-    canGenerateReport() {
-      if (!this.reportType) return false;
-      
-      if (this.reportType === 'task-completion') {
-        return this.reportBy && this.startDate && this.endDate;
-      }
-      
-      if (this.reportType === 'team-summary') {
-        if (this.periodType === 'weekly') {
-          return this.startDate && this.endDate;
-        }
-        return this.selectedMonth;
-      }
-      
-      if (this.reportType === 'time-logged') {
-        if (this.periodType === 'weekly') {
-          return this.reportBy && this.startDate && this.endDate;
-        }
-        return this.reportBy && this.selectedMonth;
-      }
-      
-      return false;
-    },
-    reportTitle() {
-      let title = '';
-      if (this.reportType === 'task-completion') {
-        title = 'Task Completion Report';
-      } else if (this.reportType === 'team-summary') {
-        title = 'Team Summary Report';
-      } else if (this.reportType === 'time-logged') {
-        title = 'Logged Time Report';
-      }
-      return title;
-    },
-    getItemsList() {
-      if (this.reportBy === 'user') return this.users;
-      if (this.reportBy === 'project') return this.projects;
-      if (this.reportBy === 'department') return this.departments;
-      return [];
-    }
-  },
-  methods: {
-    calculateEndDate() {
-      if (this.startDate) {
-        const start = new Date(this.startDate);
-        const end = new Date(start);
-        end.setDate(end.getDate() + 7);
-        this.endDate = end.toISOString().split('T')[0];
-      }
-    },
-    toggleExportMenu() {
-      this.showExportMenu = !this.showExportMenu;
-    },
-    generateReport() {
-      this.reportGenerated = true;
-      this.showExportMenu = false;
-      
-      if (this.reportType === 'task-completion') {
-        this.generateTaskCompletionData();
-      } else if (this.reportType === 'team-summary') {
-        this.generateTeamSummaryData();
-      } else if (this.reportType === 'time-logged') {
-        this.generateTimeLoggedData();
-      }
-    },
-    generateTaskCompletionData() {
-      if (this.reportBy === 'user') {
-        this.reportHeaders = ['User', 'Tasks Assigned', 'Tasks Completed', 'Completion Rate', 'Overdue'];
-        this.reportData = [
-          { user: 'John Doe', assigned: 15, completed: 12, rate: '80%', overdue: 2 },
-          { user: 'Jane Smith', assigned: 20, completed: 18, rate: '90%', overdue: 1 },
-          { user: 'Mike Johnson', assigned: 12, completed: 10, rate: '83%', overdue: 0 },
-          { user: 'Sarah Williams', assigned: 18, completed: 15, rate: '83%', overdue: 3 }
-        ];
-      } else {
-        this.reportHeaders = ['Project', 'Tasks Assigned', 'Tasks Completed', 'Completion Rate', 'Team Members'];
-        this.reportData = [
-          { project: 'Website Redesign', assigned: 25, completed: 20, rate: '80%', members: 4 },
-          { project: 'Mobile App', assigned: 30, completed: 25, rate: '83%', members: 5 },
-          { project: 'API Integration', assigned: 15, completed: 13, rate: '87%', members: 3 }
-        ];
-      }
-    },
-    generateTeamSummaryData() {
-      this.reportHeaders = ['Metric', 'Value', 'Change', 'Status'];
-      this.reportData = [
-        { metric: 'Total Tasks Completed', value: 65, change: '+12%', status: '✓' },
-        { metric: 'Average Completion Rate', value: '82%', change: '+5%', status: '✓' },
-        { metric: 'Total Hours Logged', value: 320, change: '+8%', status: '✓' },
-        { metric: 'Overdue Tasks', value: 6, change: '-15%', status: '✓' },
-        { metric: 'Team Members Active', value: 12, change: '0%', status: '-' }
-      ];
-    },
-    generateTimeLoggedData() {
-      if (this.reportBy === 'project') {
-        this.reportHeaders = ['Project', 'Total Hours', 'Billable Hours', 'Team Members', 'Avg Hours/Member'];
-        this.reportData = [
-          { project: 'Website Redesign', total: 120, billable: 100, members: 4, avg: 30 },
-          { project: 'Mobile App', total: 150, billable: 140, members: 5, avg: 30 },
-          { project: 'API Integration', total: 80, billable: 75, members: 3, avg: 27 }
-        ];
-      } else {
-        this.reportHeaders = ['Department', 'Total Hours', 'Projects', 'Team Members', 'Avg Hours/Person'];
-        this.reportData = [
-          { department: 'Engineering', total: 250, projects: 5, members: 8, avg: 31 },
-          { department: 'Design', total: 120, projects: 3, members: 4, avg: 30 },
-          { department: 'Marketing', total: 80, projects: 2, members: 3, avg: 27 }
-        ];
-      }
-    },
-    exportCSV() {
-      const headers = Object.values(this.reportHeaders).join(',');
-      const rows = this.reportData.map(row => Object.values(row).join(',')).join('\n');
-      const csv = `${headers}\n${rows}`;
-      
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report_${Date.now()}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      this.showExportMenu = false;
-    },
-    exportPDF() {
-      alert('PDF export functionality would integrate with a library like jsPDF or pdfmake.');
-      this.showExportMenu = false;
-    }
-  },
-  watch: {
-    reportType() {
-      this.reportGenerated = false;
-      this.reportBy = '';
-      this.selectedItem = '';
-      this.startDate = '';
-      this.endDate = '';
-      this.selectedMonth = '';
-    },
-    reportBy() {
-      this.selectedItem = '';
-      this.reportGenerated = false;
-    },
-    periodType() {
-      this.startDate = '';
-      this.endDate = '';
-      this.selectedMonth = '';
-      this.reportGenerated = false;
-    }
-  },
-  mounted() {
-    // Close export menu when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.export-dropdown')) {
-        this.showExportMenu = false;
-      }
+      selectedProject: ''
     });
+
+    // Computed properties
+    const reportTitle = computed(() => {
+      const titles = {
+        'team-summary': 'Team Summary Report',
+        'task-completion': 'Task Completion Report',
+        'logged-time': 'Logged Time Report'
+      };
+      return titles[filters.value.reportType] || 'Report';
+    });
+
+    // Utility functions
+    const formatDate = (date) => {
+      if (!date) return '-';
+      
+      // Handle Firestore timestamp objects
+      if (date._seconds !== undefined && date._nanoseconds !== undefined) {
+        const d = new Date(date._seconds * 1000 + date._nanoseconds / 1000000);
+        return d.toLocaleDateString('en-GB', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      // Handle regular date strings or Date objects
+      const d = new Date(date);
+      return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    };
+
+    const getStatusBadgeClass = (status) => {
+      const classes = {
+        'todo': 'status-todo',
+        'in-progress': 'status-in-progress',
+        'review': 'status-review',
+        'done': 'status-done'
+      };
+      return classes[status] || classes['todo'];
+    };
+
+    // API functions
+    const fetchWithAuth = async (url, options = {}) => {
+      const { token } = await getCurrentUserAuth();
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...options.headers
+        },
+        ...options
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response.json();
+    };
+
+    const getCurrentUserAuth = async () => {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const token = await user.getIdToken();
+      return { auth, user, token };
+    };
+
+    const loadProjectsAndUsers = async () => {
+      try {
+        const [projectsRes] = await Promise.all([
+          fetchWithAuth('/api/allProjects')
+        ]);
+
+        projects.value = projectsRes.data || projectsRes.projects || [];
+      } catch (error) {
+        console.error('Error loading projects:', error);
+      }
+    };
+
+    const handleIntervalChange = () => {
+      if (filters.value.interval === 'monthly') {
+        filters.value.month = new Date().toISOString().slice(0, 7);
+        filters.value.startDate = '';
+        filters.value.endDate = '';
+      } else {
+        filters.value.month = '';
+        const today = new Date();
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        filters.value.startDate = weekAgo.toISOString().split('T')[0];
+        filters.value.endDate = today.toISOString().split('T')[0];
+      }
+    };
+
+    const generateReport = async () => {
+      loading.value = true;
+      reportData.value = null;
+      
+      try {
+        // Simulate API call - replace with actual implementation
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Mock data for demonstration
+        reportData.value = [
+          {
+            id: 1,
+            taskTitle: 'Design System Implementation',
+            assignedTo: [{ name: 'John Doe' }, { name: 'Jane Smith' }],
+            status: 'in-progress',
+            deadline: new Date('2024-10-15')
+          },
+          {
+            id: 2,
+            taskTitle: 'API Integration',
+            assignedTo: [{ name: 'Mike Johnson' }],
+            status: 'todo',
+            deadline: new Date('2024-10-20')
+          },
+          {
+            id: 3,
+            taskTitle: 'User Testing',
+            assignedTo: [{ name: 'Sarah Wilson' }],
+            status: 'done',
+            deadline: new Date('2024-10-10')
+          }
+        ];
+        
+      } catch (error) {
+        console.error('Error generating report:', error);
+        alert('Failed to generate report. Please try again.');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const exportReport = async (format) => {
+      if (!reportData.value || !reportData.value.length) return;
+
+      loading.value = true;
+      try {
+        if (format === 'csv') {
+          // CSV export logic
+          alert('CSV export functionality would be implemented here');
+        } else {
+          // PDF export logic
+          alert('PDF export functionality would be implemented here');
+        }
+      } catch (e) {
+        console.error('Export error:', e);
+        error.value = e.message || 'Unknown error';
+      } finally {
+        loading.value = false;
+        showExportMenu.value = false;
+      }
+    };
+
+    const setActiveProject = (project) => {
+      activeProject.value = project;
+    };
+
+    const setIsCreateModalOpen = (open) => {
+      isCreateModalOpen.value = open;
+    };
+
+    const toggleExportMenu = () => {
+      showExportMenu.value = !showExportMenu.value;
+    };
+
+    onMounted(() => {
+      loadProjectsAndUsers();
+      
+      // Close export menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.export-dropdown')) {
+          showExportMenu.value = false;
+        }
+      });
+    });
+
+    return {
+      activeProject,
+      isCreateModalOpen,
+      loading,
+      reportData,
+      projects,
+      showExportMenu,
+      error,
+      filters,
+      reportTitle,
+      formatDate,
+      getStatusBadgeClass,
+      generateReport,
+      handleIntervalChange,
+      exportReport,
+      setActiveProject,
+      setIsCreateModalOpen,
+      toggleExportMenu
+    };
   }
 };
 </script>
@@ -399,10 +408,12 @@ export default {
   background: #f7fafc;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   color: #2d3748;
+  display: flex;
 }
 
 .layout {
   display: flex;
+  flex: 1;
   min-height: 100vh;
 }
 
@@ -413,12 +424,14 @@ export default {
   padding: 2rem;
   border-right: 1px solid #e2e8f0;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .sidebar h2 {
   color: #1a202c;
   font-size: 1.5rem;
   margin: 0 0 2rem 0;
+  font-weight: 600;
 }
 
 .form-group {
@@ -461,11 +474,6 @@ export default {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.select-field option {
-  background: #ffffff;
-  color: #2d3748;
-}
-
 .button-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -481,6 +489,7 @@ export default {
   cursor: pointer;
   font-size: 0.95rem;
   transition: all 0.2s;
+  font-weight: 500;
 }
 
 .btn-period:hover {
@@ -530,6 +539,7 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Prevents flex item from overflowing */
 }
 
 .content-header {
@@ -539,12 +549,14 @@ export default {
   justify-content: space-between;
   align-items: center;
   background: #ffffff;
+  flex-shrink: 0;
 }
 
 .content-header h1 {
   font-size: 1.75rem;
   margin: 0;
   color: #1a202c;
+  font-weight: 600;
 }
 
 /* Export Dropdown */
@@ -564,6 +576,7 @@ export default {
   align-items: center;
   gap: 0.5rem;
   transition: all 0.2s;
+  font-weight: 500;
 }
 
 .btn-export-main:hover {
@@ -616,6 +629,7 @@ export default {
   flex: 1;
   padding: 2rem;
   background: #f7fafc;
+  overflow-y: auto;
 }
 
 .empty-state {
@@ -625,33 +639,70 @@ export default {
   justify-content: center;
   height: 100%;
   min-height: 400px;
+  text-align: center;
 }
 
-.error-icon {
+.report-icon {
   font-size: 4rem;
   margin-bottom: 1rem;
   opacity: 0.7;
 }
 
-.error-message {
-  color: #f87171;
+.empty-state h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+}
+
+.empty-state p {
+  color: #718096;
   font-size: 1rem;
-  text-align: center;
-  max-width: 500px;
+  max-width: 300px;
+}
+
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Table */
+.report-display {
+  height: 100%;
+}
+
 .table-container {
   background: #ffffff;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-subtitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.5rem;
+  color: #1a202c;
 }
 
 .report-table {
   width: 100%;
   border-collapse: collapse;
+  flex: 1;
 }
 
 .report-table th {
@@ -677,6 +728,40 @@ export default {
   background: #f7fafc;
 }
 
+.status-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+.status-todo {
+  background: #f7fafc;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+}
+
+.status-in-progress {
+  background: #ebf8ff;
+  color: #3182ce;
+  border: 1px solid #bee3f8;
+}
+
+.status-review {
+  background: #fefcbf;
+  color: #d69e2e;
+  border: 1px solid #faf089;
+}
+
+.status-done {
+  background: #f0fff4;
+  color: #38a169;
+  border: 1px solid #c6f6d5;
+}
+
+/* Responsive Design */
 @media (max-width: 1024px) {
   .layout {
     flex-direction: column;
@@ -692,6 +777,21 @@ export default {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
+  }
+}
+
+@media (max-width: 768px) {
+  .date-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .content-body {
+    padding: 1rem;
+  }
+  
+  .sidebar {
+    padding: 1.5rem;
   }
 }
 </style>
