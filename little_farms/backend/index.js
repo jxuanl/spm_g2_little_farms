@@ -27,7 +27,7 @@ const app = express();
 // Add CORS middleware
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
   // Handle preflight requests
@@ -49,7 +49,7 @@ app.use(express.urlencoded({ extended: true }));
 // const __dirname = path.dirname(__filename);
 
 app.use('/api/tasks', tasksRouter);
-app.use('/api/users', usersRouter);
+app.use('/api', usersRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/update', updateRouter);

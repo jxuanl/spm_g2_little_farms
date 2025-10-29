@@ -1,22 +1,7 @@
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" @click="closeDropdowns">
     <div 
-      class="create-task-modal fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:s    // Map frontend form data to backend API format
-    const taskData = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      priority: Number(formData.priority) || null,
-      status: formData.status || 'To Do',
-      deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-      assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [currentUser.uid],
-      projectId: formData.projectId,
-      createdBy: currentUser.uid || 'default-user',
-      tags: formData.tags || [],
-      recurring: formData.recurring || false,
-      recurrenceInterval: formData.recurring ? formData.recurrenceInterval : null,
-      recurrenceValue: formData.recurring ? Number(formData.recurrenceValue) : null,
-      ...(props.parentTaskId && { parentTaskId: props.parentTaskId })
-    };top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]"
+      class="create-task-modal fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]"
       @click.stop
     >
       <div class="flex flex-col space-y-1.5 text-center sm:text-left">
@@ -447,7 +432,7 @@ const emit = defineEmits(['close', 'taskCreated']);
 const createTaskAPI = async (taskData) => {
   try {
     const token = await auth.currentUser?.getIdToken();
-    const response = await fetch('http://localhost:3001/api/tasks', {
+    const response = await fetch('/api/tasks', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -479,7 +464,7 @@ const fetchProjects = async () => {
     const token = await auth.currentUser.getIdToken();
     console.log('Auth token for projects:', token ? 'Token exists' : 'No token');
     
-    const response = await fetch('http://localhost:3001/api/allProjects', {
+    const response = await fetch('/api/allProjects', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -513,7 +498,7 @@ const fetchUsers = async () => {
     console.log('Auth token for users:', token ? 'Token exists' : 'No token');
     console.log('Making request to: http://localhost:3001/api/users/users');
     
-    const response = await fetch('http://localhost:3001/api/users', {
+    const response = await fetch('/api/users', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -842,10 +827,10 @@ const handleSubmit = async () => {
     const taskData = {
       title: formData.title.trim(),
       description: formData.description.trim(),
-      priority: Number(formData.priority),
-      status: formData.status || null,
+      priority: Number(formData.priority) || null,
+      status: formData.status || 'todo',
       deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-      assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [null],
+      assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [getCurrentUser()?.uid],
       projectId: formData.projectId,
       createdBy: currentUser.uid || 'default-user',
       tags: formData.tags || [],

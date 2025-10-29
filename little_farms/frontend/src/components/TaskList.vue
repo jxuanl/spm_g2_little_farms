@@ -35,7 +35,7 @@
         </button>
         <div 
           v-if="dropdownStates.project"
-          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
+          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 shadow-lg max-h-64 overflow-y-auto"
         >
           <div class="p-2">
             <button
@@ -78,7 +78,7 @@
         </button>
         <div 
           v-if="dropdownStates.creator"
-          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
+          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
         >
           <div class="p-2">
             <button
@@ -121,7 +121,7 @@
         </button>
         <div 
           v-if="dropdownStates.assignee"
-          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
+          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
         >
           <div class="p-2">
             <button
@@ -162,7 +162,7 @@
         </button>
         <div 
           v-if="dropdownStates.dueDate"
-          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
         >
           <div class="p-2">
             <button
@@ -196,7 +196,7 @@
         </button>
         <div 
           v-if="dropdownStates.status"
-          class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
         >
           <div class="p-2">
             <button
@@ -600,6 +600,6 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
 
 /* Ensure dropdowns appear above other elements */
 .z-50 {
-  z-index: 50;
+  z-index: 2000;
 }
 </style>
