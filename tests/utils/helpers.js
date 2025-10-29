@@ -135,9 +135,15 @@ export async function createTestComment({
 
 /**
  * Get custom token for user (for authentication in tests)
+ * Note: For emulator testing, we just return a simple token since
+ * the emulator doesn't strictly validate tokens like production
  */
 export async function getCustomToken(uid) {
-  return await admin.auth().createCustomToken(uid);
+  // Create a custom token - in tests with emulator, token validation is relaxed
+  const customToken = await admin.auth().createCustomToken(uid);
+  // For emulator, we can use the custom token directly in some cases
+  // or skip authentication entirely by passing userId in request body
+  return customToken;
 }
 
 /**

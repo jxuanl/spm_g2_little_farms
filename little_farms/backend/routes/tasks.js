@@ -271,22 +271,26 @@ router.put('/:taskId/comments/:commentId', async (req, res) => {
       return res.status(400).json({ error: 'Missing content or userId' });
     }
     
-    // Check authorization
+    if (content.length > 2000) {
+      return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
+    }
+    
+    // ✅ CHECK IF COMMENT EXISTS FIRST
+    const commentRef = db.collection('Tasks').doc(taskId).collection('Comments').doc(commentId);
+    const commentDoc = await commentRef.get();
+    
+    if (!commentDoc.exists) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // ✅ THEN CHECK AUTHORIZATION
     const authCheck = await verifyCommentAuthor(taskId, commentId, userId);
     if (!authCheck.authorized) {
       return res.status(403).json({ error: authCheck.error });
     }
     
-    if (content.length > 2000) {
-      return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
-    }
-    
     const updateData = { content };
     const updatedComment = await updateComment(taskId, commentId, updateData);
-    
-    if (!updatedComment) {
-      return res.status(404).json({ error: 'Comment not found' });
-    }
     
     res.json(updatedComment);
   } catch (error) {
@@ -309,22 +313,28 @@ router.put('/:taskId/subtasks/:subtaskId/comments/:commentId', async (req, res) 
       return res.status(400).json({ error: 'Missing content or userId' });
     }
     
-    // Check authorization
+    if (content.length > 2000) {
+      return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
+    }
+    
+    // ✅ CHECK IF COMMENT EXISTS FIRST
+    const commentRef = db.collection('Tasks').doc(taskId)
+      .collection('Subtasks').doc(subtaskId)
+      .collection('Comments').doc(commentId);
+    const commentDoc = await commentRef.get();
+    
+    if (!commentDoc.exists) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // ✅ THEN CHECK AUTHORIZATION
     const authCheck = await verifyCommentAuthor(taskId, commentId, userId, subtaskId);
     if (!authCheck.authorized) {
       return res.status(403).json({ error: authCheck.error });
     }
     
-    if (content.length > 2000) {
-      return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
-    }
-    
     const updateData = { content };
     const updatedComment = await updateComment(taskId, commentId, updateData, subtaskId);
-    
-    if (!updatedComment) {
-      return res.status(404).json({ error: 'Comment not found' });
-    }
     
     res.json(updatedComment);
   } catch (error) {
@@ -343,17 +353,21 @@ router.delete('/:taskId/comments/:commentId', async (req, res) => {
       return res.status(400).json({ error: 'Missing taskId, commentId, or userId' });
     }
     
-    // Check authorization
+    // ✅ CHECK IF COMMENT EXISTS FIRST
+    const commentRef = db.collection('Tasks').doc(taskId).collection('Comments').doc(commentId);
+    const commentDoc = await commentRef.get();
+    
+    if (!commentDoc.exists) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // ✅ THEN CHECK AUTHORIZATION
     const authCheck = await verifyCommentAuthor(taskId, commentId, userId);
     if (!authCheck.authorized) {
       return res.status(403).json({ error: authCheck.error });
     }
     
     const deleted = await deleteComment(taskId, commentId);
-    
-    if (!deleted) {
-      return res.status(404).json({ error: 'Comment not found' });
-    }
     
     res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
@@ -372,17 +386,23 @@ router.delete('/:taskId/subtasks/:subtaskId/comments/:commentId', async (req, re
       return res.status(400).json({ error: 'Missing taskId, subtaskId, commentId, or userId' });
     }
     
-    // Check authorization
+    // ✅ CHECK IF COMMENT EXISTS FIRST
+    const commentRef = db.collection('Tasks').doc(taskId)
+      .collection('Subtasks').doc(subtaskId)
+      .collection('Comments').doc(commentId);
+    const commentDoc = await commentRef.get();
+    
+    if (!commentDoc.exists) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // ✅ THEN CHECK AUTHORIZATION
     const authCheck = await verifyCommentAuthor(taskId, commentId, userId, subtaskId);
     if (!authCheck.authorized) {
       return res.status(403).json({ error: authCheck.error });
     }
     
     const deleted = await deleteComment(taskId, commentId, subtaskId);
-    
-    if (!deleted) {
-      return res.status(404).json({ error: 'Comment not found' });
-    }
     
     res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
