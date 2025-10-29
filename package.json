@@ -2,6 +2,7 @@
   "dependencies": {
     "@infectoone/vue-ganttastic": "^2.3.2",
     "@sendgrid/mail": "^8.1.6",
+    "chart.js": "^4.5.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "frappe-gantt": "^1.0.4",

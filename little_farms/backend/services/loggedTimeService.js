@@ -8,14 +8,14 @@ export async function getAllLoggedTime() {
   try {
     const snapshot = await loggedTimeCollection.get();
     const loggedTimeEntries = [];
-    
+
     snapshot.forEach((doc) => {
       loggedTimeEntries.push({
         id: doc.id,
         ...doc.data()
       });
     });
-    
+
     return loggedTimeEntries;
   } catch (error) {
     console.error('Error getting logged time entries:', error);
@@ -28,7 +28,7 @@ export async function getLoggedTimeById(id) {
   try {
     const docRef = loggedTimeCollection.doc(id);
     const docSnap = await docRef.get();
-    
+
     if (docSnap.exists) {
       return {
         id: docSnap.id,
@@ -48,14 +48,14 @@ export async function getLoggedTimeById(id) {
 //   try {
 //     const snapshot = await loggedTimeCollection.where('user', '==', `/Users/${userId}`).get();
 //     const loggedTimeEntries = [];
-    
+
 //     snapshot.forEach((doc) => {
 //       loggedTimeEntries.push({
 //         id: doc.id,
 //         ...doc.data()
 //       });
 //     });
-    
+
 //     return loggedTimeEntries;
 //   } catch (error) {
 //     console.error('Error getting logged time entries by user:', error);
@@ -68,14 +68,14 @@ export async function getLoggedTimeById(id) {
 //   try {
 //     const snapshot = await loggedTimeCollection.where('task', '==', `/Tasks/${taskId}`).get();
 //     const loggedTimeEntries = [];
-    
+
 //     snapshot.forEach((doc) => {
 //       loggedTimeEntries.push({
 //         id: doc.id,
 //         ...doc.data()
 //       });
 //     });
-    
+
 //     return loggedTimeEntries;
 //   } catch (error) {
 //     console.error('Error getting logged time entries by task:', error);
@@ -84,10 +84,11 @@ export async function getLoggedTimeById(id) {
 // }
 
 // Get all logged time entries with joined data
+
 export async function getLoggedTimeWithDetails() {
   try {
     const loggedTimeSnapshot = await db.collection('LoggedTime').get();
-    
+
     // If no logged time entries exist, return empty array
     if (loggedTimeSnapshot.empty) {
       return [];
@@ -98,7 +99,7 @@ export async function getLoggedTimeWithDetails() {
     // Process each logged time entry
     for (const doc of loggedTimeSnapshot.docs) {
       const loggedTimeData = doc.data();
-      
+
       try {
         // Validate required fields
         if (!loggedTimeData.task || !loggedTimeData.user) {
@@ -115,10 +116,10 @@ export async function getLoggedTimeWithDetails() {
         // Get task details with better error handling
         let taskDetails = {};
         try {
-          const taskRef = typeof loggedTimeData.task === 'string' 
+          const taskRef = typeof loggedTimeData.task === 'string'
             ? db.doc(loggedTimeData.task)
             : loggedTimeData.task;
-          
+
           const taskDoc = await taskRef.get();
           if (taskDoc.exists) {
             taskDetails = taskDoc.data();
@@ -139,7 +140,7 @@ export async function getLoggedTimeWithDetails() {
             const projectRef = typeof taskDetails.projectId === 'string'
               ? db.doc(taskDetails.projectId)
               : taskDetails.projectId;
-            
+
             const projectDoc = await projectRef.get();
             if (projectDoc.exists) {
               projectDetails = projectDoc.data();
@@ -159,7 +160,7 @@ export async function getLoggedTimeWithDetails() {
           const userRef = typeof loggedTimeData.user === 'string'
             ? db.doc(loggedTimeData.user)
             : loggedTimeData.user;
-          
+
           const userDoc = await userRef.get();
           if (userDoc.exists) {
             userDetails = userDoc.data();
@@ -179,15 +180,16 @@ export async function getLoggedTimeWithDetails() {
           loggedTimeId: doc.id,
           amtOfTime: loggedTimeData.amtOfTime,
           lastModified: doc.updateTime?.toDate() || doc.createTime?.toDate() || new Date(),
-          
+
           // Project details (handle errors)
           prjId: projectDetails.id || null,
           prjName: projectDetails.title || projectDetails.name || 'N/A',
-          
+
           // Task details (handle errors)
           taskId: taskDetails.id || null,
           taskName: taskDetails.title || taskDetails.name || 'N/A',
-          
+          createdDate: taskDetails.modifiedDate,  //it to fit in with the rest
+
           // User details (handle errors)
           userId: userDetails.id || null,
           userName: userDetails.name || 'N/A',
@@ -234,7 +236,7 @@ export async function getLoggedTimeWithDetailsByProject(projectId) {
 export async function getLoggedTimeWithDetailsByDepartment(department) {
   try {
     const allEntries = await getLoggedTimeWithDetails();
-    return allEntries.filter(entry => 
+    return allEntries.filter(entry =>
       entry.userDept && entry.userDept.toLowerCase() === department.toLowerCase()
     );
   } catch (error) {
@@ -248,22 +250,34 @@ export async function createLoggedTime(loggedTimeData) {
   try {
     // Convert string paths to DocumentReference objects
     const processedData = { ...loggedTimeData };
-    
+
     // Convert task path to DocumentReference
     if (processedData.task && typeof processedData.task === 'string') {
       processedData.task = db.doc(processedData.task);
     }
-    
+
     // Convert user path to DocumentReference  
     if (processedData.user && typeof processedData.user === 'string') {
       processedData.user = db.doc(processedData.user);
     }
-    
+
+    // Convert amtOfTime to integer
+    if (processedData.amtOfTime !== undefined && processedData.amtOfTime !== null) {
+      processedData.amtOfTime = parseInt(processedData.amtOfTime, 10);
+
+      // Handle NaN case (if conversion fails)
+      if (isNaN(processedData.amtOfTime)) {
+        throw new Error('amtOfTime must be a valid number');
+      }
+    } else {
+      throw new Error('amtOfTime is required');
+    }
+
     const docRef = await loggedTimeCollection.add(processedData);
-    
+
     // Get the created document to return complete data
     const newDoc = await docRef.get();
-    
+
     return {
       id: newDoc.id,
       ...newDoc.data()
@@ -279,10 +293,10 @@ export async function updateLoggedTime(id, updatedData) {
   try {
     const docRef = loggedTimeCollection.doc(id);
     await docRef.update(updatedData);
-    
+
     // Get the updated document
     const updatedDoc = await docRef.get();
-    
+
     return {
       id: updatedDoc.id,
       ...updatedDoc.data()
