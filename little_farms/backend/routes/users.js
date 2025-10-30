@@ -247,7 +247,7 @@ router.post('/verify-token', async (req, res) => {
  * GET /api/auth/users
  * Get all users (temporarily without authentication for testing)
  */
-router.get('/users', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     console.log('Fetching all users...');
     const result = await AuthService.getAllUsers();
@@ -267,7 +267,7 @@ router.get('/users', async (req, res) => {
  * GET /api/auth/users/search
  * Search users by email or name (protected route)
  */
-router.get('/users/search', authenticate, async (req, res) => {
+router.get('/search', authenticate, async (req, res) => {
   try {
     const { q } = req.query;
     
@@ -293,7 +293,7 @@ router.get('/users/search', authenticate, async (req, res) => {
  * GET /api/auth/users/role/:role
  * Get users by role (protected route)
  */
-router.get('/users/role/:role', authenticate, async (req, res) => {
+router.get('/role/:role', authenticate, async (req, res) => {
   try {
     const { role } = req.params;
     const result = await AuthService.getUsersByRole(role);
@@ -311,7 +311,7 @@ router.get('/users/role/:role', authenticate, async (req, res) => {
  * GET /api/auth/users/department/:department
  * Get users by department (protected route)
  */
-router.get('/users/department/:department', authenticate, async (req, res) => {
+router.get('/department/:department', authenticate, async (req, res) => {
   try {
     const { department } = req.params;
     const result = await AuthService.getUsersByDepartment(department);
@@ -329,7 +329,7 @@ router.get('/users/department/:department', authenticate, async (req, res) => {
  * GET /api/auth/users/:uid
  * Get user by ID (protected route)
  */
-router.get('/users/:uid', authenticate, async (req, res) => {
+router.get('/:uid', authenticate, async (req, res) => {
   try {
     const { uid } = req.params;
     const result = await AuthService.getUserById(uid);
@@ -347,7 +347,7 @@ router.get('/users/:uid', authenticate, async (req, res) => {
  * DELETE /api/auth/users/:uid
  * Delete user (protected route - admin only)
  */
-router.delete('/users/:uid', authenticate, async (req, res) => {
+router.delete('/:uid', authenticate, async (req, res) => {
   try {
     const { uid } = req.params;
     const result = await AuthService.deleteUser(uid);
