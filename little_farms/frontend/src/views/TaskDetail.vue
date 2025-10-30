@@ -20,13 +20,19 @@
 
     <!-- === Edit button === -->
     <div class="mt-10 flex justify-end">
-      <button
-        class="px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary/90 cursor-pointer"
-        @click="openEditModal"
-      >
-        {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
-      </button>
-    </div>
+    <button
+      class="px-4 py-2 font-medium rounded-md h-9 transition-all"
+      :class="[
+        canEdit
+          ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer border-transparent opacity-100'
+          : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60 border-black'
+      ]"
+      :disabled="!canEdit"
+      @click="canEdit && openEditModal()"
+    >
+      {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
+    </button>
+  </div>
 
     <!-- === Edit Modal === -->
     <EditTaskModal
@@ -74,20 +80,50 @@
             No assignees
           </template>
         </p>
+
+        <p><strong>Recurring:</strong> 
+          <span v-if="task.recurring" class="text-blue-600 font-semibold">
+            Yes - Every {{ task.recurrenceValue }} {{ task.recurrenceInterval }}
+          </span>
+          <span v-else class="text-gray-600">
+            No
+          </span>
+        </p>
+
+        <p v-if="task.recurring && task.isCurrentInstance" class="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+          This is the current instance. A new task will be created when marked as complete.
+        </p>
       </div>
     </div>
 
     <div v-else class="text-gray-500">Loading task details...</div>
 
+    <!-- === Edit button ===
+    <div class="mt-10 flex justify-end">
+      <button
+        class="px-4 py-2 font-medium rounded-md h-9 transition-all"
+        :class="[
+          canEdit
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer opacity-100'
+            : 'bg-gray-300 text-gray-600 cursor-default opacity-60'
+        ]"
+        :disabled="!canEdit"
+        @click="canEdit && openEditModal()"
+      >
+        Edit Task
+      </button>
+    </div> -->
+
     <div v-if="!isSubtaskView" class="flex-1 flex flex-col">
       <TaskList 
         :tasks="subtasks" 
         :indvTask="true"
+        :parentTaskId="taskId"
         @createTask="() => isCreateModalOpen = true"
         @taskClick="handleSubtaskClick"
       />
     </div>
-    
+
     <CreateTaskModal
       v-if="!isSubtaskView"
       :isOpen="isCreateModalOpen"
@@ -113,8 +149,8 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { defineProps } from 'vue';
+import { getAuth } from 'firebase/auth';
 import EditTaskModal from '../components/EditTaskModal.vue';
 import TaskList from '../components/TaskList.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
@@ -128,6 +164,12 @@ const projectTitle = ref('');
 const assigneeNames = ref([]);
 const creatorName = ref('');
 const isEditModalOpen = ref(false);
+const currentUserId = ref('');
+const userRole = ref('');
+const canEdit = ref(false);
+const props = defineProps({
+  id: String, // comes from route   -> id should be a reference
+})
 const isCreateModalOpen = ref(false);
 
 // Check if this is a subtask view
@@ -137,124 +179,160 @@ const subtaskId = computed(() => route.params.subtaskId);
 
 // === Fetch Task, Project, Creator, and Assignees ===
 const fetchTask = async () => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    router.push('/login');
+    return;
+  }
+
+  const token = await user.getIdToken();
+  const userId = user.uid;
+
   try {
-    let taskData = null;
-    
+    let res;
+
+    // Fetch user role
+    const userRes = await fetch(`/api/users/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const userData = await userRes.json();
+    userRole.value = (userData.user?.role || 'staff').toLowerCase();
+
+    // --- Determine endpoint ---
     if (isSubtaskView.value) {
-      // Fetch subtask via API
-      const response = await fetch(`http://localhost:3001/api/tasks/${taskId.value}/subtasks/${subtaskId.value}`);
-      if (response.ok) {
-        taskData = await response.json();
-        task.value = taskData;
-      } else {
-        console.error('Failed to fetch subtask');
-        return;
-      }
+      res = await fetch(`/api/tasks/${taskId.value}/subtasks/${subtaskId.value}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } else {
-      // Fetch regular task from Firestore
-      const taskRef = doc(db, 'Tasks', taskId.value);
-      const snapshot = await getDoc(taskRef);
-      
-      if (!snapshot.exists()) return;
-      task.value = { id: taskId.value, ...snapshot.data() };
-      taskData = task.value;
+      res = await fetch(`/api/tasks/${taskId.value}?userId=${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     }
 
-    // ✅ --- Fetch Project Title ---
-    if (taskData.projectId) {
-      let projectRef;
-      if (typeof taskData.projectId === 'string') {
-        projectRef = doc(db, 'Projects', taskData.projectId);
-      } else if (taskData.projectId?.path) {
-        projectRef = doc(db, taskData.projectId.path);
-      } else if (taskData.projectId?.id) {
-        projectRef = doc(db, 'Projects', taskData.projectId.id);
-      }
-
-      if (projectRef) {
-        const projectSnap = await getDoc(projectRef);
-        projectTitle.value = projectSnap.exists()
-          ? projectSnap.data().title || projectSnap.data().name || 'Untitled Project'
-          : 'Unknown Project';
-      } else {
-        projectTitle.value = 'No project';
-      }
-    } else {
-      projectTitle.value = 'No project';
+    if (!res.ok) {
+      console.error('❌ Task/Subtask not found or access denied');
+      return;
     }
 
-    // ✅ --- Fetch Creator Name ---
-    console.log('taskCreatedBy structure:', taskData.taskCreatedBy);
-    if (taskData.taskCreatedBy) {
-      let creatorRef;
-      if (typeof taskData.taskCreatedBy === 'string') {
-        // Direct user ID
-        creatorRef = doc(db, 'Users', taskData.taskCreatedBy);
-      } else if (taskData.taskCreatedBy?.path) {
-        // API response format with path
-        creatorRef = doc(db, taskData.taskCreatedBy.path);
-      } else if (taskData.taskCreatedBy?.id) {
-        // Firestore reference format with id  
-        creatorRef = doc(db, 'Users', taskData.taskCreatedBy.id);
-      }
+    const data = await res.json();
+    let taskData = isSubtaskView.value ? data : data.task;
+    task.value = taskData;
 
-      if (creatorRef) {
-        const creatorSnap = await getDoc(creatorRef);
-        if (creatorSnap.exists()) {
-          creatorName.value = creatorSnap.data().name || 'Unnamed User';
-        } else {
-          creatorName.value = 'Unknown';
-        }
-      } else {
-        creatorName.value = 'No creator';
-      }
+    projectTitle.value = taskData.projectTitle || 'No project';
+    creatorName.value = taskData.creatorName || 'No creator';
+    assigneeNames.value = taskData.assigneeNames || [];
+
+    // ✅ Edit permission logic
+    const creatorId =
+      taskData.creatorId ||
+      taskData.taskCreatedBy?.id ||
+      taskData.taskCreatedBy?._path?.segments?.slice(-1)[0] ||
+      null;
+
+    const isCreator = creatorId === userId;
+
+    if (userRole.value === 'hr') {
+      canEdit.value = false;
+    } else if (userRole.value === 'manager') {
+      canEdit.value = true;
+    } else if (userRole.value === 'staff') {
+      canEdit.value = isCreator;
     } else {
-      creatorName.value = 'No creator';
+      canEdit.value = false;
     }
 
-    // ✅ --- Fetch Assignee Names ---
-    if (Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0) {
-      const names = [];
-      for (const assignee of taskData.assignedTo) {
-        if (typeof assignee === 'string') {
-          names.push(assignee);
-        } else if (assignee?.path) {
-          const assigneeSnap = await getDoc(doc(db, assignee.path));
-          if (assigneeSnap.exists()) {
-            names.push(assigneeSnap.data().name || 'Unnamed User');
-          }
-        }
-      }
-      assigneeNames.value = names;
-    } else {
-      assigneeNames.value = [];
-    }
+    console.log(`👤 Role: ${userRole.value} | Creator: ${isCreator} | canEdit: ${canEdit.value}`);
+
   } catch (err) {
-    console.error('Error fetching task details:', err);
-    projectTitle.value = 'Error loading project';
-    creatorName.value = 'Error loading creator';
-    assigneeNames.value = ['Error loading assignees'];
+    console.error('❌ Error fetching task/subtask details:', err);
   }
 };
 
-// === Fetch Subtasks ===
+
+/* === Fetch Subtasks === */
 const fetchSubtasks = async () => {
-  // Don't fetch subtasks if we're viewing a subtask
   if (isSubtaskView.value) {
     subtasks.value = [];
     return;
   }
-  
+
   try {
-    const response = await fetch(`http://localhost:3001/api/tasks/${taskId.value}/subtasks`);
-    
-    if (response.ok) {
-      const subtasksData = await response.json();
-      subtasks.value = subtasksData;
-    } else {
-      console.error('Failed to fetch subtasks');
-      subtasks.value = [];
-    }
+    const response = await fetch(`/api/tasks/${taskId.value}/subtasks`);
+    const rawSubtasks = response.ok ? await response.json() : [];
+
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const token = user ? await user.getIdToken() : null;
+
+    // Enrich each subtask (project + creator)
+    const enrichedSubtasks = await Promise.all(
+      rawSubtasks.map(async (sub) => {
+        let projectName = 'No project';
+        let creatorName = 'No creator';
+        let assigneeNames = [];
+
+        try {
+          // --- Fetch Project Title ---
+          if (sub.projectId?.path) {
+            const projectPathParts = sub.projectId.path.split('/');
+            const projectId = projectPathParts[projectPathParts.length - 1];
+            const projectRes = await fetch(`/api/projects/${projectId}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            if (projectRes.ok) {
+              const projectData = await projectRes.json();
+              projectName = projectData.project?.title || projectData.title || 'Untitled Project';
+            }
+          }
+
+          // --- Fetch Creator Name ---
+          if (sub.taskCreatedBy?.path) {
+            const userPathParts = sub.taskCreatedBy.path.split('/');
+            const creatorId = userPathParts[userPathParts.length - 1];
+            const creatorRes = await fetch(`/api/users/${creatorId}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            if (creatorRes.ok) {
+              const creatorData = await creatorRes.json();
+              creatorName = creatorData.user?.name || creatorData.name || 'Unnamed Creator';
+            }
+          }
+
+          // --- Fetch Assignee Names ---
+          if (Array.isArray(sub.assignedTo)) {
+            const assigneeFetches = sub.assignedTo.map(async (ref) => {
+              const pathParts = ref.path?.split('/') || [];
+              const assigneeId = pathParts[pathParts.length - 1];
+              if (assigneeId) {
+                const assigneeRes = await fetch(`/api/users/${assigneeId}`, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                if (assigneeRes.ok) {
+                  const assigneeData = await assigneeRes.json();
+                  return assigneeData.user?.name || assigneeData.name || 'Unnamed';
+                }
+              }
+              return null;
+            });
+            assigneeNames = (await Promise.all(assigneeFetches)).filter(Boolean);
+          }
+
+        } catch (err) {
+          console.warn('Error enriching subtask data:', err);
+        }
+
+        return {
+          ...sub,
+          projectTitle: projectName,
+          creatorName,
+          assigneeNames,
+        };
+      })
+    );
+
+    subtasks.value = enrichedSubtasks;
   } catch (error) {
     console.error('Error fetching subtasks:', error);
     subtasks.value = [];
@@ -348,6 +426,27 @@ const refreshTask = () => {
 const openEditModal = () => (isEditModalOpen.value = true);
 
 // === Format Firestore Dates ===
+// === Safe date converter ===
+const toJsDate = (value) => {
+  if (!value) return null
+  // Firestore Timestamp object
+  if (typeof value?.toDate === 'function') return value.toDate()
+  // Admin SDK timestamp ({ seconds / nanoseconds } or {_seconds/_nanoseconds})
+  if (typeof value === 'object') {
+    const s = value.seconds ?? value._seconds
+    const ns = value.nanoseconds ?? value._nanoseconds
+    if (typeof s === 'number') return new Date(s * 1000 + Math.floor((ns ?? 0) / 1e6))
+  }
+  // ISO string or number
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value)
+    return isNaN(d) ? null : d
+  }
+  // Already a Date
+  if (value instanceof Date) return value
+  return null
+}
+
 const formatDate = (date) => {
   if (date?.toDate) return date.toDate().toLocaleString(); // show both date & time
   return new Date(date).toLocaleString();

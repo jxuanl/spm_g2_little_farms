@@ -386,6 +386,33 @@ class UserService {
       };
     }
   }
+
+  async getAllDepartments() {
+    try {
+      const usersSnapshot = await db.collection('Users').get();
+      
+      const departmentsSet = new Set();
+      
+      usersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        if (userData.department) {
+          departmentsSet.add(userData.department);
+        }
+      });
+      
+      const departments = Array.from(departmentsSet).sort();
+      
+      return {
+        success: true,
+        departments: departments
+      };
+      
+    } catch (error) {
+      console.error('Error in getAllDepartments:', error);
+      throw new Error('Failed to fetch departments from database');
+    }
+  }
+
 }
 
 export default new UserService();

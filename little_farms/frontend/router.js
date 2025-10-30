@@ -8,12 +8,14 @@ import Project from './src/views/Project.vue'
 import AllTasks from './src/views/AllTasks.vue'
 import TaskDetail from './src/views/TaskDetail.vue';
 import ProjectDetail from './src/views/ProjectDetail.vue'
+import Timeline from './src/views/Timeline.vue';
+import generateReport from './src/views/GenerateReport.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/all-tasks', name: 'AllTasks', component: AllTasks }, 
   { path: '/my-tasks', name: 'MyTasks', component: MyTasks }, 
-  { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail },
+  { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail, props: true },
   { path: '/all-tasks/:id/:subtaskId', name: 'SubtaskDetail', component: TaskDetail },
   { path: '/calendar', name: 'Calendar', component: Calendar }, 
   { path: '/reports', name: 'Reports', component: Reports }, 
@@ -21,6 +23,8 @@ const routes = [
   { path: '/login', name: 'Login', component: login }, 
   { path: '/projects', name: 'Projects', component: Project }, 
   { path: '/projects/:id', name: 'ProjectDetail', component: ProjectDetail, props: true },
+  { path: '/timeline/', name: 'Timeline', component: Timeline, props: true },
+  { path: '/generateReport', component: generateReport },
 ]
 
 const router = createRouter({

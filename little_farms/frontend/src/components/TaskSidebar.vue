@@ -17,6 +17,7 @@
 
       <nav class="flex flex-col gap-2">
         <router-link 
+          v-if="role != 'staff'"
           v-for="item in menuItems" 
           :key="item.id" 
           :to="item.path"
@@ -27,6 +28,19 @@
           }">
           <component :is="item.icon" class="w-4 h-4 mr-3" />
           <span class="font-medium">{{ item.label }}</span>
+        </router-link>
+        <router-link 
+          v-else
+          v-for="items in staffMenuItems" 
+          :key="items.id" 
+          :to="items.path"
+          class="text-gray-700 text-start rounded-xl py-2 px-3 border-0 flex items-center no-underline transition-colors"
+          :class="{
+            'bg-gray-800 text-black': $route.path === items.path,
+            'hover:bg-gray-100': $route.path !== items.path
+          }">
+          <component :is="items.icon" class="w-4 h-4 mr-3" />
+          <span class="font-medium">{{ items.label }}</span>
         </router-link>
       </nav>
     </div>
@@ -119,7 +133,7 @@ import {
   Home,
   Folder,
   Users,
-  Calendar,
+  GanttChartIcon,
   BarChart3,
   Settings,
   LucideFolderKanban,
@@ -133,6 +147,7 @@ import { auth } from '../../firebase'
 
 const userSession = JSON.parse(sessionStorage.getItem('userSession'));
 const username = userSession.name;
+const role = userSession.role;
 const email = userSession.email;
 const isDropdownOpen = ref(false);
 const showSuccessMessage = ref(false);
@@ -176,7 +191,14 @@ const menuItems = [
   { id: "my-tasks", label: "Tasks", icon: Users, path: "/all-tasks" },
   { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
-  { id: "calendar", label: "Timeline", icon: Calendar, path: "/calendar" },
+  { id: "timeline", label: "Timeline", icon: GanttChartIcon, path: "/timeline" },
+  // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+];
+const staffMenuItems = [
+  // { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
+  { id: "my-tasks", label: "Tasks", icon: Users, path: "/all-tasks" },
+  { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
+  { id: "timeline", label: "Timeline", icon: GanttChartIcon, path: "/timeline" },
   // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 </script>

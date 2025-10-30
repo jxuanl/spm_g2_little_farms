@@ -1,21 +1,73 @@
 import express from 'express'
 import { db } from '../adminFirebase.js'
-import { getTasksForUser, createTask, getSubtasksForTask, getSubtaskById, updateSubtask, getCommentsForTask, createComment, updateComment, deleteComment } from '../services/taskService.js'
+import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask, getAllTasks, getCommentsForTask, createComment, updateComment, deleteComment } from '../services/taskService.js'
 
 const router = express.Router()
 
-// Example GET /api/tasks?userId=xxx
-router.get('/', async (req, res) => {
-  const userId = req.query.userId
-  if (!userId) {
-    return res.status(400).json({ error: 'Missing userId' })
-  }
+router.get('/allTasks', async (req, res) => {
   try {
-    const tasks = await getTasksForUser(userId)
-    res.json(tasks)
+    const tasks = await getAllTasks();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Tasks retrieved successfully',
+      data: tasks,
+      count: tasks.length
+    });
   } catch (error) {
-    console.error('Backend error fetching tasks:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error in /allTasks route:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error',
+      data: []
+    });
+  }
+});
+
+
+// ✅ GET /api/tasks/:id?userId=abc123  (must come first)
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { userId } = req.query
+
+    if (!id || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing task ID or userId',
+      })
+    }
+
+    const task = await getTaskDetail(id, userId)
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found or access denied',
+      })
+    }
+
+    return res.status(200).json({ success: true, task })
+  } catch (error) {
+    console.error('❌ Error fetching task detail:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch task detail',
+    })
+  }
+})
+
+// ✅ GET /api/tasks?userId=xxx (list)
+router.get('/', async (req, res) => {
+  try {
+    const userId = req.query.userId
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'Missing userId' })
+    }
+    const tasks = await getTasksForUser(userId) // now includes assigneeNames
+    return res.status(200).json({ success: true, tasks })
+  } catch (error) {
+    console.error('Backend error fetching tasks:', error)
+    return res.status(500).json({ success: false, message: error.message })
   }
 })
 
@@ -32,7 +84,10 @@ router.post('/', async (req, res) => {
       projectId,   // Project document reference ID
       createdBy,   // User ID of the task creator
       tags,
-      parentTaskId // Optional: ID of parent task if this is a subtask
+      parentTaskId, // Optional: ID of parent task if this is a subtask
+      recurring,           // Add recurrence fields
+      recurrenceInterval,
+      recurrenceValue
     } = req.body;
 
     // Validate required fields
@@ -48,6 +103,26 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Validate recurrence fields if recurring is true
+    if (recurring) {
+      if (!recurrenceInterval || !['days', 'weeks', 'months'].includes(recurrenceInterval)) {
+        return res.status(400).json({
+          error: 'Valid recurrence interval (days, weeks, or months) is required for recurring tasks'
+        });
+      }
+      if (!recurrenceValue || recurrenceValue < 1) {
+        return res.status(400).json({
+          error: 'Recurrence value must be at least 1'
+        });
+      }
+      if (!deadline) {
+        return res.status(400).json({
+          error: 'Deadline is required for recurring tasks'
+        });
+      }
+    }
+
+
     const taskData = {
       title,
       description,
@@ -58,7 +133,10 @@ router.post('/', async (req, res) => {
       projectId,
       createdBy,
       tags,
-      parentTaskId
+      parentTaskId,
+      recurring: recurring || false,
+      recurrenceInterval: recurring ? recurrenceInterval : null,
+      recurrenceValue: recurring ? recurrenceValue : null
     };
 
     const newTask = await createTask(taskData);
@@ -68,6 +146,46 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to create task' });
   }
 });
+
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const updates = req.body
+
+    // Validate recurrence fields if recurring is being enabled
+    if (updates.recurring) {
+      if (!updates.recurrenceInterval || !['days', 'weeks', 'months'].includes(updates.recurrenceInterval)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid recurrence interval (days, weeks, or months) is required for recurring tasks'
+        });
+      }
+      if (!updates.recurrenceValue || updates.recurrenceValue < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Recurrence value must be at least 1'
+        });
+      }
+    }
+
+    const updatedTask = await updateTask(id, updates)
+    res.status(200).json({ success: true, task: updatedTask })
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update task' })
+  }
+})
+
+// POST /api/tasks/:id/complete - Complete task
+router.post('/:id/complete', async (req, res) => {
+  try {
+    const { userId } = req.body
+    const result = await completeTask(req.params.id, userId)
+    res.status(200).json(result)
+  } catch (err) {
+    console.error('Error completing task:', err)
+    res.status(500).json({ error: err.message || 'Failed to complete task' })
+  }
+})
 
 // GET /api/tasks/:taskId/subtasks - Get subtasks for a specific task
 router.get('/:taskId/subtasks', async (req, res) => {
