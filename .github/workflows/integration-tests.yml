@@ -53,9 +53,9 @@ jobs:
       
       - name: Start Firestore Emulator
         run: |
-          firebase emulators:start --only firestore --project=test-project &
+          firebase emulators:start --only firestore,auth --project=test-project &
           sleep 10
-          echo "Firestore emulator started"
+          echo "Firebase emulators started"
       
       - name: Wait for Firestore Emulator
         run: |
@@ -65,6 +65,7 @@ jobs:
         working-directory: ./tests
         env:
           FIRESTORE_EMULATOR_HOST: localhost:8080
+          FIREBASE_AUTH_EMULATOR_HOST: localhost:9099
           NODE_ENV: test
         run: npm test -- --coverage --ci
       
