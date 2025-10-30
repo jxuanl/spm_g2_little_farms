@@ -106,16 +106,25 @@ tests/
    npm install
    ```
 
+3. **Firebase Configuration** (already set up)
+   - `firebase.json` - Emulator configuration in project root
+   - `firestore.rules` - Firestore security rules (permissive for testing)
+
 ### Local Testing
 ```bash
-# Start Firestore emulator
-firebase emulators:start --only firestore
+# Start Firebase emulators (Auth + Firestore)
+# Run from project root
+firebase emulators:start --only firestore,auth --project=test-project
 
-# Run all tests
+# Or use npm script from tests directory
+cd tests
+npm run emulator
+
+# In a separate terminal, run tests
 npm test
 
 # Run specific test suite
-npm test -- tests/backend/api/tasks.test.js
+npm test -- backend/api/tasks.test.js
 
 # Run with coverage
 npm run test:coverage
