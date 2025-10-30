@@ -287,7 +287,7 @@ router.get('/:taskId/subtasks/:subtaskId/comments', async (req, res) => {
 router.post('/:taskId/comments', async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { content, authorId, mentionedUsers } = req.body;
+    const { content, authorId, mentionedUsers, attachments } = req.body;
     
     if (!taskId) {
       return res.status(400).json({ error: 'Missing taskId' });
@@ -301,7 +301,7 @@ router.post('/:taskId/comments', async (req, res) => {
       return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
     }
     
-    const commentData = { content, authorId, mentionedUsers: mentionedUsers || [] };
+    const commentData = { content, authorId, mentionedUsers: mentionedUsers || [], attachments: attachments || [] };
     const newComment = await createComment(taskId, commentData);
     res.status(201).json(newComment);
   } catch (error) {
@@ -314,7 +314,7 @@ router.post('/:taskId/comments', async (req, res) => {
 router.post('/:taskId/subtasks/:subtaskId/comments', async (req, res) => {
   try {
     const { taskId, subtaskId } = req.params;
-    const { content, authorId, mentionedUsers } = req.body;
+    const { content, authorId, mentionedUsers, attachments } = req.body;
     
     if (!taskId || !subtaskId) {
       return res.status(400).json({ error: 'Missing taskId or subtaskId' });
@@ -328,7 +328,7 @@ router.post('/:taskId/subtasks/:subtaskId/comments', async (req, res) => {
       return res.status(400).json({ error: 'Content exceeds 2000 character limit' });
     }
     
-    const commentData = { content, authorId, mentionedUsers: mentionedUsers || [] };
+    const commentData = { content, authorId, mentionedUsers: mentionedUsers || [], attachments: attachments || [] };
     const newComment = await createComment(taskId, commentData, subtaskId);
     res.status(201).json(newComment);
   } catch (error) {

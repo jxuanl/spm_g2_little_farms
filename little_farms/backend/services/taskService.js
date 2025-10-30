@@ -795,11 +795,39 @@ export async function createComment(taskId, commentData, subtaskId = null) {
       }
     }
     
+    // Validate attachments (optional)
+    let attachments = []
+    if (Array.isArray(commentData.attachments)) {
+      // Enforce a maximum of 3 files and size <= 500KB each if size provided
+      const MAX_FILES = 3
+      const MAX_BYTES = 500 * 1024
+      if (commentData.attachments.length > MAX_FILES) {
+        throw new Error(`A maximum of ${MAX_FILES} attachments are allowed`)
+      }
+      attachments = commentData.attachments
+        .filter(a => a && typeof a === 'object')
+        .slice(0, MAX_FILES)
+        .map(a => ({
+          name: a.name,
+          url: a.url,
+          contentType: a.contentType,
+          size: typeof a.size === 'number' ? a.size : null,
+          storagePath: a.storagePath || null,
+        }))
+      // Soft-validate sizes if provided
+      for (const a of attachments) {
+        if (a.size != null && a.size > MAX_BYTES) {
+          throw new Error('Attachment exceeds 500KB size limit')
+        }
+      }
+    }
+
     const now = new Date();
     const newComment = {
       content: commentData.content.trim(),
       author: authorRef,
       mentionedUsers: mentionedUsersRefs,
+      attachments,
       createdDate: now,
       modifiedDate: now
     };
