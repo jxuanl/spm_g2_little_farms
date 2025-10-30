@@ -371,6 +371,7 @@ export async function getTasksforDailyDigest(userId) {
         const detailedTask = {
           // Task basic info
           id: taskDoc.id,
+          userid: userId,
           taskTitle: taskData.title || taskData.taskTitle || 'Untitled Task',
           status: taskData.status || 'Unknown',
           deadline: taskData.deadline || null,
