@@ -308,6 +308,120 @@ export async function getTasksByUserWithDetails(userId) {
   }
 }
 
+
+// Get all tasks assigned to a specific user with detailed information
+export async function getTasksforDailyDigest(userId) {
+  try {
+    // First, get the user details to verify the user exists
+    const userRef = db.collection('Users').doc(userId);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) {
+      throw new Error('User not found');
+    }
+    
+    const userData = userDoc.data();
+    
+    // Get all tasks where the user is in the assignedTo array
+    const tasksSnapshot = await db.collection('Tasks')
+      .where('assignedTo', 'array-contains', db.collection('Users').doc(userId))
+      .get();
+    
+    const detailedTasks = [];
+    
+    // Process each task to get project and user details
+    for (const taskDoc of tasksSnapshot.docs) {
+      const taskData = taskDoc.data();
+      
+      try {
+        // Get project details
+        let projectDetails = {};
+        let projectId = null;
+        
+        if (taskData.projectId) {
+          const projectRef = typeof taskData.projectId === 'string'
+            ? db.doc(taskData.projectId)
+            : taskData.projectId;
+          
+          projectId = typeof taskData.projectId === 'string' 
+            ? taskData.projectId.split('/').pop() 
+            : taskData.projectId.id;
+            
+          const projectDoc = await projectRef.get();
+          if (projectDoc.exists) {
+            projectDetails = projectDoc.data();
+          }
+        }
+        
+        // Get task owner details
+        let taskOwnerDetails = { name: 'Unknown', email: '', department: '' };
+        if (taskData.taskCreatedBy) {
+          taskOwnerDetails = await getUserDetails(taskData.taskCreatedBy);
+        }
+        
+        // Get all assigned users details
+        // const assignedUsersDetails = [];
+        // if (taskData.assignedTo && Array.isArray(taskData.assignedTo)) {
+        //   const userPromises = taskData.assignedTo.map(userRef => getUserDetails(userRef));
+        //   const userResults = await Promise.all(userPromises);
+        //   assignedUsersDetails.push(...userResults);
+        // }
+        
+        // Construct the detailed task object
+        const detailedTask = {
+          // Task basic info
+          id: taskDoc.id,
+          userid: userId,
+          taskTitle: taskData.title || taskData.taskTitle || 'Untitled Task',
+          status: taskData.status || 'Unknown',
+          deadline: taskData.deadline || null,
+          // completedDate: taskData.modifiedDate || taskData.completedDate || null,
+          
+          // Project info
+          // prjId: projectId,
+          prjTitle: projectDetails.title || 'Unknown Project',
+          // prjDescription: projectDetails.description || '',
+          
+          // User info
+          // taskOwner: taskOwnerDetails,
+          // assignedTo: assignedUsersDetails,
+        //   requestingUser: {
+        //     id: userId,
+        //     name: userData.name,
+        //     email: userData.email,
+        //     department: userData.department,
+        //     role: userData.role
+        //   },
+          
+          // Additional task fields
+          description: taskData.description || '',
+          priority: taskData.priority || 'medium',
+          // createdDate: taskData.createdDate || null,
+          // modifiedDate: taskData.modifiedDate || null,
+        //   estimatedHours: taskData.estimatedHours || null,
+        //   actualHours: taskData.actualHours || null
+        };
+        
+        detailedTasks.push(detailedTask);
+      } catch (error) {
+        console.error(`Error processing task ${taskDoc.id}:`, error);
+        // Provide basic task info even if details fail
+        detailedTasks.push({
+          id: taskDoc.id,
+          taskTitle: taskData.title || taskData.taskTitle || 'Untitled Task',
+          status: taskData.status || 'Unknown',
+          error: `Failed to load task details: ${error.message}`
+        });
+      }
+    }
+    
+    return detailedTasks;
+  } catch (error) {
+    console.error('Error getting tasks by user with details:', error);
+    throw error;
+  }
+}
+
 // Get tasks by user with optional filters
 export async function getTasksByUserWithDetailsAndFilter(userId, filters = {}) {
   try {
