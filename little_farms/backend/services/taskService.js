@@ -310,64 +310,64 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
 }
 
 // === Comments Functions ===
-export async function getCommentsForTask(taskId, subtaskId = null) {
-  try {
-    let commentsRef;
+// export async function getCommentsForTask(taskId, subtaskId = null) {
+//   try {
+//     let commentsRef;
     
-    if (subtaskId) {
-      // Get comments for a subtask
-      commentsRef = db
-        .collection(TASK_COLLECTION)
-        .doc(taskId)
-        .collection('Subtasks')
-        .doc(subtaskId)
-        .collection('Comments');
-    } else {
-      // Get comments for a regular task
-      commentsRef = db
-        .collection(TASK_COLLECTION)
-        .doc(taskId)
-        .collection('Comments');
-    }
+//     if (subtaskId) {
+//       // Get comments for a subtask
+//       commentsRef = db
+//         .collection(TASK_COLLECTION)
+//         .doc(taskId)
+//         .collection('Subtasks')
+//         .doc(subtaskId)
+//         .collection('Comments');
+//     } else {
+//       // Get comments for a regular task
+//       commentsRef = db
+//         .collection(TASK_COLLECTION)
+//         .doc(taskId)
+//         .collection('Comments');
+//     }
     
-    const snapshot = await commentsRef.orderBy('createdDate', 'desc').get();
+//     const snapshot = await commentsRef.orderBy('createdDate', 'desc').get();
     
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
+//     return snapshot.docs.map(doc => {
+//       const data = doc.data();
       
-      // Serialize the author reference
-      const serializedData = { ...data };
-      if (data.author && data.author._path && data.author._path.segments) {
-        const pathString = data.author._path.segments.join('/');
-        serializedData.author = { path: pathString };
-      } else if (data.author && data.author.path) {
-        serializedData.author = { path: data.author.path };
-      }
+//       // Serialize the author reference
+//       const serializedData = { ...data };
+//       if (data.author && data.author._path && data.author._path.segments) {
+//         const pathString = data.author._path.segments.join('/');
+//         serializedData.author = { path: pathString };
+//       } else if (data.author && data.author.path) {
+//         serializedData.author = { path: data.author.path };
+//       }
       
-      // Serialize mentioned users references
-      if (data.mentionedUsers && Array.isArray(data.mentionedUsers)) {
-        serializedData.mentionedUsers = data.mentionedUsers.map(ref => {
-          if (ref && ref._path && ref._path.segments) {
-            return { path: ref._path.segments.join('/') };
-          } else if (ref && ref.path) {
-            return { path: ref.path };
-          }
-          return ref;
-        });
-      }
+//       // Serialize mentioned users references
+//       if (data.mentionedUsers && Array.isArray(data.mentionedUsers)) {
+//         serializedData.mentionedUsers = data.mentionedUsers.map(ref => {
+//           if (ref && ref._path && ref._path.segments) {
+//             return { path: ref._path.segments.join('/') };
+//           } else if (ref && ref.path) {
+//             return { path: ref.path };
+//           }
+//           return ref;
+//         });
+//       }
       
-      return {
-        id: doc.id,
-        ...serializedData,
-        createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
-        modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
-      };
-    });
-  } catch (err) {
-    console.error("Error fetching comments:", err);
-    return [];
-  }
-}
+//       return {
+//         id: doc.id,
+//         ...serializedData,
+//         createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
+//         modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
+//       };
+//     });
+//   } catch (err) {
+//     console.error("Error fetching comments:", err);
+//     return [];
+//   }
+// }
 
 export async function createComment(taskId, commentData, subtaskId = null) {
   try {
