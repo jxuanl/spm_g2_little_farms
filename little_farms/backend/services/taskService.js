@@ -1,4 +1,6 @@
 import { db } from "../adminFirebase.js";
+import admin from "../adminFirebase.js";
+
 const TASK_COLLECTION = "Tasks";
 
 export async function getTasksForUser(userId) {

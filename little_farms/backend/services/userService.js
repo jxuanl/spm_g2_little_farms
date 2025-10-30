@@ -1,4 +1,5 @@
 import { auth, db } from '../adminFirebase.js';
+import admin from "../adminFirebase.js";
 
 class UserService {
   /**
