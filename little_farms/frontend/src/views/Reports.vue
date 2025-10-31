@@ -540,7 +540,7 @@ const fetchWithAuth = async (url, options = {}) => {
 };
 
 const getUser = async (uid) => {
-  return fetchWithAuth(`/api/users/users/${uid}`);
+  return fetchWithAuth(`/api/users/${uid}`);
 };
 
 const getProject = async (pid) => {
@@ -551,7 +551,7 @@ const loadProjectsAndUsers = async () => {
   try {
     const [projectsRes, usersRes, departmentsRes] = await Promise.all([
       fetchWithAuth('/api/allProjects'),
-      fetchWithAuth('/api/users/users'),
+      fetchWithAuth('/api/users/'),
       fetchWithAuth('/api/users/departments'),
     ]);
 
