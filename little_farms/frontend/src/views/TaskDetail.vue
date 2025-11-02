@@ -119,6 +119,7 @@
         :tasks="subtasks" 
         :indvTask="true"
         :parentTaskId="taskId"
+        :hideProjectFilter="true"
         @createTask="() => isCreateModalOpen = true"
         @taskClick="handleSubtaskClick"
       />
