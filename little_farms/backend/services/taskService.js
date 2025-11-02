@@ -280,6 +280,14 @@ export async function getTaskDetail(taskId, userId) {
 
     // Enrich task with names/titles
     const enriched = await enrichTaskData({ id: taskId, ...taskData })
+    
+    // Clear isNewInstance flag when task is viewed
+    if (taskData.isNewInstance === true) {
+      await taskRef.update({ isNewInstance: false })
+      enriched.isNewInstance = true // Still return true so the UI can show the indicator initially
+      // After this fetch, the flag is cleared so it won't show again on subsequent views
+    }
+    
     return enriched
   } catch (err) {
     console.error('❌ Error fetching task detail:', err)
@@ -328,7 +336,16 @@ export async function updateTask(taskId, updates) {
     if (typeof updates.title !== 'undefined') updateData.title = updates.title
     if (typeof updates.description !== 'undefined') updateData.description = updates.description
     if (typeof updates.priority !== 'undefined') updateData.priority = updates.priority
-    if (typeof updates.status !== 'undefined') updateData.status = updates.status
+    if (typeof updates.status !== 'undefined') {
+      // Normalize status: map 'done' to 'Done' for consistency
+      const statusMap = {
+        'todo': 'To Do',
+        'in-progress': 'In Progress',
+        'review': 'In Review',
+        'done': 'Done'
+      }
+      updateData.status = statusMap[updates.status] || updates.status
+    }
     if (Array.isArray(updates.tags)) updateData.tags = updates.tags
 
     // --- Recurrence fields ---
@@ -392,7 +409,7 @@ export async function updateTask(taskId, updates) {
     // --- Overdue check ---
     if (updateData.deadline) {
       const now = new Date()
-      const isOverdue = now > updateData.deadline && updateData.status !== 'Done'
+      const isOverdue = now > updateData.deadline && updateData.status !== 'Done' && updateData.status !== 'done'
       updateData.isOverdue = isOverdue
     } else {
       updateData.isOverdue = false
@@ -401,10 +418,89 @@ export async function updateTask(taskId, updates) {
     // --- Always update modifiedDate ---
     updateData.modifiedDate = new Date()
 
-    // --- Update document ---
-    await taskRef.update(updateData)
-    console.log(`✅ Task ${taskId} updated successfully by user ${updates.userId}`)
+    // --- Check if status is being changed to Done for a recurring task ---
+    const statusChanged = typeof updates.status !== 'undefined'
+    // Use normalized status from updateData if available, otherwise check raw updates.status
+    const normalizedStatus = updateData.status || updates.status
+    const isChangingToDone = statusChanged && (normalizedStatus === 'Done' || updates.status === 'Done' || updates.status === 'done')
+    const wasNotDone = existingTask.status !== 'Done' && existingTask.status !== 'done'
+    const isRecurring = existingTask.recurring && existingTask.recurrenceInterval && existingTask.recurrenceValue
 
+    if (isChangingToDone && wasNotDone && isRecurring) {
+      // Mark current task as done and hide it from current instances
+      updateData.isCurrentInstance = false
+      
+      // After updating, create the next instance
+      await taskRef.update(updateData)
+      
+      const now = new Date()
+      let baseDate
+      
+      // Get the original deadline
+      if (existingTask.deadline && existingTask.deadline.toDate) {
+        baseDate = existingTask.deadline.toDate()
+      } else if (existingTask.deadline instanceof Date) {
+        baseDate = new Date(existingTask.deadline)
+      } else {
+        baseDate = now
+      }
+
+      // Check if task is overdue - if so, start from now instead of old deadline
+      let nextDeadline
+      if (baseDate < now) {
+        // Task was overdue - start interval from now
+        nextDeadline = new Date(now)
+      } else {
+        // Task completed on time - start from original deadline
+        nextDeadline = new Date(baseDate)
+      }
+
+      // Calculate next deadline based on interval
+      switch (existingTask.recurrenceInterval) {
+        case 'days':
+          nextDeadline.setDate(nextDeadline.getDate() + existingTask.recurrenceValue)
+          break
+        case 'weeks':
+          nextDeadline.setDate(nextDeadline.getDate() + (7 * existingTask.recurrenceValue))
+          break
+        case 'months':
+          nextDeadline.setMonth(nextDeadline.getMonth() + existingTask.recurrenceValue)
+          break
+        default:
+          console.error('Invalid recurrence interval:', existingTask.recurrenceInterval)
+          return { id: taskId, ...updateData }
+      }
+
+      // Create new task instance with isNewInstance flag
+      const newTask = {
+        assignedTo: existingTask.assignedTo || [],
+        createdDate: now,
+        deadline: nextDeadline,
+        description: existingTask.description || '',
+        isOverdue: false,
+        modifiedDate: now,
+        priority: existingTask.priority || 'medium',
+        projectId: existingTask.projectId || null,
+        status: 'To Do',
+        tags: existingTask.tags || [],
+        taskCreatedBy: existingTask.taskCreatedBy || null,
+        title: existingTask.title,
+        recurring: true,
+        recurrenceInterval: existingTask.recurrenceInterval,
+        recurrenceValue: existingTask.recurrenceValue,
+        isCurrentInstance: true,
+        isNewInstance: true, // Mark as new instance
+        parentTaskId: existingTask.parentTaskId || null
+      }
+
+      await db.collection('Tasks').add(newTask)
+      console.log(`✅ Created new recurring task instance with deadline: ${nextDeadline.toISOString()}`)
+    } else {
+      // Normal update (no recurring task completion)
+      await taskRef.update(updateData)
+    }
+
+    console.log(`✅ Task ${taskId} updated successfully by user ${updates.userId}`)
     return { id: taskId, ...updateData }
   } catch (err) {
     console.error('❌ Error updating task:', err)
@@ -476,13 +572,14 @@ export async function completeTask(taskId, userId) {
           return;
       }
 
-      // Create new task instance
+      // Create new task instance with isNewInstance flag
       const newTask = {
         ...taskData,
         status: 'To Do',
         createdDate: now,
         deadline: nextDeadline,
         isCurrentInstance: true,
+        isNewInstance: true, // Mark as new instance
         modifiedDate: now,
         isOverdue: false
       };
