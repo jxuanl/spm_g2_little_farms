@@ -496,7 +496,7 @@ const fetchUsers = async () => {
     
     const token = await auth.currentUser.getIdToken();
     console.log('Auth token for users:', token ? 'Token exists' : 'No token');
-    console.log('Making request to: http://localhost:3001/api/users/users');
+    console.log('Making request to: http://localhost:3001/api/users/');
     
     const response = await fetch('/api/users', {
       method: 'GET',
