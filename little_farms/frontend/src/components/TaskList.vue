@@ -30,7 +30,7 @@
       <!-- === Filters === -->
       <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
         <!-- Project Filter -->
-          <div class="relative inline-block text-left" @click.stop>
+        <div v-if="!hideProjectFilter" class="relative inline-block text-left" @click.stop>
           <button
             @click="toggleDropdown('project')"
             class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
@@ -448,6 +448,7 @@ const props = defineProps({
   indvTask: { type: Boolean, default: false },
   parentTaskId: { type: String, default: null },
   loading: { type: Boolean, default: false },
+  hideProjectFilter: { type: Boolean, default: false },
 })
 
 defineEmits(['createTask'])

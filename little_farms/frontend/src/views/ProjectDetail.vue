@@ -60,6 +60,7 @@
         <TaskList 
           v-if="project.tasks && project.tasks.length > 0"
           :tasks="enrichedTasks" 
+          :hideProjectFilter="true"
           @taskClick="handleTaskClick"
           @createTask="() => canCreateTask ? isCreateModalOpen = true : showPermissionError()"
         />
