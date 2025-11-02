@@ -503,6 +503,7 @@ const goToTaskDetail = (taskId) => {
 const statusConfig = {
   todo: { label: 'To Do', color: 'bg-gray-500' },
   'in-progress': { label: 'In Progress', color: 'bg-blue-500' },
+  review: { label: 'In Review', color: 'bg-yellow-500' },
   done: { label: 'Done', color: 'bg-green-500' },
 }
 const getStatusConfig = (status) => statusConfig[status] || { label: 'To Do', color: 'bg-gray-500' }
@@ -642,7 +643,7 @@ const assigneeOptions = computed(() => {
 })
 
 const dueDateOptions = ['All Tasks', 'Overdue', 'Due Today', 'Due This Week', 'No Due Date']
-const statusOptions = ['todo', 'in-progress', 'done']
+const statusOptions = ['todo', 'in-progress', 'review', 'done']
 
 const tagOptions = computed(() => {
   const set = new Set()
