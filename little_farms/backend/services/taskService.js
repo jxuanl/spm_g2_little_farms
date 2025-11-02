@@ -1,4 +1,4 @@
-import { db } from "../adminFirebase.js";
+import admin, { db } from "../adminFirebase.js";
 
 const TASK_COLLECTION = "Tasks";
 
@@ -190,10 +190,11 @@ export async function createTask(taskData) {
     
     // Convert project ID to Firestore project reference
     let projectRef = null;
+    let projectDoc = null;
     if (taskData.projectId) {
-      const projectDoc = await db.collection('Projects').doc(taskData.projectId).get();
+      projectDoc = await db.collection('Projects').doc(taskData.projectId).get();
       if (projectDoc.exists) {
-      projectRef = db.collection('Projects').doc(taskData.projectId);
+        projectRef = db.collection('Projects').doc(taskData.projectId);
       }
     }
     
@@ -241,6 +242,15 @@ export async function createTask(taskData) {
     } else {
       // Create regular task
       docRef = await db.collection(TASK_COLLECTION).add(newTask);
+      
+      // ✅ Add task to project's taskList if task has a projectId
+      if (projectDoc && projectDoc.exists) {
+        const taskRef = db.collection(TASK_COLLECTION).doc(docRef.id);
+        await projectDoc.ref.update({
+          taskList: admin.firestore.FieldValue.arrayUnion(taskRef)
+        });
+        console.log(`✅ Added task ${docRef.id} to project ${taskData.projectId}'s taskList`);
+      }
     }
     
     return { id: docRef.id, ...newTask };
@@ -252,7 +262,7 @@ export async function createTask(taskData) {
 
 export async function getTaskDetail(taskId, userId) {
   try {
-    const taskRef = db.collection('Tasks').doc(taskId)
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId)
     const taskSnap = await taskRef.get()
     if (!taskSnap.exists) return null
 
@@ -493,8 +503,35 @@ export async function updateTask(taskId, updates) {
         parentTaskId: existingTask.parentTaskId || null
       }
 
-      await db.collection('Tasks').add(newTask)
+      const newTaskDocRef = await db.collection(TASK_COLLECTION).add(newTask)
       console.log(`✅ Created new recurring task instance with deadline: ${nextDeadline.toISOString()}`)
+      
+      // ✅ Add new recurring instance to project's taskList if task has a projectId
+      if (existingTask.projectId) {
+        try {
+          // Get project reference from task's projectId
+          let projectRef;
+          if (existingTask.projectId.path) {
+            // projectId is already a DocumentReference
+            projectRef = existingTask.projectId;
+          } else if (existingTask.projectId.id) {
+            // projectId is an object with an id field
+            projectRef = db.collection('Projects').doc(existingTask.projectId.id);
+          } else {
+            // Assume it's a string ID
+            projectRef = db.collection('Projects').doc(existingTask.projectId);
+          }
+          
+          const newTaskRef = db.collection(TASK_COLLECTION).doc(newTaskDocRef.id);
+          await projectRef.update({
+            taskList: admin.firestore.FieldValue.arrayUnion(newTaskRef)
+          });
+          console.log(`✅ Added recurring task ${newTaskDocRef.id} to project's taskList`);
+        } catch (err) {
+          console.error('Error adding recurring task to project taskList:', err);
+          // Don't throw - this is not critical enough to fail the entire operation
+        }
+      }
     } else {
       // Normal update (no recurring task completion)
       await taskRef.update(updateData)
@@ -516,7 +553,7 @@ export async function updateTask(taskId, updates) {
 
 export async function completeTask(taskId, userId) {
   try {
-    const taskRef = db.collection('Tasks').doc(taskId);
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
     const taskSnap = await taskRef.get();
     
     if (!taskSnap.exists) {
@@ -587,8 +624,35 @@ export async function completeTask(taskId, userId) {
       // Remove the id field as it will be auto-generated
       delete newTask.id;
 
-      await db.collection('Tasks').add(newTask);
+      const newTaskDocRef = await db.collection(TASK_COLLECTION).add(newTask);
       console.log(`✅ Created new recurring task instance with deadline: ${nextDeadline.toISOString()}`);
+      
+      // ✅ Add new recurring instance to project's taskList if task has a projectId
+      if (taskData.projectId) {
+        try {
+          // Get project reference from task's projectId
+          let projectRef;
+          if (taskData.projectId.path) {
+            // projectId is already a DocumentReference
+            projectRef = taskData.projectId;
+          } else if (taskData.projectId.id) {
+            // projectId is an object with an id field
+            projectRef = db.collection('Projects').doc(taskData.projectId.id);
+          } else {
+            // Assume it's a string ID
+            projectRef = db.collection('Projects').doc(taskData.projectId);
+          }
+          
+          const newTaskRef = db.collection(TASK_COLLECTION).doc(newTaskDocRef.id);
+          await projectRef.update({
+            taskList: admin.firestore.FieldValue.arrayUnion(newTaskRef)
+          });
+          console.log(`✅ Added recurring task ${newTaskDocRef.id} to project's taskList`);
+        } catch (err) {
+          console.error('Error adding recurring task to project taskList:', err);
+          // Don't throw - this is not critical enough to fail the entire operation
+        }
+      }
     }
 
     return { success: true, message: 'Task completed successfully' };
