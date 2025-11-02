@@ -1,8 +1,8 @@
 <template>
   <div class="p-6">
     <!-- Loading state -->
-    <div v-if="isLoading" class="flex items-center justify-center h-96">
-      <div class="text-muted-foreground">Loading Tasks...</div>
+    <div v-if="showLoading" class="flex items-center justify-center h-96">
+      <div class="text-muted-foreground">Loading tasks...</div>
     </div>
 
     <!-- Main content -->
@@ -19,7 +19,7 @@
         </div>
         <div class="p-4 border rounded-lg shadow-sm">
           <div class="text-sm text-gray-500">Overdue</div>
-          <div class="text-2xl font-semibold text-red-600">{{ overdueTasks }}</div>
+          <div class="text-2xl font-semibold text-destructive">{{ overdueTasks }}</div>
         </div>
         <div class="p-4 border rounded-lg shadow-sm">
           <div class="text-sm text-gray-500">Completion Rate</div>
@@ -286,7 +286,7 @@
               v-for="task in visibleTasks"
               :key="task.id"
               class="hover:bg-gray-50 cursor-pointer transition"
-              :class="{ 'bg-red-50': isTaskOverdue(task) }"
+              :class="{ 'overdue-row': isTaskOverdue(task) }"
               v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum]"
               @click="goToTaskDetail(task.id)"
             >
@@ -304,7 +304,13 @@
                   <span class="text-gray-400 text-xs italic">No assignees</span>
                 </template>
               </td>
-              <td class="p-2 border" :class="getDateClasses(task)">{{ formatDate(task.deadline) }}</td>
+              <td
+                class="p-2 border"
+                :class="getDateClasses(task)"
+                :style="task.isOverdue ? { color: 'var(--destructive)' } : null"
+              >
+                {{ formatDate(task.deadline) }}
+              </td>
               <td class="p-2 border">
                 <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
                   {{ task.statusLabel }}
@@ -346,6 +352,7 @@ const props = defineProps({
   tasks: { type: Array, default: () => [] },
   indvTask: { type: Boolean, default: false },
   parentTaskId: { type: String, default: null },
+  loading: { type: Boolean, default: false }, // 👈 from parent
 })
 
 defineEmits(['createTask'])
@@ -353,7 +360,9 @@ defineEmits(['createTask'])
 const router = useRouter()
 
 /* ---------- Loading state ---------- */
-const isLoading = ref(true)
+// keep a local boot flag so first paint shows "Loading tasks..." until initial props processed
+const localBootLoading = ref(true)
+const showLoading = computed(() => props.loading || localBootLoading.value)
 
 /* ---------- UI state ---------- */
 const dropdownStates = ref({
@@ -414,7 +423,7 @@ const formatDate = (date) => {
 }
 
 const getDateClasses = (task) => {
-  if (task.isOverdue) return 'text-red-600 font-semibold'
+  if (task.isOverdue) return 'text-destructive font-semibold'
   if (task.isDueSoon) return 'text-yellow-600 font-semibold'
   return ''
 }
@@ -453,8 +462,8 @@ watch(
   (arr) => {
     const src = Array.isArray(arr) ? arr : []
     processedTasks.value = src.map(preprocessTask)
-    // once first props.tasks arrives (even empty), stop showing "Loading"
-    isLoading.value = false
+    // initial paint complete; parent `loading` continues to control further fetches
+    localBootLoading.value = false
   },
   { immediate: true }
 )
@@ -603,4 +612,9 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
   white-space: nowrap;
 }
 .z-50 { z-index: 2000; }
+
+/* soft red tint for overdue rows using theme destructive color */
+.overdue-row {
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
 </style>
