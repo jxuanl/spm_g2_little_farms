@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Edit Task Modal -->
-    <div v-if="isOpen" class="fixed inset-0 z-50 bg-black/80" @click="closeDropdowns">
+    <div v-if="isOpen && !showLogTimePrompt" class="fixed inset-0 z-50 bg-black/80" @click="closeDropdowns">
       <div
         class="create-task-modal fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 sm:rounded-lg sm:max-w-[500px]"
         @click.stop
@@ -491,7 +491,15 @@ watch(
     formData.title = task.title || '';
     formData.description = task.description || '';
     formData.priority = task.priority || null;
-    formData.status = task.status || '';
+    // Normalize status from database format to form format
+    const statusFromDB = task.status || '';
+    const statusToForm = {
+      'To Do': 'todo',
+      'In Progress': 'in-progress',
+      'In Review': 'review',
+      'Done': 'done'
+    };
+    formData.status = statusToForm[statusFromDB] || statusFromDB.toLowerCase() || '';
 
 
     // project
@@ -689,10 +697,8 @@ const saveClicked = async () => {
   if (!validateForm()) return;
   const changingToDone = formData.status === 'done' && originalValues.status !== 'done';
   if (changingToDone) {
-    emit('close');
-    setTimeout(() => {
-      showLogTimePrompt.value = true;
-    }, 300);
+    // Don't emit close immediately - show the log time modal first
+    showLogTimePrompt.value = true;
   } else {
     await saveTaskUpdate();
   }
@@ -747,7 +753,6 @@ const saveTaskUpdate = async () => {
       tags: Array.isArray(formData.tags) ? formData.tags : [],
       userId: user.uid
     };
-
 
     const endpoint = props.isSubtask
       ? `/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`

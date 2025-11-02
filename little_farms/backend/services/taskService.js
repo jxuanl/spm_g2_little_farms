@@ -332,11 +332,11 @@ export async function updateTask(taskId, updates) {
 
     const updateData = {}
 
-    // --- Basic fields ---
+    // --- Basic fields (exclude id field) ---
     if (typeof updates.title !== 'undefined') updateData.title = updates.title
     if (typeof updates.description !== 'undefined') updateData.description = updates.description
     if (typeof updates.priority !== 'undefined') updateData.priority = updates.priority
-    if (typeof updates.status !== 'undefined') {
+    if (typeof updates.status !== 'undefined' && updates.status !== null) {
       // Normalize status: map 'done' to 'Done' for consistency
       const statusMap = {
         'todo': 'To Do',
