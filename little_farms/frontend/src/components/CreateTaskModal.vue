@@ -462,7 +462,7 @@ const fetchProjects = async () => {
     }
     
     const token = await auth.currentUser.getIdToken();
-    console.log('Auth token for projects:', token ? 'Token exists' : 'No token');
+    // console.log('Auth token for projects:', token ? 'Token exists' : 'No token');
     
     const response = await fetch('/api/allProjects', {
       method: 'GET',
@@ -495,8 +495,8 @@ const fetchUsers = async () => {
     }
     
     const token = await auth.currentUser.getIdToken();
-    console.log('Auth token for users:', token ? 'Token exists' : 'No token');
-    console.log('Making request to: http://localhost:3001/api/users/');
+    // console.log('Auth token for users:', token ? 'Token exists' : 'No token');
+    // console.log('Making request to: http://localhost:3001/api/users/');
     
     const response = await fetch('/api/users', {
       method: 'GET',
@@ -506,8 +506,8 @@ const fetchUsers = async () => {
       }
     });
     
-    console.log('Users API response status:', response.status);
-    console.log('Users API response headers:', response.headers);
+    // console.log('Users API response status:', response.status);
+    // console.log('Users API response headers:', response.headers);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -516,7 +516,7 @@ const fetchUsers = async () => {
     }
     
     const data = await response.json();
-    console.log('Users API response data:', data);
+    // console.log('Users API response data:', data);
     
     // Handle different response structures
     if (data.success && data.data) {
