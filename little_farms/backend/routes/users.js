@@ -200,23 +200,40 @@ router.get('/session', authenticate, async (req, res) => {
  * PUT /api/auth/profile
  * Update user profile (protected route)
  */
-// router.put('/profile', authenticate, async (req, res) => {
-//   try {
-//     const updates = req.body;
-//     await AuthService.updateUser(req.user.uid, updates);
+router.put('/updateUser', async (req, res) => {
+  try {
+    const { uid, updates } = req.body;
+
+    // Validate required fields
+    if (!uid) {
+      return res.status(400).json({
+        success: false,
+        message: 'User UID is required'
+      });
+    }
+
+    if (!updates || Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Update data is required'
+      });
+    }
+
+    await AuthService.updateUser(uid, updates);
     
-//     res.status(200).json({
-//       success: true,
-//       message: 'Profile updated successfully'
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: 'Failed to update profile',
-//       error: process.env.NODE_ENV === 'development' ? error.message : undefined
-//     });
-//   }
-// });
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully'
+    });
+  } catch (error) {
+    console.error('Update user route error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
 /**
  * POST /api/auth/verify-token
@@ -360,19 +377,19 @@ router.get('/:uid', authenticate, async (req, res) => {
  * DELETE /api/auth/users/:uid
  * Delete user (protected route - admin only)
  */
-router.delete('/:uid', authenticate, async (req, res) => {
-  try {
-    const { uid } = req.params;
-    const result = await AuthService.deleteUser(uid);
-    res.status(200).json(result);
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete user',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
+// router.delete('/:uid', authenticate, async (req, res) => {
+//   try {
+//     const { uid } = req.params;
+//     const result = await AuthService.deleteUser(uid);
+//     res.status(200).json(result);
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to delete user',
+//       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// });
 
 
 

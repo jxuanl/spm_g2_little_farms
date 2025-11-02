@@ -9,7 +9,7 @@ class UserService {
     try {
       // Get user by email to verify they exist
       const userRecord = await auth.getUserByEmail(email);
-      
+
       // Check if account is disabled
       if (userRecord.disabled) {
         throw new Error('This account has been disabled');
@@ -18,7 +18,7 @@ class UserService {
       // Fetch user data from Firestore Users collection
       const userDocRef = db.collection('Users').doc(userRecord.uid);
       const userDoc = await userDocRef.get();
-      
+
       if (!userDoc.exists) {
         throw new Error('User profile not found in database');
       }
@@ -97,11 +97,11 @@ class UserService {
   async verifyToken(idToken) {
     try {
       const decodedToken = await auth.verifyIdToken(idToken);
-      
+
       // Fetch user data from Firestore
       const userDocRef = db.collection('Users').doc(decodedToken.uid);
       const userDoc = await userDocRef.get();
-      
+
       if (!userDoc.exists) {
         throw new Error('User profile not found');
       }
@@ -128,7 +128,7 @@ class UserService {
       const userRecord = await auth.getUser(uid);
       const userDocRef = db.collection('Users').doc(uid);
       const userDoc = await userDocRef.get();
-      
+
       if (!userDoc.exists) {
         throw new Error('User document not found');
       }
@@ -187,34 +187,35 @@ class UserService {
   // /**
   //  * Update user profile
   //  */
-  // async updateUser(uid, updates) {
-  //   try {
-  //     // Update Firebase Auth if email or display name changed
-  //     const authUpdates = {};
-  //     if (updates.name) authUpdates.displayName = updates.name;
-  //     if (updates.email) authUpdates.email = updates.email;
-      
-  //     if (Object.keys(authUpdates).length > 0) {
-  //       await auth.updateUser(uid, authUpdates);
-  //     }
+  async updateUser(uid, updates) {
+    try {
+      // Update Firebase Auth if email or display name changed
+      const authUpdates = {};
+      if (updates.name) authUpdates.displayName = updates.name;
+      if (updates.email) authUpdates.email = updates.email;
 
-  //     // Update Firestore
-  //     const updateData = {
-  //       ...updates,
-  //       updatedAt: new Date().toISOString()
-  //     };
+      if (Object.keys(authUpdates).length > 0) {
+        await auth.updateUser(uid, authUpdates);
+      }
 
-  //     await db.collection('Users').doc(uid).update(updateData);
+      // Update Firestore - remove updatedAt from updates to avoid conflicts
+      const { updatedAt, ...updateData } = updates;
 
-  //     return { 
-  //       success: true,
-  //       message: 'User updated successfully'
-  //     };
-  //   } catch (error) {
-  //     console.error('Update user error:', error);
-  //     throw error;
-  //   }
-  // }
+      const firestoreUpdate = {
+        ...updateData
+      };
+
+      await db.collection('Users').doc(uid).update(firestoreUpdate);
+
+      return {
+        success: true,
+        message: 'User updated successfully'
+      };
+    } catch (error) {
+      console.error('Update user error:', error);
+      throw error;
+    }
+  }
 
   // /**
   //  * Delete user
@@ -223,7 +224,7 @@ class UserService {
   //   try {
   //     // Delete from Firebase Auth
   //     await auth.deleteUser(uid);
-      
+
   //     // Delete from Firestore
   //     await db.collection('Users').doc(uid).delete();
 
@@ -237,7 +238,7 @@ class UserService {
   //   }
   // }
 
-  
+
 
   /**
    * Get user session data
@@ -263,7 +264,7 @@ class UserService {
       usersSnapshot.forEach(doc => {
         const userData = doc.data();
         const searchQuery = query.toLowerCase();
-        
+
         if (
           userData.email?.toLowerCase().includes(searchQuery) ||
           userData.name?.toLowerCase().includes(searchQuery)
@@ -294,7 +295,7 @@ class UserService {
       const usersSnapshot = await db.collection('Users')
         .where('role', '==', role)
         .get();
-      
+
       const users = [];
       usersSnapshot.forEach(doc => {
         users.push({
@@ -322,7 +323,7 @@ class UserService {
       const usersSnapshot = await db.collection('Users')
         .where('department', '==', department)
         .get();
-      
+
       const users = [];
       usersSnapshot.forEach(doc => {
         users.push({
@@ -374,7 +375,7 @@ class UserService {
       };
     } catch (error) {
       console.error('Logout error:', error);
-      
+
       // Even if there's an error updating the database, we should still consider the logout successful
       // from the client's perspective
       return {
@@ -389,23 +390,23 @@ class UserService {
   async getAllDepartments() {
     try {
       const usersSnapshot = await db.collection('Users').get();
-      
+
       const departmentsSet = new Set();
-      
+
       usersSnapshot.forEach(doc => {
         const userData = doc.data();
         if (userData.department) {
           departmentsSet.add(userData.department);
         }
       });
-      
+
       const departments = Array.from(departmentsSet).sort();
-      
+
       return {
         success: true,
         departments: departments
       };
-      
+
     } catch (error) {
       console.error('Error in getAllDepartments:', error);
       throw new Error('Failed to fetch departments from database');
