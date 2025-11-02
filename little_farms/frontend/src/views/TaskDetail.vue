@@ -1,50 +1,57 @@
 <template>
   <div class="p-6 max-w-2xl mx-auto min-h-screen flex flex-col">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-semibold">{{ isSubtaskView ? 'Subtask Details' : 'Task Details' }}</h2>
-      <button 
-        v-if="isSubtaskView" 
-        @click="router.push({ name: 'TaskDetail', params: { id: taskId } })"
-        class="text-sm text-blue-600 hover:text-blue-800 underline"
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex-1 flex flex-col items-center justify-center">
+      <div class="loading-spinner"></div>
+      <p class="text-muted-foreground">{{ isSubtaskView ? 'Loading subtask...' : 'Loading task...' }}</p>
+    </div>
+
+    <!-- Content -->
+    <template v-else-if="task">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-semibold">{{ isSubtaskView ? 'Subtask Details' : 'Task Details' }}</h2>
+        <button 
+          v-if="isSubtaskView" 
+          @click="router.push({ name: 'TaskDetail', params: { id: taskId } })"
+          class="text-sm text-blue-600 hover:text-blue-800 underline"
+        >
+          ← Back to Parent Task
+        </button>
+        <button 
+          v-else
+          @click="router.push({ name: 'AllTasks'} )"
+          class="text-sm text-blue-600 hover:text-blue-800 underline"
+        >
+          ← Back to Task List
+        </button>
+      </div>
+
+      <!-- === Edit button === -->
+      <div class="mt-10 flex justify-end">
+      <button
+        class="px-4 py-2 font-medium rounded-md h-9 transition-all"
+        :class="[
+          canEdit
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer border-transparent opacity-100'
+            : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60 border-black'
+        ]"
+        :disabled="!canEdit"
+        @click="canEdit && openEditModal()"
       >
-        ← Back to Parent Task
-      </button>
-      <button 
-        v-else
-        @click="router.push({ name: 'AllTasks'} )"
-        class="text-sm text-blue-600 hover:text-blue-800 underline"
-      >
-        ← Back to Task List
+        {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
       </button>
     </div>
 
-    <!-- === Edit button === -->
-    <div class="mt-10 flex justify-end">
-    <button
-      class="px-4 py-2 font-medium rounded-md h-9 transition-all"
-      :class="[
-        canEdit
-          ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer border-transparent opacity-100'
-          : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60 border-black'
-      ]"
-      :disabled="!canEdit"
-      @click="canEdit && openEditModal()"
-    >
-      {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
-    </button>
-  </div>
+      <!-- === Edit Modal === -->
+      <EditTaskModal
+        :isOpen="isEditModalOpen"
+        :task="{ ...task, id: isSubtaskView ? subtaskId : taskId }"
+        :isSubtask="isSubtaskView"
+        :parentTaskId="isSubtaskView ? taskId : null"
+        @close="isEditModalOpen = false"
+        @updated="refreshTask"
+      />
 
-    <!-- === Edit Modal === -->
-    <EditTaskModal
-      :isOpen="isEditModalOpen"
-      :task="{ ...task, id: isSubtaskView ? subtaskId : taskId }"
-      :isSubtask="isSubtaskView"
-      :parentTaskId="isSubtaskView ? taskId : null"
-      @close="isEditModalOpen = false"
-      @updated="refreshTask"
-    />
-
-    <div v-if="task">
       <!-- === Task Info === -->
       <div class="space-y-2 text-sm">
         <p><strong>Title:</strong> {{ task.title }}</p>
@@ -94,45 +101,27 @@
           This is the current instance. A new task will be created when marked as complete.
         </p>
       </div>
-    </div>
 
-    <div v-else class="text-gray-500">Loading task details...</div>
+      <div v-if="!isSubtaskView" class="flex-1 flex flex-col mt-6">
+        <TaskList 
+          :tasks="subtasks" 
+          :indvTask="true"
+          :parentTaskId="taskId"
+          :hideProjectFilter="true"
+          @createTask="() => isCreateModalOpen = true"
+          @taskClick="handleSubtaskClick"
+        />
+      </div>
 
-    <!-- === Edit button ===
-    <div class="mt-10 flex justify-end">
-      <button
-        class="px-4 py-2 font-medium rounded-md h-9 transition-all"
-        :class="[
-          canEdit
-            ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer opacity-100'
-            : 'bg-gray-300 text-gray-600 cursor-default opacity-60'
-        ]"
-        :disabled="!canEdit"
-        @click="canEdit && openEditModal()"
-      >
-        Edit Task
-      </button>
-    </div> -->
-
-    <div v-if="!isSubtaskView" class="flex-1 flex flex-col">
-      <TaskList 
-        :tasks="subtasks" 
-        :indvTask="true"
+      <CreateTaskModal
+        v-if="!isSubtaskView"
+        :isOpen="isCreateModalOpen"
         :parentTaskId="taskId"
-        :hideProjectFilter="true"
-        @createTask="() => isCreateModalOpen = true"
-        @taskClick="handleSubtaskClick"
+        :parentProject="{ id: task?.projectId?.id || task?.projectId, name: projectTitle }"
+        @close="() => isCreateModalOpen = false"
+        @taskCreated="handleSubtaskCreated"
       />
-    </div>
-
-    <CreateTaskModal
-      v-if="!isSubtaskView"
-      :isOpen="isCreateModalOpen"
-      :parentTaskId="taskId"
-      :parentProject="{ id: task?.projectId?.id || task?.projectId, name: projectTitle }"
-      @close="() => isCreateModalOpen = false"
-      @taskCreated="handleSubtaskCreated"
-    />
+    </template>
 
   </div>
 
@@ -158,6 +147,7 @@ const isEditModalOpen = ref(false);
 const currentUserId = ref('');
 const userRole = ref('');
 const canEdit = ref(false);
+const isLoading = ref(true);
 const props = defineProps({
   id: String, // comes from route   -> id should be a reference
 })
@@ -170,6 +160,7 @@ const subtaskId = computed(() => route.params.subtaskId);
 
 // === Fetch Task, Project, Creator, and Assignees ===
 const fetchTask = async () => {
+  isLoading.value = true;
   const auth = getAuth();
   const user = auth.currentUser;
   if (!user) {
@@ -238,6 +229,8 @@ const fetchTask = async () => {
 
   } catch (err) {
     console.error('❌ Error fetching task/subtask details:', err);
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -390,3 +383,20 @@ const formatDate = (date) => {
   return new Date(date).toLocaleString();
 };
 </script>
+
+<style scoped>
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
