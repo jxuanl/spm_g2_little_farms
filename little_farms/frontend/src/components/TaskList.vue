@@ -30,7 +30,7 @@
       <!-- === Filters === -->
       <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
         <!-- Project Filter -->
-        <div class="relative inline-block text-left" @click.stop>
+          <div class="relative inline-block text-left" @click.stop>
           <button
             @click="toggleDropdown('project')"
             class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
@@ -42,9 +42,18 @@
           </button>
           <div
             v-if="dropdownStates.project"
-            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 shadow-lg max-h-64 overflow-y-auto bg-white"
+            class="dropdown-menu absolute top-full left-0 mt-1 w-56 rounded-md border border-gray-300 shadow-lg bg-white"
           >
-            <div class="p-2">
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.project"
+                type="text"
+                placeholder="Search projects..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
               <button
                 v-for="project in projectOptions"
                 :key="project"
@@ -60,6 +69,9 @@
                 <span>{{ project }}</span>
                 <Check v-if="selectedProjects.includes(project)" class="h-4 w-4" />
               </button>
+              <div v-if="projectOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
             </div>
             <div class="border-t border-gray-200 p-2">
               <button
@@ -85,9 +97,18 @@
           </button>
           <div
             v-if="dropdownStates.creator"
-            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
+            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
           >
-            <div class="p-2">
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.creator"
+                type="text"
+                placeholder="Search creators..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
               <button
                 v-for="creator in creatorOptions"
                 :key="creator"
@@ -103,6 +124,9 @@
                 <span>{{ creator }}</span>
                 <Check v-if="selectedCreators.includes(creator)" class="h-4 w-4" />
               </button>
+              <div v-if="creatorOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
             </div>
             <div class="border-t border-gray-200 p-2">
               <button
@@ -128,9 +152,18 @@
           </button>
           <div
             v-if="dropdownStates.assignee"
-            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
+            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
           >
-            <div class="p-2">
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.assignee"
+                type="text"
+                placeholder="Search assignees..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
               <button
                 v-for="assignee in assigneeOptions"
                 :key="assignee"
@@ -146,6 +179,9 @@
                 <span>{{ assignee }}</span>
                 <Check v-if="selectedAssignees.includes(assignee)" class="h-4 w-4" />
               </button>
+              <div v-if="assigneeOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
             </div>
             <div class="border-t border-gray-200 p-2">
               <button
@@ -248,6 +284,65 @@
           <span class="block mt-2 text-sm text-gray-700 text-center">
             Priority: {{ selectedPriority[0] }} - {{ selectedPriority[1] }}
           </span>
+        </div>
+
+        <!-- Tags Filter -->
+        <div class="relative inline-block text-left" @click.stop>
+          <button
+            @click="toggleDropdown('tags')"
+            class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <span class="truncate">
+              {{ selectedTags.length === 0
+                ? 'All Tags'
+                : selectedTags.length === 1
+                ? selectedTags[0]
+                : `${selectedTags.length} Tags` }}
+            </span>
+            <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+          </button>
+          <div
+            v-if="dropdownStates.tags"
+            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+          >
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.tags"
+                type="text"
+                placeholder="Search tags..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
+              <button
+                v-for="tag in tagOptions"
+                :key="tag"
+                type="button"
+                @click="toggleSelection('tags', tag)"
+                :class="[
+                  'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                  selectedTags.includes(tag)
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                <span>{{ tag }}</span>
+                <Check v-if="selectedTags.includes(tag)" class="h-4 w-4" />
+              </button>
+              <div v-if="tagOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
+            </div>
+            <div class="border-t border-gray-200 p-2">
+              <button
+                @click="clearFilter('tags')"
+                class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -352,7 +447,7 @@ const props = defineProps({
   tasks: { type: Array, default: () => [] },
   indvTask: { type: Boolean, default: false },
   parentTaskId: { type: String, default: null },
-  loading: { type: Boolean, default: false }, // 👈 from parent
+  loading: { type: Boolean, default: false },
 })
 
 defineEmits(['createTask'])
@@ -360,7 +455,6 @@ defineEmits(['createTask'])
 const router = useRouter()
 
 /* ---------- Loading state ---------- */
-// keep a local boot flag so first paint shows "Loading tasks..." until initial props processed
 const localBootLoading = ref(true)
 const showLoading = computed(() => props.loading || localBootLoading.value)
 
@@ -371,6 +465,14 @@ const dropdownStates = ref({
   assignee: false,
   dueDate: false,
   status: false,
+  tags: false
+})
+
+const searchQueries = ref({
+  project: '',
+  creator: '',
+  assignee: '',
+  tags: ''
 })
 
 const toggleDropdown = (dropdown) => {
@@ -378,6 +480,10 @@ const toggleDropdown = (dropdown) => {
     if (key !== dropdown) dropdownStates.value[key] = false
   })
   dropdownStates.value[dropdown] = !dropdownStates.value[dropdown]
+  // Clear search when closing dropdown
+  if (!dropdownStates.value[dropdown] && searchQueries.value[dropdown] !== undefined) {
+    searchQueries.value[dropdown] = ''
+  }
 }
 
 const closeAllDropdowns = () => {
@@ -462,7 +568,6 @@ watch(
   (arr) => {
     const src = Array.isArray(arr) ? arr : []
     processedTasks.value = src.map(preprocessTask)
-    // initial paint complete; parent `loading` continues to control further fetches
     localBootLoading.value = false
   },
   { immediate: true }
@@ -475,6 +580,7 @@ const selectedAssignees = ref([])
 const selectedDueDate = ref('All Tasks')
 const selectedStatuses = ref([])
 const selectedPriority = ref([1, 10])
+const selectedTags = ref([])
 
 const toggleSelection = (filterType, value) => {
   const map = {
@@ -482,6 +588,7 @@ const toggleSelection = (filterType, value) => {
     creator: selectedCreators,
     assignee: selectedAssignees,
     status: selectedStatuses,
+    tags: selectedTags
   }
   const filter = map[filterType]
   const i = filter.value.indexOf(value)
@@ -495,6 +602,7 @@ const clearFilter = (filterType) => {
     creator: selectedCreators,
     assignee: selectedAssignees,
     status: selectedStatuses,
+    tags: selectedTags,
   }
   map[filterType].value = []
   dropdownStates.value[filterType] = false
@@ -505,27 +613,47 @@ const selectDueDate = (option) => {
   dropdownStates.value.dueDate = false
 }
 
-/* ---------- Filter options ---------- */
+/* ---------- Filter options with search ---------- */
 const projectOptions = computed(() => {
   const set = new Set()
   for (const t of processedTasks.value) if (t.projectTitle) set.add(t.projectTitle)
-  return Array.from(set)
+  const all = Array.from(set)
+  const query = searchQueries.value.project.toLowerCase()
+  return query ? all.filter(p => p.toLowerCase().includes(query)) : all
 })
+
 const creatorOptions = computed(() => {
   const set = new Set()
   for (const t of processedTasks.value) if (t.creatorName) set.add(t.creatorName)
-  return Array.from(set)
+  const all = Array.from(set)
+  const query = searchQueries.value.creator.toLowerCase()
+  return query ? all.filter(c => c.toLowerCase().includes(query)) : all
 })
+
 const assigneeOptions = computed(() => {
   const set = new Set()
   for (const t of processedTasks.value) {
     if (Array.isArray(t.assigneeNames)) for (const n of t.assigneeNames) if (n) set.add(n)
   }
-  return Array.from(set)
+  const all = Array.from(set)
+  const query = searchQueries.value.assignee.toLowerCase()
+  return query ? all.filter(a => a.toLowerCase().includes(query)) : all
 })
 
 const dueDateOptions = ['All Tasks', 'Overdue', 'Due Today', 'Due This Week', 'No Due Date']
 const statusOptions = ['todo', 'in-progress', 'done']
+
+const tagOptions = computed(() => {
+  const set = new Set()
+  for (const t of processedTasks.value) {
+    if (Array.isArray(t.tags)) {
+      for (const tag of t.tags) if (tag) set.add(tag)
+    }
+  }
+  const all = Array.from(set)
+  const query = searchQueries.value.tags.toLowerCase()
+  return query ? all.filter(tag => tag.toLowerCase().includes(query)) : all
+})
 
 /* ---------- Filtering logic ---------- */
 const filteredTasks = computed(() => {
@@ -533,6 +661,7 @@ const filteredTasks = computed(() => {
   const noCreator = selectedCreators.value.length === 0
   const noAssignee = selectedAssignees.value.length === 0
   const noStatus = selectedStatuses.value.length === 0
+  const noTags = selectedTags.value.length === 0
   const priorityMin = selectedPriority.value[0]
   const priorityMax = selectedPriority.value[1]
   const dueFilter = selectedDueDate.value
@@ -540,7 +669,7 @@ const filteredTasks = computed(() => {
   const weekFromNowMs = nowMs + 7 * 24 * 60 * 60 * 1000
 
   if (
-    noProject && noCreator && noAssignee && noStatus &&
+    noProject && noCreator && noAssignee && noStatus && noTags &&
     dueFilter === 'All Tasks' &&
     priorityMin === 1 && priorityMax === 10
   ) {
@@ -576,14 +705,17 @@ const filteredTasks = computed(() => {
     const matchesPriority =
       task.priorityNum === undefined ||
       (task.priorityNum >= priorityMin && task.priorityNum <= priorityMax)
-
+    const matchesTags =
+      noTags ||
+      (Array.isArray(task.tags) && task.tags.length > 0 && task.tags.some((tag) => selectedTags.value.includes(tag)))
     return (
       matchesProject &&
       matchesCreator &&
       matchesAssignee &&
       matchesDueDate &&
       matchesStatus &&
-      matchesPriority
+      matchesPriority &&
+      matchesTags
     )
   })
 })
@@ -611,8 +743,8 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.z-50 { z-index: 2000; }
-
+.z-50 { z-index: 9999 !important; }
+.dropdown-menu { z-index: 9999 !important; }
 /* soft red tint for overdue rows using theme destructive color */
 .overdue-row {
   background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
