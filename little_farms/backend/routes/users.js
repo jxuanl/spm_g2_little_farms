@@ -307,6 +307,19 @@ router.get('/role/:role', authenticate, async (req, res) => {
   }
 });
 
+router.get('/departments', async (req, res) => {
+  try {
+    const result = await AuthService.getAllDepartments();
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch departments',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 /**
  * GET /api/auth/users/department/:department
  * Get users by department (protected route)
@@ -361,18 +374,7 @@ router.delete('/:uid', authenticate, async (req, res) => {
   }
 });
 
-router.get('/departments', async (req, res) => {
-  try {
-    const result = await AuthService.getAllDepartments();
-    res.status(200).json(result);
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch departments',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
+
 
 export default router;
 
