@@ -42,7 +42,7 @@
           </button>
           <div
             v-if="dropdownStates.project"
-            class="dropdown-menu absolute top-full left-0 mt-1 w-56 rounded-md border border-gray-300 shadow-lg bg-white"
+            class="absolute top-full left-0 mt-1 w-56 rounded-md border border-gray-300 shadow-lg bg-white"
           >
             <div class="p-2 border-b border-gray-200">
               <input
@@ -97,7 +97,7 @@
           </button>
           <div
             v-if="dropdownStates.creator"
-            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
           >
             <div class="p-2 border-b border-gray-200">
               <input
@@ -152,7 +152,7 @@
           </button>
           <div
             v-if="dropdownStates.assignee"
-            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
           >
             <div class="p-2 border-b border-gray-200">
               <input
@@ -205,7 +205,7 @@
           </button>
           <div
             v-if="dropdownStates.dueDate"
-            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
           >
             <div class="p-2">
               <button
@@ -239,7 +239,7 @@
           </button>
           <div
             v-if="dropdownStates.status"
-            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
           >
             <div class="p-2">
               <button
@@ -303,7 +303,7 @@
           </button>
           <div
             v-if="dropdownStates.tags"
-            class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
           >
             <div class="p-2 border-b border-gray-200">
               <input
@@ -744,9 +744,22 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
   white-space: nowrap;
 }
 .z-50 { z-index: 9999 !important; }
-.dropdown-menu { z-index: 9999 !important; }
 /* soft red tint for overdue rows using theme destructive color */
 .overdue-row {
   background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+/* Override global button/input background-color: transparent for all filters */
+.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Ensure all dropdown menus have white background */
+.relative.top-full.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Ensure search inputs inside filter dropdowns have white background */
+.relative input[type="text"] {
+  background-color: #ffffff !important;
 }
 </style>
