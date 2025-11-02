@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/tasks', tasksRouter);
 
-describe('Comments API Integration Tests', () => {
+describe('Comments API Unit Tests', () => {
   let testData;
   let testTask;
   let testSubtask;
@@ -78,7 +78,7 @@ describe('Comments API Integration Tests', () => {
       const response = await request(app)
         .get('/api/tasks//comments');
       
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(400);
     });
   });
   

@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/projects', projectsRouter);
 
-describe('Projects API Integration Tests', () => {
+describe('Projects API Unit Tests', () => {
   let manager;
   let staff1;
   let staff2;

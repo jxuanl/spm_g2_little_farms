@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/tasks', tasksRouter);
 
-describe('Tasks API Integration Tests', () => {
+describe('Tasks API Unit Tests', () => {
   let testData;
   
   beforeEach(async () => {
@@ -23,11 +23,13 @@ describe('Tasks API Integration Tests', () => {
         .query({ userId: testData.users.staff1.uid });
       
       expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('tasks');
+      expect(Array.isArray(response.body.tasks)).toBe(true);
+      expect(response.body.tasks.length).toBeGreaterThan(0);
       
       // Verify the task belongs to the user
-      const task = response.body[0];
+      const task = response.body.tasks[0];
       expect(task).toHaveProperty('id');
       expect(task).toHaveProperty('title');
       expect(task).toHaveProperty('status');
@@ -38,8 +40,9 @@ describe('Tasks API Integration Tests', () => {
         .get('/api/tasks');
       
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('userId');
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain('userId');
     });
     
     it('should return empty array for user with no tasks', async () => {
@@ -55,7 +58,7 @@ describe('Tasks API Integration Tests', () => {
         .query({ userId: newUser.uid });
       
       expect(response.status).toBe(200);
-      expect(response.body).toEqual([]);
+      expect(response.body).toEqual({ success: true, tasks: [] });
     });
   });
   
@@ -197,7 +200,7 @@ describe('Tasks API Integration Tests', () => {
         const response = await request(app)
           .get('/api/tasks//subtasks');
         
-        expect(response.status).toBe(404); // Express will return 404 for invalid route
+        expect(response.status).toBe(400); // Express will return 400 for missing taskId
       });
     });
     

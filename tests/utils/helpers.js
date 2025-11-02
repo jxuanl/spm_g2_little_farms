@@ -161,11 +161,11 @@ export async function cleanCollection(collectionName) {
  */
 export async function seedTestData() {
   // Create test users
-  const admin = await createTestUser({
-    email: 'admin@test.com',
-    name: 'Test Admin',
-    role: 'admin',
-    department: 'admin'
+  const hr = await createTestUser({
+    email: 'hr@test.com',
+    name: 'Test HR',
+    role: 'HR',
+    department: 'HR'
   });
   
   const manager = await createTestUser({
@@ -218,7 +218,7 @@ export async function seedTestData() {
   });
   
   return {
-    users: { admin, manager, staff1, staff2 },
+    users: { hr, manager, staff1, staff2 },
     project,
     tasks: { task1, task2 }
   };
