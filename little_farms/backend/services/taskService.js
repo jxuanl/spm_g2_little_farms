@@ -834,7 +834,7 @@ export async function getAllTasks() {
   }
 }
 
-// --- NEW: delete a task (creator-only) ---
+// delete a task (creator OR project-owning manager)
 export async function deleteTask(taskId, userId) {
   try {
     const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
@@ -851,12 +851,22 @@ export async function deleteTask(taskId, userId) {
       taskData.taskCreatedBy?.id ||
       (creatorPath ? creatorPath.split('/').slice(-1)[0] : null);
 
-    if (!creatorId || creatorId !== userId) {
-      // Only creator may delete
-      return false;
+    // Fast-path: creator can delete
+    if (creatorId && creatorId === userId) {
+      // proceed
+    } else {
+      // Not the creator — check if user is a manager who owns the project
+      const role = await getUserRole(userId);
+      if (role !== 'manager') return false;
+
+      const projectOwnerId = await getProjectOwnerId(taskData.projectId);
+      if (!projectOwnerId || projectOwnerId !== userId) {
+        // Manager but not the owner of this task's project
+        return false;
+      }
     }
 
-    // If the task has a Subtasks subcollection, delete its docs first
+    // Delete subtasks (if any) then the task
     const subCol = await taskRef.collection('Subtasks').get();
     const batch = db.batch();
     subCol.forEach((doc) => batch.delete(doc.ref));
@@ -869,21 +879,18 @@ export async function deleteTask(taskId, userId) {
   }
 }
 
-// --- NEW: delete a subtask (creator-only) ---
+// delete a subtask (creator OR project-owning manager)
 export async function deleteSubtask(taskId, subtaskId, userId) {
   try {
-    const subRef = db
-      .collection(TASK_COLLECTION)
-      .doc(taskId)
-      .collection('Subtasks')
-      .doc(subtaskId);
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
+    const subRef = taskRef.collection('Subtasks').doc(subtaskId);
 
     const subSnap = await subRef.get();
     if (!subSnap.exists) return false;
 
     const data = subSnap.data();
 
-    // Resolve creator id robustly
+    // Resolve creator id robustly (stored on subtask)
     const creatorPath = data.taskCreatedBy?.path
       || data.taskCreatedBy?._path?.segments?.join('/')
       || null;
@@ -891,9 +898,26 @@ export async function deleteSubtask(taskId, subtaskId, userId) {
       data.taskCreatedBy?.id ||
       (creatorPath ? creatorPath.split('/').slice(-1)[0] : null);
 
-    if (!creatorId || creatorId !== userId) {
-      // Only creator may delete
-      return false;
+    // Fast-path: creator can delete
+    if (creatorId && creatorId === userId) {
+      // proceed
+    } else {
+      // Not the creator — check if user is a manager who owns the project
+      const role = await getUserRole(userId);
+      if (role !== 'manager') return false;
+
+      // Prefer subtask.projectId; if absent, fall back to parent task's projectId
+      let projectOwnerId = await getProjectOwnerId(data.projectId);
+      if (!projectOwnerId) {
+        const parentSnap = await taskRef.get();
+        if (parentSnap.exists) {
+          const parentData = parentSnap.data();
+          projectOwnerId = await getProjectOwnerId(parentData?.projectId);
+        }
+      }
+      if (!projectOwnerId || projectOwnerId !== userId) {
+        return false;
+      }
     }
 
     await subRef.delete();

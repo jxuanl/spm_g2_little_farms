@@ -46,7 +46,7 @@
         <!-- NEW: Delete button (creator or manager-own-project only) -->
         <button
           v-if="canDelete"
-          @click="confirmAndDelete"
+          @click="handleDelete"
           class="px-4 py-2 font-medium rounded-md h-9 bg-destructive text-white hover:bg-destructive/90 transition-colors shadow-sm">
           {{ isSubtaskView ? 'Delete Subtask' : 'Delete Task' }}
         </button>
