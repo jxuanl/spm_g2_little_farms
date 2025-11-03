@@ -1,27 +1,87 @@
+// routes/notifications.js
 import express from 'express';
-import { db } from '../adminFirebase.js';
+import admin from 'firebase-admin';
+import {
+  getNotifications,
+  acknowledgeNotification,
+  handleManagerTaskUpdate,
+  sendDailyDigest
+} from '../services/notificationService.js';
+import {getTasksforDailyDigest} from '../services/reportDataService.js';
 
 const router = express.Router();
 
-// GET /api/notifications?userId=<ID>
-router.get('/', async (req, res, next) => {
+// Middleware: verify Firebase ID token
+async function verifyToken(req, res, next) {
   try {
-    const userId = req.query.userId;
-    if (!userId) {
-      return res.status(400).json({ error: 'userId query parameter is required' });
-    }
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.split(' ')[1]
+      : null;
+    if (!token) return res.status(401).json({ error: 'Missing or invalid Authorization header' });
 
-    // If you saved notifications with field `userId` (recommended)
-    const q = db.collection('Notifications')
-      .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc'); // may need a Firestore composite index
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    console.error('Token verification failed:', err);
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+}
 
-    const snap = await q.get();
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+// ==============================
+// ROUTES
+// ==============================
 
+// GET /api/notifications
+router.get('/', verifyToken, async (req, res) => {
+  try {
+    const items = await getNotifications(req.user.uid);
     res.json({ items });
   } catch (err) {
-    next(err);
+    console.error('Error fetching notifications:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PATCH /api/notifications/:id/acknowledge
+router.patch('/:id/acknowledge', verifyToken, async (req, res) => {
+  try {
+    const result = await acknowledgeNotification(req.params.id, req.user.uid);
+    res.json(result);
+  } catch (err) {
+    if (err.message === 'Notification not found') return res.status(404).json({ error: err.message });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/notifications/update/tasks/manager
+router.post('/update/tasks/manager', async (req, res) => {
+  try {
+    const result = await handleManagerTaskUpdate(req.body);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('Error in /update/tasks/manager:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/notifications/daily-digest (expect userId in body)
+router.post('/daily-digest', async (req, res) => {
+  const {userId} = req.body;
+  const detailedTasks = await getTasksforDailyDigest(userId);
+  try {
+    const response = await sendDailyDigest(userId, detailedTasks);
+    if (response.error) {
+      throw new Error(response.error);
+    }
+    console.log("Daily digest email sent successfully!");
+  } catch (error) {
+    console.error('Error getting tasks by user with details:', error);
+    throw error;
+  } finally {
+    res.status(200).json({ message: "Daily digest process completed" });
   }
 });
 

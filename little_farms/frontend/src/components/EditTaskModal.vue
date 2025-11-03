@@ -616,6 +616,7 @@ const handleUpdate = async () => {
   if (!validateForm()) {
     return;
   }
+  console.log("Form update handling");
 
   try {
     const auth = getAuth();
@@ -647,24 +648,25 @@ const handleUpdate = async () => {
 
 
   // Jovan's edit for notification sending. Commented out because I changed file & route structure
-  //   const sendUpdatedData = {
-  //   id: props.task.id,
-  //     ...changes
-  //   }
-  //   console.log('Logging changes:', sendUpdatedData);
+    const sendUpdatedData = {
+    id: props.task.id,
+    userId: user.uid,
+      ...changes
+    }
+    console.log('Logging changes:', sendUpdatedData);
 
-  //   const response = await fetch('/api/update/tasks/manager', {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${token}`, 
-  //   },
-  //   body: JSON.stringify(sendUpdatedData),
-  // });
-  // if (!response.ok) {
-  //   const text = await response.text();
-  //   throw new Error(`Failed to log changes: ${response.status} ${text}`);
-  // }
+    const response = await fetch('/api/notifications/update/tasks/manager', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`, 
+    },
+    body: JSON.stringify(sendUpdatedData),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to log changes: ${response.status} ${text}`);
+  }
 
     const endpoint = props.isSubtask
       ? `/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`

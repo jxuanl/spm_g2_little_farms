@@ -145,7 +145,8 @@ class UserService {
           department: userData.department || 'General',
           emailVerified: userRecord.emailVerified,
           lastLogin: userData.lastLogin,
-          createdAt: userData.createdAt
+          createdAt: userData.createdAt,
+          reminderPreference: userData.reminderPreference || 'email'
         }
       };
     } catch (error) {
