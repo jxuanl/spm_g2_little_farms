@@ -4,7 +4,8 @@ import {
   getTasksByProjectWithDetailsAndFilter,
   getTasksByUserWithDetails,
   getTasksByUserWithDetailsAndFilter,
-  getUserTaskSummary
+  getUserTaskSummary,
+  getTasksforDailyDigest
 } from '../services/reportDataService.js';
 
 const router = express.Router();
