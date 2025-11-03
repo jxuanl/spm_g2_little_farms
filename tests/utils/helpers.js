@@ -134,16 +134,38 @@ export async function createTestComment({
 }
 
 /**
- * Get custom token for user (for authentication in tests)
- * Note: For emulator testing, we just return a simple token since
- * the emulator doesn't strictly validate tokens like production
+ * Get ID token for user (for authentication in tests)
+ * Creates a custom token and exchanges it for an ID token
  */
 export async function getCustomToken(uid) {
-  // Create a custom token - in tests with emulator, token validation is relaxed
-  const customToken = await admin.auth().createCustomToken(uid);
-  // For emulator, we can use the custom token directly in some cases
-  // or skip authentication entirely by passing userId in request body
-  return customToken;
+  try {
+    // Create a custom token
+    const customToken = await admin.auth().createCustomToken(uid);
+    
+    // Exchange custom token for ID token using Firebase Auth REST API
+    // This is what the client SDK would normally do
+    const response = await fetch(
+      `http://localhost:9099/www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=fake-api-key`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: customToken,
+          returnSecureToken: true
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to exchange custom token for ID token');
+    }
+    
+    const data = await response.json();
+    return data.idToken; // This is the ID token that can be verified
+  } catch (error) {
+    console.error('Error getting ID token:', error);
+    throw error;
+  }
 }
 
 /**

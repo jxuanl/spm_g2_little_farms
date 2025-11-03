@@ -90,6 +90,15 @@ router.post('/', async (req, res) => {
       recurrenceValue
     } = req.body;
 
+    console.log('📝 Creating task/subtask:', {
+      title,
+      isSubtask: !!parentTaskId,
+      parentTaskId,
+      projectId,
+      createdBy,
+      recurring
+    });
+
     // Validate required fields
     if (!title || !createdBy) {
       return res.status(400).json({ 
@@ -140,10 +149,11 @@ router.post('/', async (req, res) => {
     };
 
     const newTask = await createTask(taskData);
+    console.log('✅ Task/subtask created successfully:', newTask.id);
     res.status(201).json(newTask);
   } catch (error) {
-    console.error('Error creating task:', error);
-    res.status(500).json({ error: 'Failed to create task' });
+    console.error('❌ Error creating task:', error);
+    res.status(500).json({ error: error.message || 'Failed to create task' });
   }
 });
 

@@ -432,6 +432,8 @@ const emit = defineEmits(['close', 'taskCreated']);
 const createTaskAPI = async (taskData) => {
   try {
     const token = await auth.currentUser?.getIdToken();
+    console.log('Sending request to /api/tasks with data:', taskData);
+    
     const response = await fetch('/api/tasks', {
       method: 'POST',
       headers: {
@@ -441,12 +443,24 @@ const createTaskAPI = async (taskData) => {
       body: JSON.stringify(taskData)
     });
     
+    console.log('Response status:', response.status);
+    
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to create task');
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        const errorText = await response.text();
+        console.error('Error response text:', errorText);
+        throw new Error(`Failed to create task (${response.status}): ${errorText}`);
+      }
+      console.error('Error response data:', errorData);
+      throw new Error(errorData.error || errorData.message || 'Failed to create task');
     }
     
-    return await response.json();
+    const result = await response.json();
+    console.log('Success response:', result);
+    return result;
   } catch (error) {
     console.error('API Error:', error);
     throw error;
@@ -820,7 +834,10 @@ const handleSubmit = async () => {
     console.log('Form data before submit:', {
       recurring: formData.recurring,
       recurrenceInterval: formData.recurrenceInterval,
-      recurrenceValue: formData.recurrenceValue
+      recurrenceValue: formData.recurrenceValue,
+      isSubtask: !!props.parentTaskId,
+      parentTaskId: props.parentTaskId,
+      projectId: formData.projectId
     });
     
     // Map frontend form data to backend API format
@@ -831,14 +848,22 @@ const handleSubmit = async () => {
       status: formData.status || 'todo',
       deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
       assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [getCurrentUser()?.uid],
-      projectId: formData.projectId,
       createdBy: currentUser.uid || 'default-user',
       tags: formData.tags || [],
       recurring: Boolean(formData.recurring),
       recurrenceInterval: formData.recurring ? formData.recurrenceInterval : null,
       recurrenceValue: formData.recurring ? Number(formData.recurrenceValue) : null,
-      ...(props.parentTaskId && { parentTaskId: props.parentTaskId })
     };
+
+    // Only include projectId if it's set (subtasks will inherit from parent)
+    if (formData.projectId) {
+      taskData.projectId = formData.projectId;
+    }
+
+    // Add parentTaskId for subtasks
+    if (props.parentTaskId) {
+      taskData.parentTaskId = props.parentTaskId;
+    }
 
     console.log(`Creating ${props.parentTaskId ? 'subtask' : 'task'} with data:`, taskData);
     

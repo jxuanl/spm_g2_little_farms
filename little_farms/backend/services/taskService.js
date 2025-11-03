@@ -175,36 +175,56 @@ export async function createTask(taskData) {
   try {
     // Check if this is a subtask
     const isSubtask = !!taskData.parentTaskId;
+    console.log(`📝 createTask - isSubtask: ${isSubtask}, parentTaskId: ${taskData.parentTaskId}`);
     
     // Convert assignee IDs to Firestore user references
     const assignedToRefs = [];
     if (taskData.assigneeIds && taskData.assigneeIds.length > 0) {
       for (const userId of taskData.assigneeIds) {
-        if (userId) { // ✅ Check if userId is not null
+        // ✅ Validate userId is a non-empty string
+        if (userId && typeof userId === 'string' && userId.trim() !== '') {
           const userDoc = await db.collection('Users').doc(userId).get();
           if (userDoc.exists) {
             assignedToRefs.push(db.collection('Users').doc(userId));
+            console.log(`✅ Assignee found: ${userId}`);
+          } else {
+            console.warn(`⚠️ User ${userId} not found`);
           }
+        } else {
+          console.warn(`⚠️ Invalid userId: ${userId}`);
         }
       }
     }
+    console.log(`📝 Total valid assignees: ${assignedToRefs.length}`);
     
     // Convert project ID to Firestore project reference
     let projectRef = null;
-    if (taskData.projectId) {
+    if (taskData.projectId && typeof taskData.projectId === 'string' && taskData.projectId.trim() !== '') {
       const projectDoc = await db.collection('Projects').doc(taskData.projectId).get();
       if (projectDoc.exists) {
-      projectRef = db.collection('Projects').doc(taskData.projectId);
+        projectRef = db.collection('Projects').doc(taskData.projectId);
+        console.log(`✅ Project found: ${taskData.projectId}`);
+      } else {
+        console.warn(`⚠️ Project ${taskData.projectId} not found`);
       }
+    } else {
+      console.log('ℹ️ No projectId provided or invalid projectId');
     }
     
     // Convert creator ID to Firestore user reference
     let taskCreatedByRef = null;
-    if (taskData.createdBy) {
+    if (taskData.createdBy && typeof taskData.createdBy === 'string' && taskData.createdBy.trim() !== '') {
       const creatorDoc = await db.collection('Users').doc(taskData.createdBy).get();
       if (creatorDoc.exists) {
-      taskCreatedByRef = db.collection('Users').doc(taskData.createdBy);
+        taskCreatedByRef = db.collection('Users').doc(taskData.createdBy);
+        console.log(`✅ Creator found: ${taskData.createdBy}`);
+      } else {
+        console.warn(`⚠️ Creator ${taskData.createdBy} not found`);
+        throw new Error(`Creator user not found: ${taskData.createdBy}`);
       }
+    } else {
+      console.error('❌ No valid createdBy provided');
+      throw new Error('createdBy is required and must be a valid user ID');
     }
     
     // Convert date strings to Firestore timestamps
@@ -235,13 +255,42 @@ export async function createTask(taskData) {
     
     if (isSubtask) {
       // Create subtask in the parent task's Subtasks subcollection
+      console.log(`📝 Creating subtask under parent task: ${taskData.parentTaskId}`);
+      
+      // Verify parent task exists
+      const parentTaskDoc = await db.collection(TASK_COLLECTION).doc(taskData.parentTaskId).get();
+      if (!parentTaskDoc.exists) {
+        throw new Error(`Parent task ${taskData.parentTaskId} not found`);
+      }
+      console.log(`✅ Parent task exists`);
+      
       docRef = await db.collection(TASK_COLLECTION)
         .doc(taskData.parentTaskId)
         .collection('Subtasks')
         .add(newTask);
+      console.log(`✅ Subtask created with ID: ${docRef.id}`);
     } else {
       // Create regular task
+      console.log(`📝 Creating regular task`);
       docRef = await db.collection(TASK_COLLECTION).add(newTask);
+      console.log(`✅ Task created with ID: ${docRef.id}`);
+      
+      // ✅ Update the project's taskList with the new task reference
+      if (taskData.projectId && projectRef) {
+        try {
+          const projectDocRef = db.collection('Projects').doc(taskData.projectId);
+          const taskReference = db.collection(TASK_COLLECTION).doc(docRef.id);
+          
+          await projectDocRef.update({
+            taskList: admin.firestore.FieldValue.arrayUnion(taskReference)
+          });
+          
+          console.log(`✅ Added task ${docRef.id} to project ${taskData.projectId} taskList`);
+        } catch (projectUpdateErr) {
+          console.error(`⚠️ Failed to update project taskList for task ${docRef.id}:`, projectUpdateErr);
+          // Don't throw error - task was created successfully, project update is secondary
+        }
+      }
     }
     
     return { id: docRef.id, ...newTask };
@@ -404,7 +453,7 @@ export async function updateTask(taskId, updates) {
 
     // --- Update document ---
     await taskRef.update(updateData)
-    console.log(`✅ Task ${taskId} updated successfully by user ${updates.userId}`)
+    // console.log(`✅ Task ${taskId} updated successfully by user ${updates.userId}`)
 
     return { id: taskId, ...updateData }
   } catch (err) {
@@ -491,8 +540,38 @@ export async function completeTask(taskId, userId) {
       // Remove the id field as it will be auto-generated
       delete newTask.id;
 
-      await db.collection('Tasks').add(newTask);
+      const newTaskRef = await db.collection('Tasks').add(newTask);
       console.log(`✅ Created new recurring task instance with deadline: ${nextDeadline.toISOString()}`);
+      
+      // ✅ Update the project's taskList with the new recurring task reference
+      if (taskData.projectId) {
+        try {
+          let projectId;
+          // Extract project ID from the reference
+          if (taskData.projectId.path) {
+            const pathParts = taskData.projectId.path.split('/');
+            projectId = pathParts[pathParts.length - 1];
+          } else if (taskData.projectId.id) {
+            projectId = taskData.projectId.id;
+          } else if (typeof taskData.projectId === 'string') {
+            projectId = taskData.projectId;
+          }
+          
+          if (projectId) {
+            const projectDocRef = db.collection('Projects').doc(projectId);
+            const taskReference = db.collection('Tasks').doc(newTaskRef.id);
+            
+            await projectDocRef.update({
+              taskList: admin.firestore.FieldValue.arrayUnion(taskReference)
+            });
+            
+            console.log(`✅ Added recurring task ${newTaskRef.id} to project ${projectId} taskList`);
+          }
+        } catch (projectUpdateErr) {
+          console.error(`⚠️ Failed to update project taskList for recurring task ${newTaskRef.id}:`, projectUpdateErr);
+          // Don't throw error - task was created successfully, project update is secondary
+        }
+      }
     }
 
     return { success: true, message: 'Task completed successfully' };
@@ -534,20 +613,20 @@ export async function getSubtasksForTask(taskId) {
       }
       
       // Convert taskCreatedBy reference to include path
-      console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
+      // console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
       if (data.taskCreatedBy && data.taskCreatedBy.path) {
         serializedData.taskCreatedBy = { path: data.taskCreatedBy.path };
       } else if (data.taskCreatedBy && data.taskCreatedBy._path && data.taskCreatedBy._path.segments) {
         // Handle Firestore DocumentReference format
         const pathString = data.taskCreatedBy._path.segments.join('/');
-        console.log('Constructed path from segments:', pathString);
+        // console.log('Constructed path from segments:', pathString);
         serializedData.taskCreatedBy = { path: pathString };
       } else if (data.taskCreatedBy) {
         // Handle other reference formats
-        console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
+        // console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
         serializedData.taskCreatedBy = data.taskCreatedBy;
       } else {
-        console.log('taskCreatedBy is null or undefined');
+        // console.log('taskCreatedBy is null or undefined');
         serializedData.taskCreatedBy = null;
       }
       
@@ -597,20 +676,20 @@ export async function getSubtaskById(taskId, subtaskId) {
     }
     
     // Convert taskCreatedBy reference to include path
-    console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
+    // console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
     if (data.taskCreatedBy && data.taskCreatedBy.path) {
       serializedData.taskCreatedBy = { path: data.taskCreatedBy.path };
     } else if (data.taskCreatedBy && data.taskCreatedBy._path && data.taskCreatedBy._path.segments) {
       // Handle Firestore DocumentReference format
       const pathString = data.taskCreatedBy._path.segments.join('/');
-      console.log('Constructed path from segments:', pathString);
+      // console.log('Constructed path from segments:', pathString);
       serializedData.taskCreatedBy = { path: pathString };
     } else if (data.taskCreatedBy) {
       // Handle other reference formats
-      console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
+      // console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
       serializedData.taskCreatedBy = data.taskCreatedBy;
     } else {
-      console.log('taskCreatedBy is null or undefined');
+      // console.log('taskCreatedBy is null or undefined');
       serializedData.taskCreatedBy = null;
     }
     
