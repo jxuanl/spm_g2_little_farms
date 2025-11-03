@@ -11,7 +11,7 @@ let timer = null;
 let isRunning = false;
 
 export function startDeadlineChecker(intervalMs = 30_000) {
-  console.log("Deadline checker starting (every ${intervalMs / 1000}s)…");
+  // console.log("Deadline checker starting (every ${intervalMs / 1000}s)…");
   runOnce().catch(console.error);
   timer = setInterval(() => runOnce().catch(console.error), intervalMs);
 }
@@ -78,7 +78,7 @@ export async function sendNotificationToUser({ taskDoc, taskData, userDoc, remin
     };
     try {
       const resp = await sendEmail(emailMsg);
-      console.log(`📧 Email sent to ${userDoc.id}:`, resp?.[0]?.statusCode ?? 'ok');
+      // console.log(`📧 Email sent to ${userDoc.id}:`, resp?.[0]?.statusCode ?? 'ok');
     } catch (err) {
       console.error(`Email send failed for user ${userDoc.id}`, err);
     }
@@ -103,7 +103,7 @@ export async function sendNotificationToUser({ taskDoc, taskData, userDoc, remin
       userId: userDoc.id,
     });
     
-    console.log(`In-app reminder sent to ${userDoc.id}`);
+    // console.log(`In-app reminder sent to ${userDoc.id}`);
   }
 }
 
@@ -127,7 +127,7 @@ async function fetchCandidateTasks() {
 // ------------------ main job ------------------
 export async function runOnce() {
   if (isRunning) {
-    console.log('Previous run still in progress, skipping.');
+    // console.log('Previous run still in progress, skipping.');
     return;
   }
   isRunning = true;
@@ -135,7 +135,7 @@ export async function runOnce() {
 
   try {
     const tasks = await fetchCandidateTasks();
-    console.log("Candidate tasks found: ${tasks.length}");
+    // console.log("Candidate tasks found: ${tasks.length}");
 
     for (const taskDoc of tasks) {
       const t = taskDoc.data();
@@ -153,16 +153,16 @@ export async function runOnce() {
       // Use first user's preference as reference for the task window
       const firstUserDoc = await resolveUserDoc(assignees[0]);
       const reminderMs = getReminderMsForUser(firstUserDoc.data());
-      console.log("Reminder in MS is: ", reminderMs);
+      // console.log("Reminder in MS is: ", reminderMs);
       if (timeDiff > reminderMs) continue;
 
-      console.log(`Sending reminders for task "${t.title}" (${taskDoc.id}) to ${assignees.length} users`);
+      // console.log(`Sending reminders for task "${t.title}" (${taskDoc.id}) to ${assignees.length} users`);
 
       // Notify all users assigned to this task
       for (const userRefLike of assignees) {
         const userDoc = await resolveUserDoc(userRefLike);
         if (!userDoc.exists) continue;
-        console.log("TASK DOC, TASKDATA, USERDOC, REMINDERDAYS: ", taskDoc, t, userDoc, Math.max(1, Math.round(reminderMs / (24 * 60 * 60 * 1000))));
+        // console.log("TASK DOC, TASKDATA, USERDOC, REMINDERDAYS: ", taskDoc, t, userDoc, Math.max(1, Math.round(reminderMs / (24 * 60 * 60 * 1000))));
         await sendNotificationToUser({
           taskDoc,
           taskData: t,
@@ -172,10 +172,10 @@ export async function runOnce() {
       }
 
       await taskDoc.ref.update({ isReminderSent: true });
-      console.log(`Task ${taskDoc.id} marked as reminded.`);
+      // console.log(`Task ${taskDoc.id} marked as reminded.`);
     }
 
-    console.log('Deadline check cycle completed.');
+    // console.log('Deadline check cycle completed.');
   } catch (err) {
     console.error('Deadline checker error:', err);
   } finally {

@@ -76,7 +76,7 @@ router.post('/daily-digest', async (req, res) => {
     if (response.error) {
       throw new Error(response.error);
     }
-    console.log("Daily digest email sent successfully!");
+    // console.log("Daily digest email sent successfully!");
   } catch (error) {
     console.error('Error getting tasks by user with details:', error);
     throw error;
