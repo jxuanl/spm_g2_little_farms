@@ -1,5 +1,5 @@
 import express from 'express'
-import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask, getAllTasks } from '../services/taskService.js'
+import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask, getAllTasks, deleteTask, deleteSubtask } from '../services/taskService.js'
 
 const router = express.Router()
 
@@ -235,6 +235,46 @@ router.put('/:taskId/subtasks/:subtaskId', async (req, res) => {
     res.json(updatedSubtask);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/tasks/:id  (creator-only)
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query;
+
+    if (!id || !userId) {
+      return res.status(400).json({ success: false, message: 'Missing task ID or userId' });
+    }
+
+    const result = await deleteTask(id, userId);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Task not found or not allowed' });
+    }
+    return res.status(200).json({ success: true, message: 'Task deleted' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete task' });
+  }
+});
+
+// DELETE /api/tasks/:taskId/subtasks/:subtaskId  (creator-only)
+router.delete('/:taskId/subtasks/:subtaskId', async (req, res) => {
+  try {
+    const { taskId, subtaskId } = req.params;
+    const { userId } = req.query;
+
+    if (!taskId || !subtaskId || !userId) {
+      return res.status(400).json({ success: false, message: 'Missing taskId, subtaskId, or userId' });
+    }
+
+    const result = await deleteSubtask(taskId, subtaskId, userId);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Subtask not found or not allowed' });
+    }
+    return res.status(200).json({ success: true, message: 'Subtask deleted' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete subtask' });
   }
 });
 

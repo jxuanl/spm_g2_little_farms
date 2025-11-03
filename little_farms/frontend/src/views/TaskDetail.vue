@@ -10,37 +10,47 @@
     <template v-else-if="task">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-semibold">{{ isSubtaskView ? 'Subtask Details' : 'Task Details' }}</h2>
-        <button 
-          v-if="isSubtaskView" 
-          @click="router.push({ name: 'TaskDetail', params: { id: taskId } })"
-          class="text-sm text-blue-600 hover:text-blue-800 underline"
-        >
-          ← Back to Parent Task
-        </button>
-        <button 
-          v-else
-          @click="router.push({ name: 'AllTasks'} )"
-          class="text-sm text-blue-600 hover:text-blue-800 underline"
-        >
-          ← Back to Task List
-        </button>
+        <div class="flex items-center gap-4">
+          <button 
+            v-if="isSubtaskView" 
+            @click="router.push({ name: 'TaskDetail', params: { id: taskId } })"
+            class="text-sm text-blue-600 hover:text-blue-800 underline"
+          >
+            ← Back to Parent Task
+          </button>
+          <button 
+            v-else
+            @click="router.push({ name: 'AllTasks'} )"
+            class="text-sm text-blue-600 hover:text-blue-800 underline"
+          >
+            ← Back to Task List
+          </button>
+        </div>
       </div>
 
-      <!-- === Edit button === -->
-      <div class="mt-10 flex justify-end">
-      <button
-        class="px-4 py-2 font-medium rounded-md h-9 transition-all"
-        :class="[
-          canEdit
-            ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer border-transparent opacity-100'
-            : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60 border-black'
-        ]"
-        :disabled="!canEdit"
-        @click="canEdit && openEditModal()"
-      >
-        {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
-      </button>
-    </div>
+      <!-- === Action buttons === -->
+      <div class="mt-10 flex justify-end gap-3">
+        <button
+          class="px-4 py-2 font-medium rounded-md h-9 transition-all"
+          :class="[
+            canEdit
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer border-transparent opacity-100'
+              : 'bg-gray-300 text-gray-600 cursor-not-allowed opacity-60 border-black'
+          ]"
+          :disabled="!canEdit"
+          @click="canEdit && openEditModal()"
+        >
+          {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
+        </button>
+
+        <!-- NEW: Delete button (creator or manager-own-project only) -->
+        <button
+          v-if="canDelete"
+          @click="confirmAndDelete"
+          class="px-4 py-2 font-medium rounded-md h-9 bg-destructive text-white hover:bg-destructive/90 transition-colors shadow-sm">
+          {{ isSubtaskView ? 'Delete Subtask' : 'Delete Task' }}
+        </button>
+      </div>
 
       <!-- === Edit Modal === -->
       <EditTaskModal
@@ -152,6 +162,11 @@ const isEditModalOpen = ref(false);
 const currentUserId = ref('');
 const userRole = ref('');
 const canEdit = ref(false);
+
+/* NEW: delete permission state */
+const canDelete = ref(false);
+const isManagersProject = ref(false);
+
 const isLoading = ref(true);
 const props = defineProps({
   id: String, // comes from route   -> id should be a reference
@@ -162,6 +177,22 @@ const isCreateModalOpen = ref(false);
 const isSubtaskView = computed(() => !!route.params.subtaskId);
 const taskId = computed(() => route.params.id);
 const subtaskId = computed(() => route.params.subtaskId);
+
+// === helper: extract projectId string from a doc ref-like object ===
+const extractProjectId = (proj) => {
+  if (!proj) return null;
+  if (typeof proj === 'string') return proj;
+  if (proj.id) return proj.id;
+  if (proj.path) {
+    const parts = proj.path.split('/');
+    return parts[parts.length - 1] || null;
+  }
+  if (proj._path?.segments?.length) {
+    const parts = proj._path.segments;
+    return parts[parts.length - 1] || null;
+  }
+  return null;
+};
 
 // === Fetch Task, Project, Creator, and Assignees ===
 const fetchTask = async () => {
@@ -175,6 +206,7 @@ const fetchTask = async () => {
 
   const token = await user.getIdToken();
   const userId = user.uid;
+  currentUserId.value = userId;
 
   try {
     let res;
@@ -210,7 +242,7 @@ const fetchTask = async () => {
     creatorName.value = taskData.creatorName || 'No creator';
     assigneeNames.value = taskData.assigneeNames || [];
 
-    // ✅ Edit permission logic
+    // ✅ Edit permission logic (unchanged)
     const creatorId =
       taskData.creatorId ||
       taskData.taskCreatedBy?.id ||
@@ -229,6 +261,45 @@ const fetchTask = async () => {
       canEdit.value = false;
     }
 
+    // ✅ Delete permission logic (NEW)
+    // Allowed if creator OR (manager AND the project belongs to this manager)
+    // We determine manager-owned project by fetching the project and checking its owner.
+    isManagersProject.value = false;
+
+    const projId = extractProjectId(taskData.projectId);
+    if (userRole.value === 'manager' && projId) {
+      try {
+        const projRes = await fetch(`/api/projects/${projId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (projRes.ok) {
+          const projData = await projRes.json();
+          // project owner may be at projData.project.owner or projData.owner
+          const ownerPath =
+            projData.project?.owner?.path ||
+            (projData.project?.owner?._path?.segments?.join('/')) ||
+            projData.owner?.path ||
+            (projData.owner?._path?.segments?.join('/')) ||
+            null;
+
+          let ownerId = null;
+          if (ownerPath) {
+            const parts = ownerPath.split('/');
+            ownerId = parts[parts.length - 1] || null;
+          } else if (projData.project?.owner?.id) {
+            ownerId = projData.project.owner.id;
+          } else if (projData.owner?.id) {
+            ownerId = projData.owner.id;
+          }
+
+          isManagersProject.value = ownerId === userId;
+        }
+      } catch (e) {
+        isManagersProject.value = false;
+      }
+    }
+
+    canDelete.value = Boolean(isCreator || isManagersProject.value);
 
   } catch (err) {
   } finally {
@@ -354,6 +425,57 @@ const refreshTask = () => {
   fetchSubtasks();
 };
 const openEditModal = () => (isEditModalOpen.value = true);
+
+/* NEW: Delete handler */
+const handleDelete = async () => {
+  if (!canDelete.value || !task.value) return;
+
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    router.push('/login');
+    return;
+  }
+  const token = await user.getIdToken();
+  const userId = user.uid;
+
+  const confirmed = window.confirm(
+    isSubtaskView.value
+      ? 'Are you sure you want to delete this subtask? This action cannot be undone.'
+      : 'Are you sure you want to delete this task? This action cannot be undone.'
+  );
+  if (!confirmed) return;
+
+  try {
+    let res;
+    if (isSubtaskView.value) {
+      res = await fetch(`/api/tasks/${taskId.value}/subtasks/${subtaskId.value}?userId=${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } else {
+      res = await fetch(`/api/tasks/${taskId.value}?userId=${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+
+    if (!res.ok) {
+      const msg = (await res.json().catch(() => ({}))).message || 'Failed to delete';
+      alert(msg);
+      return;
+    }
+
+    // Navigate after deletion
+    if (isSubtaskView.value) {
+      router.push({ name: 'TaskDetail', params: { id: taskId.value } });
+    } else {
+      router.push({ name: 'AllTasks' });
+    }
+  } catch (e) {
+    alert('Failed to delete. Please try again.');
+  }
+};
 
 // === Format Firestore Dates ===
 // === Safe date converter ===

@@ -834,6 +834,75 @@ export async function getAllTasks() {
   }
 }
 
+// --- NEW: delete a task (creator-only) ---
+export async function deleteTask(taskId, userId) {
+  try {
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
+    const taskSnap = await taskRef.get();
+    if (!taskSnap.exists) return false;
+
+    const taskData = taskSnap.data();
+
+    // Resolve creator id robustly
+    const creatorPath = taskData.taskCreatedBy?.path
+      || taskData.taskCreatedBy?._path?.segments?.join('/')
+      || null;
+    const creatorId =
+      taskData.taskCreatedBy?.id ||
+      (creatorPath ? creatorPath.split('/').slice(-1)[0] : null);
+
+    if (!creatorId || creatorId !== userId) {
+      // Only creator may delete
+      return false;
+    }
+
+    // If the task has a Subtasks subcollection, delete its docs first
+    const subCol = await taskRef.collection('Subtasks').get();
+    const batch = db.batch();
+    subCol.forEach((doc) => batch.delete(doc.ref));
+    batch.delete(taskRef);
+    await batch.commit();
+
+    return true;
+  } catch (err) {
+    throw err;
+  }
+}
+
+// --- NEW: delete a subtask (creator-only) ---
+export async function deleteSubtask(taskId, subtaskId, userId) {
+  try {
+    const subRef = db
+      .collection(TASK_COLLECTION)
+      .doc(taskId)
+      .collection('Subtasks')
+      .doc(subtaskId);
+
+    const subSnap = await subRef.get();
+    if (!subSnap.exists) return false;
+
+    const data = subSnap.data();
+
+    // Resolve creator id robustly
+    const creatorPath = data.taskCreatedBy?.path
+      || data.taskCreatedBy?._path?.segments?.join('/')
+      || null;
+    const creatorId =
+      data.taskCreatedBy?.id ||
+      (creatorPath ? creatorPath.split('/').slice(-1)[0] : null);
+
+    if (!creatorId || creatorId !== userId) {
+      // Only creator may delete
+      return false;
+    }
+
+    await subRef.delete();
+    return true;
+  } catch (err) {
+    throw err;
+  }
+}
+
 export const taskService = {
   getTasksForUser,
   createTask,
@@ -843,8 +912,9 @@ export const taskService = {
   updateSubtask,
   updateTask,
   completeTask,
-  getAllTasks
-  // deleteTask,
+  getAllTasks,
+  deleteTask, 
+  deleteSubtask
 };
 
 
