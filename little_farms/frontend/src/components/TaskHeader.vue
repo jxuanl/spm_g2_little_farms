@@ -145,7 +145,7 @@ const fetchNotifications = async () => {
 
     const data = await res.json();
     notifications.value = data.items || [];
-    console.log(`✅ Notifications fetched:`, notifications.value.length);
+    // console.log(`✅ Notifications fetched:`, notifications.value.length);
   } catch (err) {
     console.error('❌ Failed to fetch notifications:', err);
   }
@@ -176,7 +176,7 @@ const acknowledgeNotification = async (notifId) => {
     // update local state without refetching everything
     const notif = notifications.value.find(n => n.id === notifId);
     if (notif) notif.status = 'read';
-    console.log(`✅ Notification ${notifId} marked as read`);
+    // console.log(`✅ Notification ${notifId} marked as read`);
   } catch (err) {
     console.error('❌ Failed to acknowledge notification:', err);
   }
@@ -201,7 +201,7 @@ onMounted(() => {
     try {
       const data = JSON.parse(event.data);
       if (data.type === 'notification') {
-        console.log('🔔 WS: reminder event received — refreshing notifications');
+        // console.log('🔔 WS: reminder event received — refreshing notifications');
         await fetchNotifications();
       }
     } catch (err) {
