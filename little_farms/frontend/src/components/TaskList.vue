@@ -363,111 +363,83 @@
           </div>
         </div>
 
-        <!-- Show table when there are results -->
-        <template v-if="visibleTasks.length > 0">
-          <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
-            <thead>
-              <tr class="bg-gray-100 text-left">
-                <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
-                <th class="p-2 border">Project</th>
-                <th class="p-2 border">Creator</th>
-                <th class="p-2 border">Assignees</th>
-                <th class="p-2 border">Due Date</th>
-                <th class="p-2 border">Status</th>
-                <th class="p-2 border">Priority</th>
-                <th class="p-2 border">Tags</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="task in visibleTasks"
-                :key="task.id"
-                class="hover:bg-gray-50 cursor-pointer transition"
-                :class="{
-                  'overdue-row': isTaskOverdue(task),
-                  'new-instance-row': task.isNewInstance
-                }"
-                v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum, task.isNewInstance, task.recurring]"
-                @click="goToTaskDetail(task.id)"
-              >
-                <!-- keep existing row cells -->
-                <td class="p-2 border font-medium">
-                  <div class="flex items-center gap-2">
-                    {{ task.title || 'Untitled' }}
-                    <span v-if="task.recurring" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Recurring task">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Recurring
+        <!-- Empty State -->
+        <div v-if="visibleTasks.length === 0" class="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <Inbox class="w-16 h-16 text-gray-300 mb-4" />
+          <h3 class="text-lg font-semibold text-gray-700 mb-2">
+            {{ indvTask ? 'No Subtasks' : 'No Tasks' }}
+          </h3>
+          <p class="text-sm text-gray-500 mb-6 max-w-md">
+            {{ indvTask 
+              ? 'There are no subtasks yet. Click the "New Subtask" button to create one.' 
+              : 'There are no tasks to display. Click the "New Task" button to get started.' 
+            }}
+          </p>
+        </div>
+
+        <!-- Task Table -->
+        <table v-else class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
+          <thead>
+            <tr class="bg-gray-100 text-left">
+              <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
+              <th class="p-2 border">Project</th>
+              <th class="p-2 border">Creator</th>
+              <th class="p-2 border">Assignees</th>
+              <th class="p-2 border">Due Date</th>
+              <th class="p-2 border">Status</th>
+              <th class="p-2 border">Priority</th>
+              <th class="p-2 border">Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="task in visibleTasks"
+              :key="task.id"
+              class="hover:bg-gray-50 cursor-pointer transition"
+              :class="{ 'bg-red-50': isTaskOverdue(task) }"
+              v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum]"
+              @click="goToTaskDetail(task.id)"
+            >
+              <td class="p-2 border font-medium">{{ task.title || 'Untitled' }}</td>
+              <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
+              <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
+              <td class="p-2 border text-gray-800">
+                <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
+                  <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
+                    {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
+                  </span>
+                  <span v-if="task.assigneeNames.length > 3">...</span>
+                </template>
+                <template v-else>
+                  <span class="text-gray-400 text-xs italic">No assignees</span>
+                </template>
+              </td>
+              <td class="p-2 border" :class="getDateClasses(task)">{{ formatDate(task.deadline) }}</td>
+              <td class="p-2 border">
+                <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
+                  {{ task.statusLabel }}
+                </span>
+              </td>
+              <td class="p-2 border">{{ task.priorityNum ?? task.priority ?? '—' }}</td>
+              <td class="p-2 border">
+                <div class="flex flex-wrap gap-1">
+                  <template v-if="task.tags && task.tags.length">
+                    <span
+                      v-for="(tag, i) in task.tags"
+                      :key="i"
+                      class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
+                    >
+                      {{ tag }}
                     </span>
-                    <span v-if="task.isNewInstance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse" title="New instance of recurring task">
-                      <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                      </svg>
-                      New Instance
-                    </span>
-                  </div>
-                </td>
-                <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
-                <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
-                <td class="p-2 border text-gray-800">
-                  <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
-                    <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
-                      {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
-                    </span>
-                    <span v-if="task.assigneeNames.length > 3">...</span>
                   </template>
                   <template v-else>
-                    <span class="text-gray-400 text-xs italic">No assignees</span>
+                    <span class="text-gray-400 text-xs italic">No tags</span>
                   </template>
-                </td>
-                <td
-                  class="p-2 border"
-                  :class="getDateClasses(task)"
-                  :style="task.isOverdue ? { color: 'var(--destructive)' } : null"
-                >
-                  {{ formatDate(task.deadline) }}
-                </td>
-                <td class="p-2 border">
-                  <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
-                    {{ task.statusLabel }}
-                  </span>
-                </td>
-                <td class="p-2 border">{{ task.priorityNum ?? task.priority ?? '—' }}</td>
-                <td class="p-2 border">
-                  <div class="flex flex-wrap gap-1">
-                    <template v-if="task.tags && task.tags.length">
-                      <span
-                        v-for="(tag, i) in task.tags"
-                        :key="i"
-                        class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
-                      >
-                        {{ tag }}
-                      </span>
-                    </template>
-                    <template v-else>
-                      <span class="text-gray-400 text-xs italic">No tags</span>
-                    </template>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </template>
-
-        <!-- Show empty-state when no results -->
-        <template v-else>
-          <div class="flex items-center justify-center h-48">
-            <div class="text-center text-gray-500">
-              <div class="text-lg font-medium">
-                {{ indvTask ? 'No subtasks found' : 'No tasks found' }}
-              </div>
-              <div class="mt-2 text-sm">
-                Try adjusting filters or create a {{ indvTask ? 'subtask' : 'task' }}.
-              </div>
-            </div>
-          </div>
-        </template>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </template>
   </div>
@@ -476,7 +448,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, ChevronDown, Check } from 'lucide-vue-next'
+import { Plus, ChevronDown, Check, Inbox } from 'lucide-vue-next'
 import Slider from '@vueform/slider'
 import '@vueform/slider/themes/default.css'
 
