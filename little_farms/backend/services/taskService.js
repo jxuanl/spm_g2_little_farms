@@ -1,5 +1,4 @@
-import { db } from "../adminFirebase.js";
-import admin from "../adminFirebase.js";
+import admin, { db } from "../adminFirebase.js";
 
 const TASK_COLLECTION = "Tasks";
 
@@ -18,7 +17,6 @@ async function enrichTaskData(task) {
       if (projectSnap.exists)
         projectTitle = projectSnap.data().title || 'Untitled Project'
     } catch (err) {
-      console.error('Error loading project:', err)
     }
   }
 
@@ -30,7 +28,6 @@ async function enrichTaskData(task) {
       if (creatorSnap.exists)
         creatorName = creatorSnap.data().name || 'Unnamed Creator'
     } catch (err) {
-      console.error('Error loading creator:', err)
     }
   }
 
@@ -44,11 +41,10 @@ async function enrichTaskData(task) {
       }
       assigneeNames = names
     } catch (err) {
-      console.error('Error loading assignees:', err)
     }
   }
 
-  // ✅ --- Normalize Firestore/Date fields to ISO strings ---
+  // --- Normalize Firestore/Date fields to ISO strings ---
   const normalizeDate = (v) => {
     if (v?.toDate) return v.toDate().toISOString()
     if (v?.seconds || v?._seconds)
@@ -81,44 +77,35 @@ export async function getTasksForUser(userId) {
     const userDoc = await userDocRef.get()
 
     if (!userDoc.exists) {
-      console.error(`❌ User ${userId} not found`)
       return []
     }
 
     const userData = userDoc.data()
     const role = (userData.role || "staff").toLowerCase()
-    console.log(`👤 User ${userId} role: ${role}`)
 
-    // === 🟢 HR → can see all tasks across all projects ===
+    // === HR → can see all tasks across all projects ===
     if (role === "hr") {
-      console.log("🔹 HR access: fetching all tasks across all projects")
-
       const allTasksSnap = await db.collection("Tasks").get()
       const allTasks = allTasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
         .filter((t) => t.isCurrentInstance !== false); // show only current instance
 
       // ✅ Enrich tasks (project, creator, assignees)
       const enriched = await Promise.all(allTasks.map((t) => enrichTaskData(t)))
-      console.log(`✅ Returning ${enriched.length} tasks for HR ${userId}`)
       return enriched
     }
 
     // === Manager → can see all tasks in projects they created ===
     if (role === "manager") {
-      console.log(`🔹 Manager access: fetching tasks for projects created by ${userId}`)
-
       const projectSnap = await db
         .collection("Projects")
         .where("owner", "==", userDocRef)
         .get()
 
       if (projectSnap.empty) {
-        console.log("⚠️ No projects found for this manager.")
         return []
       }
 
       const projectIds = projectSnap.docs.map((d) => d.ref)
-      console.log(`📁 Found ${projectIds.length} projects for manager.`)
 
       const tasksSnap = await db
         .collection("Tasks")
@@ -138,13 +125,10 @@ export async function getTasksForUser(userId) {
         .filter((t) => t.isCurrentInstance !== false); // show only current instance
       const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
 
-      console.log(`✅ Returning ${enriched.length} tasks for manager ${userId}`)
       return enriched
     }
 
     // === Staff → tasks they created or assigned ===
-    console.log("🔹 Staff access: fetching created + assigned tasks")
-
     const assignedSnap = await db
       .collection("Tasks")
       .where("assignedTo", "array-contains", userDocRef)
@@ -162,11 +146,9 @@ export async function getTasksForUser(userId) {
     const tasks = Array.from(taskMap.values())
       .filter((t) => t.isCurrentInstance !== false); // show only current instance
     const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
-    console.log(`✅ Returning ${enriched.length} staff tasks for user ${userId}`)
     return enriched
 
   } catch (err) {
-    console.error("❌ Error fetching user tasks:", err)
     return []
   }
 }
@@ -199,13 +181,11 @@ export async function createTask(taskData) {
     
     // Convert project ID to Firestore project reference
     let projectRef = null;
-    if (taskData.projectId && typeof taskData.projectId === 'string' && taskData.projectId.trim() !== '') {
-      const projectDoc = await db.collection('Projects').doc(taskData.projectId).get();
+    let projectDoc = null;
+    if (taskData.projectId) {
+      projectDoc = await db.collection('Projects').doc(taskData.projectId).get();
       if (projectDoc.exists) {
         projectRef = db.collection('Projects').doc(taskData.projectId);
-        console.log(`✅ Project found: ${taskData.projectId}`);
-      } else {
-        console.warn(`⚠️ Project ${taskData.projectId} not found`);
       }
     } else {
       console.log('ℹ️ No projectId provided or invalid projectId');
@@ -273,36 +253,25 @@ export async function createTask(taskData) {
       // Create regular task
       console.log(`📝 Creating regular task`);
       docRef = await db.collection(TASK_COLLECTION).add(newTask);
-      console.log(`✅ Task created with ID: ${docRef.id}`);
       
-      // ✅ Update the project's taskList with the new task reference
-      if (taskData.projectId && projectRef) {
-        try {
-          const projectDocRef = db.collection('Projects').doc(taskData.projectId);
-          const taskReference = db.collection(TASK_COLLECTION).doc(docRef.id);
-          
-          await projectDocRef.update({
-            taskList: admin.firestore.FieldValue.arrayUnion(taskReference)
-          });
-          
-          console.log(`✅ Added task ${docRef.id} to project ${taskData.projectId} taskList`);
-        } catch (projectUpdateErr) {
-          console.error(`⚠️ Failed to update project taskList for task ${docRef.id}:`, projectUpdateErr);
-          // Don't throw error - task was created successfully, project update is secondary
-        }
+      // Add task to project's taskList if task has a projectId
+      if (projectDoc && projectDoc.exists) {
+        const taskRef = db.collection(TASK_COLLECTION).doc(docRef.id);
+        await projectDoc.ref.update({
+          taskList: admin.firestore.FieldValue.arrayUnion(taskRef)
+        });
       }
     }
     
     return { id: docRef.id, ...newTask };
   } catch (err) {
-    console.error("Error creating task:", err);
     throw err;
   }
 }
 
 export async function getTaskDetail(taskId, userId) {
   try {
-    const taskRef = db.collection('Tasks').doc(taskId)
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId)
     const taskSnap = await taskRef.get()
     if (!taskSnap.exists) return null
 
@@ -323,16 +292,22 @@ export async function getTaskDetail(taskId, userId) {
       )
       const createdBy = taskData.taskCreatedBy?.path === userRef.path
       if (!assigned && !createdBy) {
-        console.warn(`🚫 Access denied for staff user ${userId} on task ${taskId}`)
         return null
       }
     }
 
     // Enrich task with names/titles
     const enriched = await enrichTaskData({ id: taskId, ...taskData })
+    
+    // Clear isNewInstance flag when task is viewed
+    if (taskData.isNewInstance === true) {
+      await taskRef.update({ isNewInstance: false })
+      enriched.isNewInstance = true // Still return true so the UI can show the indicator initially
+      // After this fetch, the flag is cleared so it won't show again on subsequent views
+    }
+    
     return enriched
   } catch (err) {
-    console.error('❌ Error fetching task detail:', err)
     return null
   }
 }
@@ -369,16 +344,24 @@ export async function updateTask(taskId, updates) {
 
       // Managers are allowed to edit — no restriction here
     } else {
-      console.warn('⚠️ No userId provided in update request — skipping role check')
     }
 
     const updateData = {}
 
-    // --- Basic fields ---
+    // --- Basic fields (exclude id field) ---
     if (typeof updates.title !== 'undefined') updateData.title = updates.title
     if (typeof updates.description !== 'undefined') updateData.description = updates.description
     if (typeof updates.priority !== 'undefined') updateData.priority = updates.priority
-    if (typeof updates.status !== 'undefined') updateData.status = updates.status
+    if (typeof updates.status !== 'undefined' && updates.status !== null) {
+      // Normalize status: map 'done' to 'Done' for consistency
+      const statusMap = {
+        'todo': 'To Do',
+        'in-progress': 'In Progress',
+        'review': 'In Review',
+        'done': 'Done'
+      }
+      updateData.status = statusMap[updates.status] || updates.status
+    }
     if (Array.isArray(updates.tags)) updateData.tags = updates.tags
 
     // --- Recurrence fields ---
@@ -442,7 +425,7 @@ export async function updateTask(taskId, updates) {
     // --- Overdue check ---
     if (updateData.deadline) {
       const now = new Date()
-      const isOverdue = now > updateData.deadline && updateData.status !== 'Done'
+      const isOverdue = now > updateData.deadline && updateData.status !== 'Done' && updateData.status !== 'done'
       updateData.isOverdue = isOverdue
     } else {
       updateData.isOverdue = false
@@ -451,18 +434,117 @@ export async function updateTask(taskId, updates) {
     // --- Always update modifiedDate ---
     updateData.modifiedDate = new Date()
 
-    // --- Update document ---
-    await taskRef.update(updateData)
-    // console.log(`✅ Task ${taskId} updated successfully by user ${updates.userId}`)
+    // --- Check if status is being changed to Done for a recurring task ---
+    const statusChanged = typeof updates.status !== 'undefined'
+    // Use normalized status from updateData if available, otherwise check raw updates.status
+    const normalizedStatus = updateData.status || updates.status
+    const isChangingToDone = statusChanged && (normalizedStatus === 'Done' || updates.status === 'Done' || updates.status === 'done')
+    const wasNotDone = existingTask.status !== 'Done' && existingTask.status !== 'done'
+    const isRecurring = existingTask.recurring && existingTask.recurrenceInterval && existingTask.recurrenceValue
+
+    if (isChangingToDone && wasNotDone && isRecurring) {
+      // Mark current task as done and hide it from current instances
+      updateData.isCurrentInstance = false
+      
+      // After updating, create the next instance
+      await taskRef.update(updateData)
+      
+      const now = new Date()
+      let baseDate
+      
+      // Get the original deadline
+      if (existingTask.deadline && existingTask.deadline.toDate) {
+        baseDate = existingTask.deadline.toDate()
+      } else if (existingTask.deadline instanceof Date) {
+        baseDate = new Date(existingTask.deadline)
+      } else {
+        baseDate = now
+      }
+
+      // Check if task is overdue - if so, start from now instead of old deadline
+      let nextDeadline
+      if (baseDate < now) {
+        // Task was overdue - start interval from now
+        nextDeadline = new Date(now)
+      } else {
+        // Task completed on time - start from original deadline
+        nextDeadline = new Date(baseDate)
+      }
+
+      // Calculate next deadline based on interval
+      switch (existingTask.recurrenceInterval) {
+        case 'days':
+          nextDeadline.setDate(nextDeadline.getDate() + existingTask.recurrenceValue)
+          break
+        case 'weeks':
+          nextDeadline.setDate(nextDeadline.getDate() + (7 * existingTask.recurrenceValue))
+          break
+        case 'months':
+          nextDeadline.setMonth(nextDeadline.getMonth() + existingTask.recurrenceValue)
+          break
+        default:
+          return { id: taskId, ...updateData }
+      }
+
+      // Create new task instance with isNewInstance flag
+      const newTask = {
+        assignedTo: existingTask.assignedTo || [],
+        createdDate: now,
+        deadline: nextDeadline,
+        description: existingTask.description || '',
+        isOverdue: false,
+        modifiedDate: now,
+        priority: existingTask.priority || 'medium',
+        projectId: existingTask.projectId || null,
+        status: 'To Do',
+        tags: existingTask.tags || [],
+        taskCreatedBy: existingTask.taskCreatedBy || null,
+        title: existingTask.title,
+        recurring: true,
+        recurrenceInterval: existingTask.recurrenceInterval,
+        recurrenceValue: existingTask.recurrenceValue,
+        isCurrentInstance: true,
+        isNewInstance: true, // Mark as new instance
+        parentTaskId: existingTask.parentTaskId || null
+      }
+
+      const newTaskDocRef = await db.collection(TASK_COLLECTION).add(newTask)
+      
+      // Add new recurring instance to project's taskList if task has a projectId
+      if (existingTask.projectId) {
+        try {
+          // Get project reference from task's projectId
+          let projectRef;
+          if (existingTask.projectId.path) {
+            // projectId is already a DocumentReference
+            projectRef = existingTask.projectId;
+          } else if (existingTask.projectId.id) {
+            // projectId is an object with an id field
+            projectRef = db.collection('Projects').doc(existingTask.projectId.id);
+          } else {
+            // Assume it's a string ID
+            projectRef = db.collection('Projects').doc(existingTask.projectId);
+          }
+          
+          const newTaskRef = db.collection(TASK_COLLECTION).doc(newTaskDocRef.id);
+          await projectRef.update({
+            taskList: admin.firestore.FieldValue.arrayUnion(newTaskRef)
+          });
+        } catch (err) {
+        }
+      }
+    } else {
+      // Normal update (no recurring task completion)
+      await taskRef.update(updateData)
+    }
 
     return { id: taskId, ...updateData }
   } catch (err) {
-    console.error('❌ Error updating task:', err)
     throw err
   }
 }
 
-// // ✅ Delete Task (backend-safe)
+// // Delete Task (backend-safe)
 // export async function deleteTask(taskId) {
 //   const taskRef = doc(db, TASK_COLLECTION, taskId);
 //   await deleteDoc(taskRef);
@@ -470,7 +552,7 @@ export async function updateTask(taskId, updates) {
 
 export async function completeTask(taskId, userId) {
   try {
-    const taskRef = db.collection('Tasks').doc(taskId);
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
     const taskSnap = await taskRef.get();
     
     if (!taskSnap.exists) {
@@ -522,17 +604,17 @@ export async function completeTask(taskId, userId) {
           nextDeadline.setMonth(nextDeadline.getMonth() + taskData.recurrenceValue);
           break;
         default:
-          console.error('Invalid recurrence interval:', taskData.recurrenceInterval);
           return;
       }
 
-      // Create new task instance
+      // Create new task instance with isNewInstance flag
       const newTask = {
         ...taskData,
         status: 'To Do',
         createdDate: now,
         deadline: nextDeadline,
         isCurrentInstance: true,
+        isNewInstance: true, // Mark as new instance
         modifiedDate: now,
         isOverdue: false
       };
@@ -540,43 +622,35 @@ export async function completeTask(taskId, userId) {
       // Remove the id field as it will be auto-generated
       delete newTask.id;
 
-      const newTaskRef = await db.collection('Tasks').add(newTask);
-      console.log(`✅ Created new recurring task instance with deadline: ${nextDeadline.toISOString()}`);
+      const newTaskDocRef = await db.collection(TASK_COLLECTION).add(newTask);
       
-      // ✅ Update the project's taskList with the new recurring task reference
+      // Add new recurring instance to project's taskList if task has a projectId
       if (taskData.projectId) {
         try {
-          let projectId;
-          // Extract project ID from the reference
+          // Get project reference from task's projectId
+          let projectRef;
           if (taskData.projectId.path) {
-            const pathParts = taskData.projectId.path.split('/');
-            projectId = pathParts[pathParts.length - 1];
+            // projectId is already a DocumentReference
+            projectRef = taskData.projectId;
           } else if (taskData.projectId.id) {
-            projectId = taskData.projectId.id;
-          } else if (typeof taskData.projectId === 'string') {
-            projectId = taskData.projectId;
+            // projectId is an object with an id field
+            projectRef = db.collection('Projects').doc(taskData.projectId.id);
+          } else {
+            // Assume it's a string ID
+            projectRef = db.collection('Projects').doc(taskData.projectId);
           }
           
-          if (projectId) {
-            const projectDocRef = db.collection('Projects').doc(projectId);
-            const taskReference = db.collection('Tasks').doc(newTaskRef.id);
-            
-            await projectDocRef.update({
-              taskList: admin.firestore.FieldValue.arrayUnion(taskReference)
-            });
-            
-            console.log(`✅ Added recurring task ${newTaskRef.id} to project ${projectId} taskList`);
-          }
-        } catch (projectUpdateErr) {
-          console.error(`⚠️ Failed to update project taskList for recurring task ${newTaskRef.id}:`, projectUpdateErr);
-          // Don't throw error - task was created successfully, project update is secondary
+          const newTaskRef = db.collection(TASK_COLLECTION).doc(newTaskDocRef.id);
+          await projectRef.update({
+            taskList: admin.firestore.FieldValue.arrayUnion(newTaskRef)
+          });
+        } catch (err) {
         }
       }
     }
 
     return { success: true, message: 'Task completed successfully' };
   } catch (error) {
-    console.error('❌ Error completing task:', error);
     throw error;
   }
 }
@@ -589,7 +663,6 @@ export async function getTaskById(taskId) {
     }
     return { id: taskDoc.id, ...taskDoc.data() };
   } catch (err) {
-    console.error("Error fetching task by ID:", err);
     throw err;
   }
 }
@@ -647,7 +720,6 @@ export async function getSubtasksForTask(taskId) {
       };
     });
   } catch (err) {
-    console.error("Error fetching subtasks:", err);
     return [];
   }
 }
@@ -709,7 +781,6 @@ export async function getSubtaskById(taskId, subtaskId) {
       modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
     };
   } catch (err) {
-    console.error("Error fetching subtask:", err);
     return null;
   }
 }
@@ -1029,6 +1100,252 @@ export async function deleteComment(taskId, commentId, subtaskId = null) {
   }
 }
 
+// === Comments Functions ===
+export async function getCommentsForTask(taskId, subtaskId = null) {
+  try {
+    let commentsRef;
+    
+    if (subtaskId) {
+      // Get comments for a subtask
+      commentsRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Comments');
+    } else {
+      // Get comments for a regular task
+      commentsRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Comments');
+    }
+    
+    const snapshot = await commentsRef.orderBy('createdDate', 'desc').get();
+    
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // Serialize the author reference
+      const serializedData = { ...data };
+      if (data.author && data.author._path && data.author._path.segments) {
+        const pathString = data.author._path.segments.join('/');
+        serializedData.author = { path: pathString };
+      } else if (data.author && data.author.path) {
+        serializedData.author = { path: data.author.path };
+      }
+      
+      // Serialize mentioned users references
+      if (data.mentionedUsers && Array.isArray(data.mentionedUsers)) {
+        serializedData.mentionedUsers = data.mentionedUsers.map(ref => {
+          if (ref && ref._path && ref._path.segments) {
+            return { path: ref._path.segments.join('/') };
+          } else if (ref && ref.path) {
+            return { path: ref.path };
+          }
+          return ref;
+        });
+      }
+      
+      return {
+        id: doc.id,
+        ...serializedData,
+        createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
+        modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
+      };
+    });
+  } catch (err) {
+    console.error("Error fetching comments:", err);
+    return [];
+  }
+}
+
+export async function createComment(taskId, commentData, subtaskId = null) {
+  try {
+    // Validate required fields
+    if (!commentData.content || !commentData.authorId) {
+      throw new Error('Content and authorId are required');
+    }
+    
+    // Convert author ID to Firestore user reference
+    let authorRef = null;
+    if (commentData.authorId) {
+      const authorDoc = await db.collection('Users').doc(commentData.authorId).get();
+      if (authorDoc.exists) {
+        authorRef = db.collection('Users').doc(commentData.authorId);
+      } else {
+        throw new Error('Author not found');
+      }
+    }
+    
+    // Convert mentioned user IDs to Firestore user references
+    const mentionedUsersRefs = [];
+    if (commentData.mentionedUsers && Array.isArray(commentData.mentionedUsers)) {
+      for (const userId of commentData.mentionedUsers) {
+        if (userId) {
+          const userDoc = await db.collection('Users').doc(userId).get();
+          if (userDoc.exists) {
+            mentionedUsersRefs.push(db.collection('Users').doc(userId));
+          }
+        }
+      }
+    }
+    
+    // Validate attachments (optional)
+    let attachments = []
+    if (Array.isArray(commentData.attachments)) {
+      // Enforce a maximum of 3 files and size <= 500KB each if size provided
+      const MAX_FILES = 3
+      const MAX_BYTES = 500 * 1024
+      if (commentData.attachments.length > MAX_FILES) {
+        throw new Error(`A maximum of ${MAX_FILES} attachments are allowed`)
+      }
+      attachments = commentData.attachments
+        .filter(a => a && typeof a === 'object')
+        .slice(0, MAX_FILES)
+        .map(a => ({
+          name: a.name,
+          url: a.url,
+          contentType: a.contentType,
+          size: typeof a.size === 'number' ? a.size : null,
+          storagePath: a.storagePath || null,
+        }))
+      // Soft-validate sizes if provided
+      for (const a of attachments) {
+        if (a.size != null && a.size > MAX_BYTES) {
+          throw new Error('Attachment exceeds 500KB size limit')
+        }
+      }
+    }
+
+    const now = new Date();
+    const newComment = {
+      content: commentData.content.trim(),
+      author: authorRef,
+      mentionedUsers: mentionedUsersRefs,
+      attachments,
+      createdDate: now,
+      modifiedDate: now
+    };
+    
+    let commentsRef;
+    if (subtaskId) {
+      // Create comment for a subtask
+      commentsRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Comments');
+    } else {
+      // Create comment for a regular task
+      commentsRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Comments');
+    }
+    
+    const docRef = await commentsRef.add(newComment);
+    
+    return {
+      id: docRef.id,
+      ...newComment,
+      author: { path: authorRef.path },
+      mentionedUsers: mentionedUsersRefs.map(ref => ({ path: ref.path })),
+      createdDate: now,
+      modifiedDate: now
+    };
+  } catch (err) {
+    console.error("Error creating comment:", err);
+    throw err;
+  }
+}
+
+export async function updateComment(taskId, commentId, updateData, subtaskId = null) {
+  try {
+    let commentRef;
+    if (subtaskId) {
+      // Update comment for a subtask
+      commentRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Comments')
+        .doc(commentId);
+    } else {
+      // Update comment for a regular task
+      commentRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Comments')
+        .doc(commentId);
+    }
+    
+    // Check if comment exists
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
+      return null;
+    }
+    
+    const updatedFields = {
+      content: updateData.content.trim(),
+      modifiedDate: new Date()
+    };
+    
+    await commentRef.update(updatedFields);
+    
+    // Return the updated comment
+    const updatedDoc = await commentRef.get();
+    const data = updatedDoc.data();
+    
+    return {
+      id: updatedDoc.id,
+      ...data,
+      createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
+      modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
+    };
+  } catch (err) {
+    console.error("Error updating comment:", err);
+    throw err;
+  }
+}
+
+export async function deleteComment(taskId, commentId, subtaskId = null) {
+  try {
+    let commentRef;
+    if (subtaskId) {
+      // Delete comment for a subtask
+      commentRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Comments')
+        .doc(commentId);
+    } else {
+      // Delete comment for a regular task
+      commentRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Comments')
+        .doc(commentId);
+    }
+    
+    // Check if comment exists
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
+      return false;
+    }
+    
+    await commentRef.delete();
+    return true;
+  } catch (err) {
+    console.error("Error deleting comment:", err);
+    throw err;
+  }
+}
+
 export async function getAllTasks() {
   try {
     // Get all documents in the "Tasks" collection
@@ -1042,11 +1359,102 @@ export async function getAllTasks() {
 
     return tasks;
   } catch (error) {
-    console.error('Error fetching tasks from Firestore:', error);
     throw new Error('Failed to retrieve tasks from Firestore');
   }
 }
 
+// delete a task (creator OR project-owning manager)
+export async function deleteTask(taskId, userId) {
+  try {
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
+    const taskSnap = await taskRef.get();
+    if (!taskSnap.exists) return false;
+
+    const taskData = taskSnap.data();
+
+    // Resolve creator id robustly
+    const creatorPath = taskData.taskCreatedBy?.path
+      || taskData.taskCreatedBy?._path?.segments?.join('/')
+      || null;
+    const creatorId =
+      taskData.taskCreatedBy?.id ||
+      (creatorPath ? creatorPath.split('/').slice(-1)[0] : null);
+
+    // Fast-path: creator can delete
+    if (creatorId && creatorId === userId) {
+      // proceed
+    } else {
+      // Not the creator — check if user is a manager who owns the project
+      const role = await getUserRole(userId);
+      if (role !== 'manager') return false;
+
+      const projectOwnerId = await getProjectOwnerId(taskData.projectId);
+      if (!projectOwnerId || projectOwnerId !== userId) {
+        // Manager but not the owner of this task's project
+        return false;
+      }
+    }
+
+    // Delete subtasks (if any) then the task
+    const subCol = await taskRef.collection('Subtasks').get();
+    const batch = db.batch();
+    subCol.forEach((doc) => batch.delete(doc.ref));
+    batch.delete(taskRef);
+    await batch.commit();
+
+    return true;
+  } catch (err) {
+    throw err;
+  }
+}
+
+// delete a subtask (creator OR project-owning manager)
+export async function deleteSubtask(taskId, subtaskId, userId) {
+  try {
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
+    const subRef = taskRef.collection('Subtasks').doc(subtaskId);
+
+    const subSnap = await subRef.get();
+    if (!subSnap.exists) return false;
+
+    const data = subSnap.data();
+
+    // Resolve creator id robustly (stored on subtask)
+    const creatorPath = data.taskCreatedBy?.path
+      || data.taskCreatedBy?._path?.segments?.join('/')
+      || null;
+    const creatorId =
+      data.taskCreatedBy?.id ||
+      (creatorPath ? creatorPath.split('/').slice(-1)[0] : null);
+
+    // Fast-path: creator can delete
+    if (creatorId && creatorId === userId) {
+      // proceed
+    } else {
+      // Not the creator — check if user is a manager who owns the project
+      const role = await getUserRole(userId);
+      if (role !== 'manager') return false;
+
+      // Prefer subtask.projectId; if absent, fall back to parent task's projectId
+      let projectOwnerId = await getProjectOwnerId(data.projectId);
+      if (!projectOwnerId) {
+        const parentSnap = await taskRef.get();
+        if (parentSnap.exists) {
+          const parentData = parentSnap.data();
+          projectOwnerId = await getProjectOwnerId(parentData?.projectId);
+        }
+      }
+      if (!projectOwnerId || projectOwnerId !== userId) {
+        return false;
+      }
+    }
+
+    await subRef.delete();
+    return true;
+  } catch (err) {
+    throw err;
+  }
+}
 
 export const taskService = {
   getTasksForUser,
@@ -1061,8 +1469,9 @@ export const taskService = {
   deleteComment,
   updateTask,
   completeTask,
-  getAllTasks
-  // deleteTask,
+  getAllTasks,
+  deleteTask, 
+  deleteSubtask
 };
 
 

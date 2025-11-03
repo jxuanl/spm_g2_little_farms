@@ -26,7 +26,7 @@ async function resolveUserData(userRef) {
       return null;
     }
     
-    // console.log('Resolving user with ID:', userId);
+    console.log('Resolving user with ID:', userId);
     const userDoc = await db.collection('Users').doc(userId).get();
     
     if (!userDoc.exists) {
@@ -83,7 +83,7 @@ export async function getProjectsForUser(userId) {
   try {
     // Get all projects
     const projectsSnapshot = await db.collection("Projects").get();
-    // console.log("Total projects found in DB:", projectsSnapshot.size);
+    console.log("Total projects found in DB:", projectsSnapshot.size);
 
     const filteredProjects = [];
 
@@ -91,7 +91,7 @@ export async function getProjectsForUser(userId) {
       const projectData = projectDoc.data();
       const taskList = projectData.taskList || [];
 
-      // console.log("Task refs:", taskList.map(ref => ref.path || ref));
+      console.log("Task refs:", taskList.map(ref => ref.path || ref));
 
       const taskSnapshots = await Promise.all(
         taskList.map(async (taskRef) => {
@@ -107,7 +107,7 @@ export async function getProjectsForUser(userId) {
 
       // Check if user has at least one assigned task OR is creator
       const isCreatorOfProject = projectData.owner?.path === `Users/${userId}`;
-      // console.log(`Project ${projectDoc.id} owner path:`, projectData.owner?.path);
+      console.log(`Project ${projectDoc.id} owner path:`, projectData.owner?.path);
       
       const hasRelevantTask =
         isCreatorOfProject || taskSnapshots.some(taskDoc => {
@@ -125,7 +125,7 @@ export async function getProjectsForUser(userId) {
         });
 
       if (hasRelevantTask) {
-        // console.log("User has tasks in project:", projectDoc.id);
+        console.log("User has tasks in project:", projectDoc.id);
         filteredProjects.push({
           id: projectDoc.id,
           title: projectData.title || '',
@@ -134,7 +134,7 @@ export async function getProjectsForUser(userId) {
           taskList,
         });
       } else {
-        // console.log("User has no tasks in project:", projectDoc.id);
+        console.log("User has no tasks in project:", projectDoc.id);
       }
     }
 
@@ -156,17 +156,17 @@ export async function getProjectDetailForUser(projectId, userId) {
     // Check if user is the project owner
     const isProjectOwner = projectData.owner?.path === `Users/${userId}`;
 
-    // console.log('Project owner check:', {
-    //   projectId,
-    //   userId,
-    //   ownerPath: projectData.owner?.path,
-    //   expectedPath: `Users/${userId}`,
-    //   isProjectOwner
-    // });
+    console.log('Project owner check:', {
+      projectId,
+      userId,
+      ownerPath: projectData.owner?.path,
+      expectedPath: `Users/${userId}`,
+      isProjectOwner
+    });
 
     // ✅ RESOLVE PROJECT OWNER NAME
     const ownerData = await resolveUserData(projectData.owner);
-    // console.log('Resolved project owner:', ownerData);
+    console.log('Resolved project owner:', ownerData);
 
     // Fetch task documents with resolved user/project data
     const taskSnapshots = await Promise.all(
@@ -177,7 +177,7 @@ export async function getProjectDetailForUser(projectId, userId) {
 
         // If user owns the project, show ALL tasks
         if (isProjectOwner) {
-          // console.log('Project owner viewing task:', taskSnap.id);
+          console.log('Project owner viewing task:', taskSnap.id);
         } else {
           // Otherwise, only include tasks where user is assigned OR created the task
           const isAssigned = Array.isArray(taskData.assignedTo) &&
@@ -186,18 +186,18 @@ export async function getProjectDetailForUser(projectId, userId) {
           const isTaskCreator = taskData.taskCreatedBy?.path === `Users/${userId}`;
 
           if (!isAssigned && !isTaskCreator) {
-            // console.log('User does not have access to task:', taskSnap.id);
+            console.log('User does not have access to task:', taskSnap.id);
             return null;
           }
           
-          // console.log('User has access to task:', taskSnap.id, { isAssigned, isTaskCreator });
+          console.log('User has access to task:', taskSnap.id, { isAssigned, isTaskCreator });
         }
 
         // ✅ RESOLVE USER AND PROJECT DATA
         // Resolve creator
-        // console.log('Resolving creator for task:', taskSnap.id, 'taskCreatedBy:', taskData.taskCreatedBy);
+        console.log('Resolving creator for task:', taskSnap.id, 'taskCreatedBy:', taskData.taskCreatedBy);
         const creatorData = await resolveUserData(taskData.taskCreatedBy);
-        // console.log('Resolved creator data:', creatorData);
+        console.log('Resolved creator data:', creatorData);
         
         // Resolve assignees
         const assigneePromises = Array.isArray(taskData.assignedTo) 
@@ -235,7 +235,7 @@ export async function getProjectDetailForUser(projectId, userId) {
     // Filter out nulls
     const userTasks = taskSnapshots.filter(t => t !== null);
 
-    // console.log('Total tasks returned:', userTasks.length, 'out of', taskList.length);
+    console.log('Total tasks returned:', userTasks.length, 'out of', taskList.length);
 
     return {
       id: projectDoc.id,

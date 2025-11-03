@@ -1,6 +1,6 @@
 import express from 'express'
 import { db } from '../adminFirebase.js'
-import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask, getAllTasks, getCommentsForTask, createComment, updateComment, deleteComment } from '../services/taskService.js'
+import { getTasksForUser, createTask, getTaskDetail, updateTask, getSubtasksForTask, getSubtaskById, updateSubtask, completeTask, getAllTasks, deleteTask, deleteSubtask, getCommentsForTask, createComment, updateComment, deleteComment } from '../services/taskService.js'
 
 const router = express.Router()
 
@@ -15,7 +15,6 @@ router.get('/allTasks', async (req, res) => {
       count: tasks.length
     });
   } catch (error) {
-    console.error('Error in /allTasks route:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Internal server error',
@@ -25,7 +24,7 @@ router.get('/allTasks', async (req, res) => {
 });
 
 
-// ✅ GET /api/tasks/:id?userId=abc123  (must come first)
+// GET /api/tasks/:id?userId=abc123  (must come first)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params
@@ -48,7 +47,6 @@ router.get('/:id', async (req, res) => {
 
     return res.status(200).json({ success: true, task })
   } catch (error) {
-    console.error('❌ Error fetching task detail:', error)
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch task detail',
@@ -56,7 +54,7 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// ✅ GET /api/tasks?userId=xxx (list)
+// GET /api/tasks?userId=xxx (list)
 router.get('/', async (req, res) => {
   try {
     const userId = req.query.userId
@@ -66,7 +64,6 @@ router.get('/', async (req, res) => {
     const tasks = await getTasksForUser(userId) // now includes assigneeNames
     return res.status(200).json({ success: true, tasks })
   } catch (error) {
-    console.error('Backend error fetching tasks:', error)
     return res.status(500).json({ success: false, message: error.message })
   }
 })
@@ -192,7 +189,6 @@ router.post('/:id/complete', async (req, res) => {
     const result = await completeTask(req.params.id, userId)
     res.status(200).json(result)
   } catch (err) {
-    console.error('Error completing task:', err)
     res.status(500).json({ error: err.message || 'Failed to complete task' })
   }
 })
@@ -209,7 +205,6 @@ router.get('/:taskId/subtasks', async (req, res) => {
     const subtasks = await getSubtasksForTask(taskId);
     res.json(subtasks);
   } catch (error) {
-    console.error('Backend error fetching subtasks:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -230,7 +225,6 @@ router.get('/:taskId/subtasks/:subtaskId', async (req, res) => {
     
     res.json(subtask);
   } catch (error) {
-    console.error('Backend error fetching subtask:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -252,8 +246,47 @@ router.put('/:taskId/subtasks/:subtaskId', async (req, res) => {
     
     res.json(updatedSubtask);
   } catch (error) {
-    console.error('Backend error updating subtask:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/tasks/:id  (creator-only)
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query;
+
+    if (!id || !userId) {
+      return res.status(400).json({ success: false, message: 'Missing task ID or userId' });
+    }
+
+    const result = await deleteTask(id, userId);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Task not found or not allowed' });
+    }
+    return res.status(200).json({ success: true, message: 'Task deleted' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete task' });
+  }
+});
+
+// DELETE /api/tasks/:taskId/subtasks/:subtaskId  (creator-only)
+router.delete('/:taskId/subtasks/:subtaskId', async (req, res) => {
+  try {
+    const { taskId, subtaskId } = req.params;
+    const { userId } = req.query;
+
+    if (!taskId || !subtaskId || !userId) {
+      return res.status(400).json({ success: false, message: 'Missing taskId, subtaskId, or userId' });
+    }
+
+    const result = await deleteSubtask(taskId, subtaskId, userId);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Subtask not found or not allowed' });
+    }
+    return res.status(200).json({ success: true, message: 'Subtask deleted' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete subtask' });
   }
 });
 

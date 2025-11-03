@@ -1,9 +1,8 @@
-
 <template>
   <div class="p-6">
     <!-- Loading state -->
-    <div v-if="isLoading" class="flex items-center justify-center h-96">
-      <div class="text-muted-foreground">Loading Tasks...</div>
+    <div v-if="showLoading" class="flex items-center justify-center h-96">
+      <div class="text-muted-foreground">Loading tasks...</div>
     </div>
 
     <!-- Main content -->
@@ -20,7 +19,7 @@
         </div>
         <div class="p-4 border rounded-lg shadow-sm">
           <div class="text-sm text-gray-500">Overdue</div>
-          <div class="text-2xl font-semibold text-red-600">{{ overdueTasks }}</div>
+          <div class="text-2xl font-semibold text-destructive">{{ overdueTasks }}</div>
         </div>
         <div class="p-4 border rounded-lg shadow-sm">
           <div class="text-sm text-gray-500">Completion Rate</div>
@@ -29,9 +28,9 @@
       </div>
 
       <!-- === Filters === -->
-      <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
+        <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
         <!-- Project Filter -->
-        <div class="relative inline-block text-left" @click.stop>
+        <div v-if="!hideProjectFilter" class="relative inline-block text-left" @click.stop>
           <button
             @click="toggleDropdown('project')"
             class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
@@ -43,7 +42,7 @@
           </button>
           <div
             v-if="dropdownStates.project"
-            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 shadow-lg bg-white"
+            class="absolute top-full left-0 mt-1 w-56 rounded-md border border-gray-300 shadow-lg bg-white"
           >
             <div class="p-2 border-b border-gray-200">
               <input
@@ -347,7 +346,7 @@
         </div>
       </div>
 
-      <!-- === Task Table === -->
+            <!-- === Task Table / Empty === -->
       <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6">
           <div class="flex items-center justify-between">
@@ -364,68 +363,111 @@
           </div>
         </div>
 
-        <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
-          <thead>
-            <tr class="bg-gray-100 text-left">
-              <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
-              <th class="p-2 border">Project</th>
-              <th class="p-2 border">Creator</th>
-              <th class="p-2 border">Assignees</th>
-              <th class="p-2 border">Due Date</th>
-              <th class="p-2 border">Status</th>
-              <th class="p-2 border">Priority</th>
-              <th class="p-2 border">Tags</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="task in visibleTasks"
-              :key="task.id"
-              class="hover:bg-gray-50 cursor-pointer transition"
-              :class="{ 'bg-red-50': isTaskOverdue(task) }"
-              v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum]"
-              @click="goToTaskDetail(task.id)"
-            >
-              <td class="p-2 border font-medium">{{ task.title || 'Untitled' }}</td>
-              <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
-              <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
-              <td class="p-2 border text-gray-800">
-                <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
-                  <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
-                    {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
-                  </span>
-                  <span v-if="task.assigneeNames.length > 3">...</span>
-                </template>
-                <template v-else>
-                  <span class="text-gray-400 text-xs italic">No assignees</span>
-                </template>
-              </td>
-              <td class="p-2 border" :class="getDateClasses(task)">{{ formatDate(task.deadline) }}</td>
-              <td class="p-2 border">
-                <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
-                  {{ task.statusLabel }}
-                </span>
-              </td>
-              <td class="p-2 border">{{ task.priorityNum ?? task.priority ?? '—' }}</td>
-              <td class="p-2 border">
-                <div class="flex flex-wrap gap-1">
-                  <template v-if="task.tags && task.tags.length">
-                    <span
-                      v-for="(tag, i) in task.tags"
-                      :key="i"
-                      class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
-                    >
-                      {{ tag }}
+        <!-- Show table when there are results -->
+        <template v-if="visibleTasks.length > 0">
+          <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
+            <thead>
+              <tr class="bg-gray-100 text-left">
+                <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
+                <th class="p-2 border">Project</th>
+                <th class="p-2 border">Creator</th>
+                <th class="p-2 border">Assignees</th>
+                <th class="p-2 border">Due Date</th>
+                <th class="p-2 border">Status</th>
+                <th class="p-2 border">Priority</th>
+                <th class="p-2 border">Tags</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="task in visibleTasks"
+                :key="task.id"
+                class="hover:bg-gray-50 cursor-pointer transition"
+                :class="{
+                  'overdue-row': isTaskOverdue(task),
+                  'new-instance-row': task.isNewInstance
+                }"
+                v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum, task.isNewInstance, task.recurring]"
+                @click="goToTaskDetail(task.id)"
+              >
+                <!-- keep existing row cells -->
+                <td class="p-2 border font-medium">
+                  <div class="flex items-center gap-2">
+                    {{ task.title || 'Untitled' }}
+                    <span v-if="task.recurring" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Recurring task">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Recurring
                     </span>
+                    <span v-if="task.isNewInstance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse" title="New instance of recurring task">
+                      <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                      </svg>
+                      New Instance
+                    </span>
+                  </div>
+                </td>
+                <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
+                <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
+                <td class="p-2 border text-gray-800">
+                  <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
+                    <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
+                      {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
+                    </span>
+                    <span v-if="task.assigneeNames.length > 3">...</span>
                   </template>
                   <template v-else>
-                    <span class="text-gray-400 text-xs italic">No tags</span>
+                    <span class="text-gray-400 text-xs italic">No assignees</span>
                   </template>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </td>
+                <td
+                  class="p-2 border"
+                  :class="getDateClasses(task)"
+                  :style="task.isOverdue ? { color: 'var(--destructive)' } : null"
+                >
+                  {{ formatDate(task.deadline) }}
+                </td>
+                <td class="p-2 border">
+                  <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
+                    {{ task.statusLabel }}
+                  </span>
+                </td>
+                <td class="p-2 border">{{ task.priorityNum ?? task.priority ?? '—' }}</td>
+                <td class="p-2 border">
+                  <div class="flex flex-wrap gap-1">
+                    <template v-if="task.tags && task.tags.length">
+                      <span
+                        v-for="(tag, i) in task.tags"
+                        :key="i"
+                        class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
+                      >
+                        {{ tag }}
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span class="text-gray-400 text-xs italic">No tags</span>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+
+        <!-- Show empty-state when no results -->
+        <template v-else>
+          <div class="flex items-center justify-center h-48">
+            <div class="text-center text-gray-500">
+              <div class="text-lg font-medium">
+                {{ indvTask ? 'No subtasks found' : 'No tasks found' }}
+              </div>
+              <div class="mt-2 text-sm">
+                Try adjusting filters or create a {{ indvTask ? 'subtask' : 'task' }}.
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </template>
   </div>
@@ -442,6 +484,8 @@ const props = defineProps({
   tasks: { type: Array, default: () => [] },
   indvTask: { type: Boolean, default: false },
   parentTaskId: { type: String, default: null },
+  loading: { type: Boolean, default: false },
+  hideProjectFilter: { type: Boolean, default: false },
 })
 
 defineEmits(['createTask'])
@@ -449,7 +493,8 @@ defineEmits(['createTask'])
 const router = useRouter()
 
 /* ---------- Loading state ---------- */
-const isLoading = ref(true)
+const localBootLoading = ref(true)
+const showLoading = computed(() => props.loading || localBootLoading.value)
 
 /* ---------- UI state ---------- */
 const dropdownStates = ref({
@@ -495,6 +540,7 @@ const goToTaskDetail = (taskId) => {
 const statusConfig = {
   todo: { label: 'To Do', color: 'bg-gray-500' },
   'in-progress': { label: 'In Progress', color: 'bg-blue-500' },
+  review: { label: 'In Review', color: 'bg-yellow-500' },
   done: { label: 'Done', color: 'bg-green-500' },
 }
 const getStatusConfig = (status) => statusConfig[status] || { label: 'To Do', color: 'bg-gray-500' }
@@ -522,7 +568,7 @@ const formatDate = (date) => {
 }
 
 const getDateClasses = (task) => {
-  if (task.isOverdue) return 'text-red-600 font-semibold'
+  if (task.isOverdue) return 'text-destructive font-semibold'
   if (task.isDueSoon) return 'text-yellow-600 font-semibold'
   return ''
 }
@@ -561,8 +607,7 @@ watch(
   (arr) => {
     const src = Array.isArray(arr) ? arr : []
     processedTasks.value = src.map(preprocessTask)
-    // once first props.tasks arrives (even empty), stop showing "Loading"
-    isLoading.value = false
+    localBootLoading.value = false
   },
   { immediate: true }
 )
@@ -588,9 +633,6 @@ const toggleSelection = (filterType, value) => {
   const i = filter.value.indexOf(value)
   if (i > -1) filter.value.splice(i, 1)
   else filter.value.push(value)
-  
-  // Debug logging
-  console.log(`Toggle ${filterType}:`, value, 'Selected:', filter.value)
 }
 
 const clearFilter = (filterType) => {
@@ -638,7 +680,7 @@ const assigneeOptions = computed(() => {
 })
 
 const dueDateOptions = ['All Tasks', 'Overdue', 'Due Today', 'Due This Week', 'No Due Date']
-const statusOptions = ['todo', 'in-progress', 'done']
+const statusOptions = ['todo', 'in-progress', 'review', 'done']
 
 const tagOptions = computed(() => {
   const set = new Set()
@@ -740,5 +782,28 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.z-50 { z-index: 2000; }
+.z-50 { z-index: 9999 !important; }
+/* soft red tint for overdue rows using theme destructive color */
+.overdue-row {
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+/* soft green tint for new instance rows */
+.new-instance-row {
+  background-color: color-mix(in oklab, #10b981 8%, transparent);
+  border-left: 3px solid #10b981;
+}
+/* Override global button/input background-color: transparent for all filters */
+.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Ensure all dropdown menus have white background */
+.relative.top-full.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Ensure search inputs inside filter dropdowns have white background */
+.relative input[type="text"] {
+  background-color: #ffffff !important;
+}
 </style>

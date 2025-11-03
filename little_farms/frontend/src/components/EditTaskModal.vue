@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Edit Task Modal -->
-    <div v-if="isOpen" class="fixed inset-0 z-50 bg-black/80" @click="closeDropdowns">
+    <div v-if="isOpen && !showLogTimePrompt" class="fixed inset-0 z-50 bg-black/80" @click="closeDropdowns">
       <div
         class="create-task-modal fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 sm:rounded-lg sm:max-w-[500px]"
         @click.stop
@@ -451,7 +451,6 @@ onMounted(async () => {
       ? userData.data.map((u) => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }))
       : (userData.users || []).map((u) => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }));
   } catch (err) {
-    console.error('❌ Error fetching dropdown data:', err);
   }
 });
 
@@ -491,7 +490,15 @@ watch(
     formData.title = task.title || '';
     formData.description = task.description || '';
     formData.priority = task.priority || null;
-    formData.status = task.status || '';
+    // Normalize status from database format to form format
+    const statusFromDB = task.status || '';
+    const statusToForm = {
+      'To Do': 'todo',
+      'In Progress': 'in-progress',
+      'In Review': 'review',
+      'Done': 'done'
+    };
+    formData.status = statusToForm[statusFromDB] || statusFromDB.toLowerCase() || '';
 
 
     // project
@@ -687,17 +694,87 @@ const removeTag = (tag) => {
 // save flow
 const saveClicked = async () => {
   if (!validateForm()) return;
+
+  // ensure user + token are available for notification POST
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    errors.title = 'User not logged in.';
+    return;
+  }
+  const token = await user.getIdToken();
+
+  // compute changes: { field: { old, new } }
+  const computeChanges = () => {
+    const out = {};
+    const keys = Object.keys(originalValues);
+    for (const k of keys) {
+      const oldVal = originalValues[k];
+      const newVal = formData[k];
+
+      // simple deep-ish comparisons for arrays and primitives
+      const isArray = Array.isArray(oldVal) || Array.isArray(newVal);
+      if (isArray) {
+        const aOld = Array.isArray(oldVal) ? oldVal : [];
+        const aNew = Array.isArray(newVal) ? newVal : [];
+        if (JSON.stringify(aOld) !== JSON.stringify(aNew)) {
+          out[k] = { old: aOld, new: aNew };
+        }
+        continue;
+      }
+
+      // normalize dates (strings)
+      if (k === 'deadline') {
+        const o = oldVal || null;
+        const n = newVal || null;
+        if (o !== n) out[k] = { old: o, new: n };
+        continue;
+      }
+
+      // primitives / objects
+      const oStr = oldVal === undefined || oldVal === null ? '' : String(oldVal);
+      const nStr = newVal === undefined || newVal === null ? '' : String(newVal);
+      if (oStr !== nStr) out[k] = { old: oldVal, new: newVal };
+    }
+    return out;
+  };
+
+  const changes = computeChanges();
+
   const changingToDone = formData.status === 'done' && originalValues.status !== 'done';
   if (changingToDone) {
-    emit('close');
-    setTimeout(() => {
-      showLogTimePrompt.value = true;
-    }, 300);
-  } else {
-    await saveTaskUpdate();
+    // Don't emit close immediately - show the log time modal first
+    showLogTimePrompt.value = true;
+    return;
+  }
+
+  // perform the actual task update
+  await saveTaskUpdate();
+
+  // Prepare payload for manager-update notification endpoint
+  const sendUpdatedData = {
+    id: props.task.id,
+    userId: user.uid,
+    ...changes
+  };
+
+  try {
+    const response = await fetch('/api/notifications/update/tasks/manager', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(sendUpdatedData),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`Failed to log changes: ${response.status} ${text}`);
+    }
+  } catch (err) {
+    console.error('Error sending manager update notification:', err);
   }
 };
-
 
 const cancelLogTime = () => {
   showLogTimePrompt.value = false;
@@ -748,7 +825,6 @@ const saveTaskUpdate = async () => {
       userId: user.uid
     };
 
-
     const endpoint = props.isSubtask
       ? `/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`
       : `/api/tasks/${props.task.id}`;
@@ -783,7 +859,6 @@ const saveTaskUpdate = async () => {
       emit('close');
     }, 1500);
   } catch (err) {
-    console.error('❌ Error updating task:', err);
     errors.title = err.message || 'Failed to update task. Please try again.';
   }
 };
@@ -814,10 +889,8 @@ const createLoggedTimeEntry = async (userId, token, hours) => {
 
     if (!res.ok) {
       const text = await res.text();
-      console.error('Failed to log time:', text);
     }
   } catch (err) {
-    console.error('Error logging time:', err);
   }
 };
 </script>
