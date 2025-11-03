@@ -58,6 +58,14 @@ router.patch('/:id/acknowledge', verifyToken, async (req, res) => {
 
 // POST /api/notifications/update/tasks/manager
 router.post('/update/tasks/manager', async (req, res) => {
+  /*
+  Expected body in req.body:
+  {
+    "id": "",
+    "userId": "",
+    "changes" : {}
+  }
+  */
   try {
     const result = await handleManagerTaskUpdate(req.body);
     res.status(200).json(result);
@@ -84,5 +92,21 @@ router.post('/daily-digest', async (req, res) => {
     res.status(200).json({ message: "Daily digest process completed" });
   }
 });
+
+// POST /api/notifications/update/comment -> send to this, and wait for response
+router.post('/update/comment', async (req, res) => {
+  
+  /*
+  Expected body in req.body:
+  {
+    "taskId": "",
+    "taskName": "",
+    "commentText": "",
+    "commenterName": "",
+    "personsIdInvolved": []
+    "timestamp": Date.now()
+  }
+  */
+})
 
 export default router;
