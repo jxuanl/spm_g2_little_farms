@@ -5,25 +5,6 @@
       <div class="text-muted-foreground">Loading tasks...</div>
     </div>
 
-    <!-- Empty state -->
-    <div v-else-if="visibleTasks.length === 0" class="flex items-center justify-center h-96">
-      <div class="text-center text-gray-500">
-        <div class="text-lg font-medium">
-          {{ indvTask ? 'No subtasks found' : 'No tasks found' }}
-        </div>
-        <div class="mt-2 text-sm">
-          Try adjusting filters or create a {{ indvTask ? 'subtask' : 'task' }}.
-        </div>
-        <button
-          class="mt-4 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-          @click="$emit('createTask')"
-        >
-          <Plus class="w-4 h-4 mr-2" />
-          {{ indvTask ? 'New Subtask' : 'New Task' }}
-        </button>
-      </div>
-    </div>
-
     <!-- Main content -->
     <template v-else>
       <!-- === Statistics Overview === -->
@@ -47,9 +28,325 @@
       </div>
 
       <!-- === Filters === -->
-      <!-- keep your existing filters exactly as-is -->
+        <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
+        <!-- Project Filter -->
+        <div v-if="!hideProjectFilter" class="relative inline-block text-left" @click.stop>
+          <button
+            @click="toggleDropdown('project')"
+            class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <span class="truncate">
+              {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.length === 1 ? selectedProjects[0] : `${selectedProjects.length} Projects` }}
+            </span>
+            <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+          </button>
+          <div
+            v-if="dropdownStates.project"
+            class="absolute top-full left-0 mt-1 w-56 rounded-md border border-gray-300 shadow-lg bg-white"
+          >
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.project"
+                type="text"
+                placeholder="Search projects..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
+              <button
+                v-for="project in projectOptions"
+                :key="project"
+                type="button"
+                @click="toggleSelection('project', project)"
+                :class="[
+                  'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                  selectedProjects.includes(project)
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                <span>{{ project }}</span>
+                <Check v-if="selectedProjects.includes(project)" class="h-4 w-4" />
+              </button>
+              <div v-if="projectOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
+            </div>
+            <div class="border-t border-gray-200 p-2">
+              <button
+                @click="clearFilter('project')"
+                class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
 
-      <!-- === Task Table === -->
+        <!-- Creator Filter -->
+        <div class="relative inline-block text-left" @click.stop>
+          <button
+            @click="toggleDropdown('creator')"
+            class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <span class="truncate">
+              {{ selectedCreators.length === 0 ? 'All Creators' : selectedCreators.length === 1 ? selectedCreators[0] : `${selectedCreators.length} Creators` }}
+            </span>
+            <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+          </button>
+          <div
+            v-if="dropdownStates.creator"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+          >
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.creator"
+                type="text"
+                placeholder="Search creators..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
+              <button
+                v-for="creator in creatorOptions"
+                :key="creator"
+                type="button"
+                @click="toggleSelection('creator', creator)"
+                :class="[
+                  'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                  selectedCreators.includes(creator)
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                <span>{{ creator }}</span>
+                <Check v-if="selectedCreators.includes(creator)" class="h-4 w-4" />
+              </button>
+              <div v-if="creatorOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
+            </div>
+            <div class="border-t border-gray-200 p-2">
+              <button
+                @click="clearFilter('creator')"
+                class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assignee Filter -->
+        <div class="relative inline-block text-left" @click.stop>
+          <button
+            @click="toggleDropdown('assignee')"
+            class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <span class="truncate">
+              {{ selectedAssignees.length === 0 ? 'All Assignees' : selectedAssignees.length === 1 ? selectedAssignees[0] : `${selectedAssignees.length} Assignees` }}
+            </span>
+            <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+          </button>
+          <div
+            v-if="dropdownStates.assignee"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+          >
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.assignee"
+                type="text"
+                placeholder="Search assignees..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
+              <button
+                v-for="assignee in assigneeOptions"
+                :key="assignee"
+                type="button"
+                @click="toggleSelection('assignee', assignee)"
+                :class="[
+                  'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                  selectedAssignees.includes(assignee)
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                <span>{{ assignee }}</span>
+                <Check v-if="selectedAssignees.includes(assignee)" class="h-4 w-4" />
+              </button>
+              <div v-if="assigneeOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
+            </div>
+            <div class="border-t border-gray-200 p-2">
+              <button
+                @click="clearFilter('assignee')"
+                class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Due Date Filter -->
+        <div class="relative inline-block text-left" @click.stop>
+          <button
+            @click="toggleDropdown('dueDate')"
+            class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <span class="truncate">{{ selectedDueDate }}</span>
+            <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+          </button>
+          <div
+            v-if="dropdownStates.dueDate"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+          >
+            <div class="p-2">
+              <button
+                v-for="option in dueDateOptions"
+                :key="option"
+                type="button"
+                @click="selectDueDate(option)"
+                :class="[
+                  'w-full text-left px-2 py-1.5 text-sm rounded-sm',
+                  selectedDueDate === option
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="relative inline-block text-left" @click.stop>
+          <button
+            @click="toggleDropdown('status')"
+            class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <span class="truncate">
+              {{ selectedStatuses.length === 0 ? 'All Statuses' : selectedStatuses.length === 1 ? statusConfig[selectedStatuses[0]].label : `${selectedStatuses.length} Statuses` }}
+            </span>
+            <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+          </button>
+          <div
+            v-if="dropdownStates.status"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+          >
+            <div class="p-2">
+              <button
+                v-for="status in statusOptions"
+                :key="status"
+                type="button"
+                @click="toggleSelection('status', status)"
+                :class="[
+                  'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                  selectedStatuses.includes(status)
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                <span>{{ statusConfig[status].label }}</span>
+                <Check v-if="selectedStatuses.includes(status)" class="h-4 w-4" />
+              </button>
+            </div>
+            <div class="border-t border-gray-200 p-2">
+              <button
+                @click="clearFilter('status')"
+                class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Priority Filter -->
+        <div class="p-3 w-64 border rounded-md bg-white shadow-sm" @click.stop>
+          <Slider
+            v-model="selectedPriority"
+            :min="1"
+            :max="10"
+            :step="1"
+            :dot-size="16"
+            :height="6"
+            :tooltips="false"
+            style="width: 100%;"
+          />
+          <span class="block mt-2 text-sm text-gray-700 text-center">
+            Priority: {{ selectedPriority[0] }} - {{ selectedPriority[1] }}
+          </span>
+        </div>
+
+        <!-- Tags Filter -->
+        <div class="relative inline-block text-left" @click.stop>
+          <button
+            @click="toggleDropdown('tags')"
+            class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <span class="truncate">
+              {{ selectedTags.length === 0
+                ? 'All Tags'
+                : selectedTags.length === 1
+                ? selectedTags[0]
+                : `${selectedTags.length} Tags` }}
+            </span>
+            <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+          </button>
+          <div
+            v-if="dropdownStates.tags"
+            class="absolute top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
+          >
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.tags"
+                type="text"
+                placeholder="Search tags..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
+              <button
+                v-for="tag in tagOptions"
+                :key="tag"
+                type="button"
+                @click="toggleSelection('tags', tag)"
+                :class="[
+                  'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                  selectedTags.includes(tag)
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                <span>{{ tag }}</span>
+                <Check v-if="selectedTags.includes(tag)" class="h-4 w-4" />
+              </button>
+              <div v-if="tagOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
+            </div>
+            <div class="border-t border-gray-200 p-2">
+              <button
+                @click="clearFilter('tags')"
+                class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+            <!-- === Task Table / Empty === -->
       <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6">
           <div class="flex items-center justify-between">
@@ -66,94 +363,111 @@
           </div>
         </div>
 
-        <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
-          <thead>
-            <tr class="bg-gray-100 text-left">
-              <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
-              <th class="p-2 border">Project</th>
-              <th class="p-2 border">Creator</th>
-              <th class="p-2 border">Assignees</th>
-              <th class="p-2 border">Due Date</th>
-              <th class="p-2 border">Status</th>
-              <th class="p-2 border">Priority</th>
-              <th class="p-2 border">Tags</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="task in visibleTasks"
-              :key="task.id"
-              class="hover:bg-gray-50 cursor-pointer transition"
-              :class="{ 
-                'overdue-row': isTaskOverdue(task),
-                'new-instance-row': task.isNewInstance
-              }"
-              v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum, task.isNewInstance, task.recurring]"
-              @click="goToTaskDetail(task.id)"
-            >
-              <!-- keep existing row cells -->
-              <td class="p-2 border font-medium">
-                <div class="flex items-center gap-2">
-                  {{ task.title || 'Untitled' }}
-                  <span v-if="task.recurring" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Recurring task">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Recurring
-                  </span>
-                  <span v-if="task.isNewInstance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse" title="New instance of recurring task">
-                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                    New Instance
-                  </span>
-                </div>
-              </td>
-              <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
-              <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
-              <td class="p-2 border text-gray-800">
-                <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
-                  <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
-                    {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
-                  </span>
-                  <span v-if="task.assigneeNames.length > 3">...</span>
-                </template>
-                <template v-else>
-                  <span class="text-gray-400 text-xs italic">No assignees</span>
-                </template>
-              </td>
-              <td
-                class="p-2 border"
-                :class="getDateClasses(task)"
-                :style="task.isOverdue ? { color: 'var(--destructive)' } : null"
+        <!-- Show table when there are results -->
+        <template v-if="visibleTasks.length > 0">
+          <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
+            <thead>
+              <tr class="bg-gray-100 text-left">
+                <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
+                <th class="p-2 border">Project</th>
+                <th class="p-2 border">Creator</th>
+                <th class="p-2 border">Assignees</th>
+                <th class="p-2 border">Due Date</th>
+                <th class="p-2 border">Status</th>
+                <th class="p-2 border">Priority</th>
+                <th class="p-2 border">Tags</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="task in visibleTasks"
+                :key="task.id"
+                class="hover:bg-gray-50 cursor-pointer transition"
+                :class="{
+                  'overdue-row': isTaskOverdue(task),
+                  'new-instance-row': task.isNewInstance
+                }"
+                v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum, task.isNewInstance, task.recurring]"
+                @click="goToTaskDetail(task.id)"
               >
-                {{ formatDate(task.deadline) }}
-              </td>
-              <td class="p-2 border">
-                <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
-                  {{ task.statusLabel }}
-                </span>
-              </td>
-              <td class="p-2 border">{{ task.priorityNum ?? task.priority ?? '—' }}</td>
-              <td class="p-2 border">
-                <div class="flex flex-wrap gap-1">
-                  <template v-if="task.tags && task.tags.length">
-                    <span
-                      v-for="(tag, i) in task.tags"
-                      :key="i"
-                      class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
-                    >
-                      {{ tag }}
+                <!-- keep existing row cells -->
+                <td class="p-2 border font-medium">
+                  <div class="flex items-center gap-2">
+                    {{ task.title || 'Untitled' }}
+                    <span v-if="task.recurring" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Recurring task">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Recurring
                     </span>
+                    <span v-if="task.isNewInstance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse" title="New instance of recurring task">
+                      <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                      </svg>
+                      New Instance
+                    </span>
+                  </div>
+                </td>
+                <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
+                <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
+                <td class="p-2 border text-gray-800">
+                  <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
+                    <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
+                      {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
+                    </span>
+                    <span v-if="task.assigneeNames.length > 3">...</span>
                   </template>
                   <template v-else>
-                    <span class="text-gray-400 text-xs italic">No tags</span>
+                    <span class="text-gray-400 text-xs italic">No assignees</span>
                   </template>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </td>
+                <td
+                  class="p-2 border"
+                  :class="getDateClasses(task)"
+                  :style="task.isOverdue ? { color: 'var(--destructive)' } : null"
+                >
+                  {{ formatDate(task.deadline) }}
+                </td>
+                <td class="p-2 border">
+                  <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
+                    {{ task.statusLabel }}
+                  </span>
+                </td>
+                <td class="p-2 border">{{ task.priorityNum ?? task.priority ?? '—' }}</td>
+                <td class="p-2 border">
+                  <div class="flex flex-wrap gap-1">
+                    <template v-if="task.tags && task.tags.length">
+                      <span
+                        v-for="(tag, i) in task.tags"
+                        :key="i"
+                        class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
+                      >
+                        {{ tag }}
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span class="text-gray-400 text-xs italic">No tags</span>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+
+        <!-- Show empty-state when no results -->
+        <template v-else>
+          <div class="flex items-center justify-center h-48">
+            <div class="text-center text-gray-500">
+              <div class="text-lg font-medium">
+                {{ indvTask ? 'No subtasks found' : 'No tasks found' }}
+              </div>
+              <div class="mt-2 text-sm">
+                Try adjusting filters or create a {{ indvTask ? 'subtask' : 'task' }}.
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </template>
   </div>
