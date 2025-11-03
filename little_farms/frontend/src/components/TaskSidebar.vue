@@ -8,13 +8,6 @@
         <h1 class="text-lg font-semibold text-gray-800">TaskManager</h1>
       </div>
 
-      <!-- <button 
-        class="w-full mb-4 rounded-xl flex items-center justify-center gap-2 py-2 bg-gray-600 text-white hover:bg-gray-700 transition-colors"
-        @click="$emit('createTask')">
-        <Plus class="w-4 h-4" />
-        New Task
-      </button> -->
-
       <nav class="flex flex-col gap-2">
         <router-link 
           v-if="role != 'staff'"
@@ -44,39 +37,6 @@
         </router-link>
       </nav>
     </div>
-
-    <!-- <div class="border-t border-gray-300 my-2" /> -->
-
-    <!-- <div class="p-4 flex-grow">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-gray-500 text-sm font-medium">Projects</h3>
-        <button class="rounded-xl p-2 border-0 hover:bg-gray-100 text-gray-600 transition-colors">
-          <Plus class="w-3 h-3" />
-        </button>
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <button 
-          v-for="project in projects" 
-          :key="project.id" 
-          class="text-start rounded-xl p-3 border-0 flex items-center w-full transition-colors"
-          :class="{
-            'bg-gray-600 text-white': activeProject === project.id,
-            'hover:bg-gray-100': activeProject !== project.id
-          }" 
-          @click="$emit('projectChange', project.id)">
-          <div class="flex items-center gap-3 w-full">
-            <div :class="['rounded-full', project.color]" style="width: 12px; height: 12px;" />
-            <div class="flex-grow">
-              <div class="text-sm">{{ project.name }}</div>
-            </div>
-            <span class="bg-gray-600 text-white rounded-full text-xs px-2 py-1">
-              {{ project.tasksCount }}
-            </span>
-          </div>
-        </button>
-      </div>
-    </div> -->
 
     <div class="border-t border-gray-300 my-2" />
 
@@ -187,7 +147,6 @@ defineProps({
 defineEmits(['projectChange', 'createTask']);
 
 const menuItems = [
-  // { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
   { id: "my-tasks", label: "Tasks", icon: Users, path: "/all-tasks" },
   { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
@@ -195,7 +154,6 @@ const menuItems = [
   // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 const staffMenuItems = [
-  // { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
   { id: "my-tasks", label: "Tasks", icon: Users, path: "/all-tasks" },
   { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "timeline", label: "Timeline", icon: GanttChartIcon, path: "/timeline" },

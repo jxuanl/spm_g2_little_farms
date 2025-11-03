@@ -58,17 +58,13 @@ const loadingTasks = ref(false)
 const fetchTasks = async (userId) => {
   try {
     loadingTasks.value = true
-    console.log('📡 Fetching tasks for user:', userId)
     const res = await fetch(`/api/tasks?userId=${userId}`)
     const data = await res.json()
-    console.log('📦 Raw response:', data)
 
     if (!data.success) throw new Error(data.message || 'Failed to fetch tasks')
 
     tasks.value = data.tasks || []
-    console.log('✅ Loaded tasks:', tasks.value)
   } catch (err) {
-    console.error('❌ Failed to load tasks:', err)
   } finally {
     loadingTasks.value = false
   }
@@ -103,7 +99,6 @@ const setPriorityFilter = (priority) => priorityFilter.value = priority
 const setIsCreateModalOpen = (open) => isCreateModalOpen.value = open
 
 const handleTaskCreated = () => {
-  console.log('🔄 Task created — reloading list')
   if (currentUserId.value) fetchTasks(currentUserId.value)
 }
 
@@ -115,7 +110,6 @@ onMounted(() => {
       currentUserId.value = user.uid
       await fetchTasks(user.uid)
     } else {
-      console.warn('⚠️ No user logged in, redirecting to login...')
       window.location.href = '/login'
     }
   })

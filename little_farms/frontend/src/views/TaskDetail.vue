@@ -199,7 +199,6 @@ const fetchTask = async () => {
     }
 
     if (!res.ok) {
-      console.error('❌ Task/Subtask not found or access denied');
       return;
     }
 
@@ -230,10 +229,8 @@ const fetchTask = async () => {
       canEdit.value = false;
     }
 
-    console.log(`👤 Role: ${userRole.value} | Creator: ${isCreator} | canEdit: ${canEdit.value}`);
 
   } catch (err) {
-    console.error('❌ Error fetching task/subtask details:', err);
   } finally {
     isLoading.value = false;
   }
@@ -309,7 +306,6 @@ const fetchSubtasks = async () => {
           }
 
         } catch (err) {
-          console.warn('Error enriching subtask data:', err);
         }
 
         return {
@@ -323,14 +319,12 @@ const fetchSubtasks = async () => {
 
     subtasks.value = enrichedSubtasks;
   } catch (error) {
-    console.error('Error fetching subtasks:', error);
     subtasks.value = [];
   }
 };
 
 // === Handle Subtask Creation ===
 const handleSubtaskCreated = (newSubtask) => {
-  console.log('Subtask created:', newSubtask);
   // Refresh subtasks list
   fetchSubtasks();
 };

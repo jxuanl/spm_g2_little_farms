@@ -451,7 +451,6 @@ onMounted(async () => {
       ? userData.data.map((u) => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }))
       : (userData.users || []).map((u) => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }));
   } catch (err) {
-    console.error('❌ Error fetching dropdown data:', err);
   }
 });
 
@@ -788,7 +787,6 @@ const saveTaskUpdate = async () => {
       emit('close');
     }, 1500);
   } catch (err) {
-    console.error('❌ Error updating task:', err);
     errors.title = err.message || 'Failed to update task. Please try again.';
   }
 };
@@ -819,10 +817,8 @@ const createLoggedTimeEntry = async (userId, token, hours) => {
 
     if (!res.ok) {
       const text = await res.text();
-      console.error('Failed to log time:', text);
     }
   } catch (err) {
-    console.error('Error logging time:', err);
   }
 };
 </script>

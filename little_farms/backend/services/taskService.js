@@ -17,7 +17,6 @@ async function enrichTaskData(task) {
       if (projectSnap.exists)
         projectTitle = projectSnap.data().title || 'Untitled Project'
     } catch (err) {
-      console.error('Error loading project:', err)
     }
   }
 
@@ -29,7 +28,6 @@ async function enrichTaskData(task) {
       if (creatorSnap.exists)
         creatorName = creatorSnap.data().name || 'Unnamed Creator'
     } catch (err) {
-      console.error('Error loading creator:', err)
     }
   }
 
@@ -43,11 +41,10 @@ async function enrichTaskData(task) {
       }
       assigneeNames = names
     } catch (err) {
-      console.error('Error loading assignees:', err)
     }
   }
 
-  // ✅ --- Normalize Firestore/Date fields to ISO strings ---
+  // --- Normalize Firestore/Date fields to ISO strings ---
   const normalizeDate = (v) => {
     if (v?.toDate) return v.toDate().toISOString()
     if (v?.seconds || v?._seconds)
@@ -80,44 +77,35 @@ export async function getTasksForUser(userId) {
     const userDoc = await userDocRef.get()
 
     if (!userDoc.exists) {
-      console.error(`❌ User ${userId} not found`)
       return []
     }
 
     const userData = userDoc.data()
     const role = (userData.role || "staff").toLowerCase()
-    console.log(`👤 User ${userId} role: ${role}`)
 
-    // === 🟢 HR → can see all tasks across all projects ===
+    // === HR → can see all tasks across all projects ===
     if (role === "hr") {
-      console.log("🔹 HR access: fetching all tasks across all projects")
-
       const allTasksSnap = await db.collection("Tasks").get()
       const allTasks = allTasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
         .filter((t) => t.isCurrentInstance !== false); // show only current instance
 
       // ✅ Enrich tasks (project, creator, assignees)
       const enriched = await Promise.all(allTasks.map((t) => enrichTaskData(t)))
-      console.log(`✅ Returning ${enriched.length} tasks for HR ${userId}`)
       return enriched
     }
 
     // === Manager → can see all tasks in projects they created ===
     if (role === "manager") {
-      console.log(`🔹 Manager access: fetching tasks for projects created by ${userId}`)
-
       const projectSnap = await db
         .collection("Projects")
         .where("owner", "==", userDocRef)
         .get()
 
       if (projectSnap.empty) {
-        console.log("⚠️ No projects found for this manager.")
         return []
       }
 
       const projectIds = projectSnap.docs.map((d) => d.ref)
-      console.log(`📁 Found ${projectIds.length} projects for manager.`)
 
       const tasksSnap = await db
         .collection("Tasks")
@@ -137,13 +125,10 @@ export async function getTasksForUser(userId) {
         .filter((t) => t.isCurrentInstance !== false); // show only current instance
       const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
 
-      console.log(`✅ Returning ${enriched.length} tasks for manager ${userId}`)
       return enriched
     }
 
     // === Staff → tasks they created or assigned ===
-    console.log("🔹 Staff access: fetching created + assigned tasks")
-
     const assignedSnap = await db
       .collection("Tasks")
       .where("assignedTo", "array-contains", userDocRef)
@@ -161,11 +146,9 @@ export async function getTasksForUser(userId) {
     const tasks = Array.from(taskMap.values())
       .filter((t) => t.isCurrentInstance !== false); // show only current instance
     const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
-    console.log(`✅ Returning ${enriched.length} staff tasks for user ${userId}`)
     return enriched
 
   } catch (err) {
-    console.error("❌ Error fetching user tasks:", err)
     return []
   }
 }
@@ -243,19 +226,17 @@ export async function createTask(taskData) {
       // Create regular task
       docRef = await db.collection(TASK_COLLECTION).add(newTask);
       
-      // ✅ Add task to project's taskList if task has a projectId
+      // Add task to project's taskList if task has a projectId
       if (projectDoc && projectDoc.exists) {
         const taskRef = db.collection(TASK_COLLECTION).doc(docRef.id);
         await projectDoc.ref.update({
           taskList: admin.firestore.FieldValue.arrayUnion(taskRef)
         });
-        console.log(`✅ Added task ${docRef.id} to project ${taskData.projectId}'s taskList`);
       }
     }
     
     return { id: docRef.id, ...newTask };
   } catch (err) {
-    console.error("Error creating task:", err);
     throw err;
   }
 }
@@ -283,7 +264,6 @@ export async function getTaskDetail(taskId, userId) {
       )
       const createdBy = taskData.taskCreatedBy?.path === userRef.path
       if (!assigned && !createdBy) {
-        console.warn(`🚫 Access denied for staff user ${userId} on task ${taskId}`)
         return null
       }
     }
@@ -300,7 +280,6 @@ export async function getTaskDetail(taskId, userId) {
     
     return enriched
   } catch (err) {
-    console.error('❌ Error fetching task detail:', err)
     return null
   }
 }
@@ -337,7 +316,6 @@ export async function updateTask(taskId, updates) {
 
       // Managers are allowed to edit — no restriction here
     } else {
-      console.warn('⚠️ No userId provided in update request — skipping role check')
     }
 
     const updateData = {}
@@ -477,7 +455,6 @@ export async function updateTask(taskId, updates) {
           nextDeadline.setMonth(nextDeadline.getMonth() + existingTask.recurrenceValue)
           break
         default:
-          console.error('Invalid recurrence interval:', existingTask.recurrenceInterval)
           return { id: taskId, ...updateData }
       }
 
@@ -504,9 +481,8 @@ export async function updateTask(taskId, updates) {
       }
 
       const newTaskDocRef = await db.collection(TASK_COLLECTION).add(newTask)
-      console.log(`✅ Created new recurring task instance with deadline: ${nextDeadline.toISOString()}`)
       
-      // ✅ Add new recurring instance to project's taskList if task has a projectId
+      // Add new recurring instance to project's taskList if task has a projectId
       if (existingTask.projectId) {
         try {
           // Get project reference from task's projectId
@@ -526,10 +502,7 @@ export async function updateTask(taskId, updates) {
           await projectRef.update({
             taskList: admin.firestore.FieldValue.arrayUnion(newTaskRef)
           });
-          console.log(`✅ Added recurring task ${newTaskDocRef.id} to project's taskList`);
         } catch (err) {
-          console.error('Error adding recurring task to project taskList:', err);
-          // Don't throw - this is not critical enough to fail the entire operation
         }
       }
     } else {
@@ -537,15 +510,13 @@ export async function updateTask(taskId, updates) {
       await taskRef.update(updateData)
     }
 
-    console.log(`✅ Task ${taskId} updated successfully by user ${updates.userId}`)
     return { id: taskId, ...updateData }
   } catch (err) {
-    console.error('❌ Error updating task:', err)
     throw err
   }
 }
 
-// // ✅ Delete Task (backend-safe)
+// // Delete Task (backend-safe)
 // export async function deleteTask(taskId) {
 //   const taskRef = doc(db, TASK_COLLECTION, taskId);
 //   await deleteDoc(taskRef);
@@ -605,7 +576,6 @@ export async function completeTask(taskId, userId) {
           nextDeadline.setMonth(nextDeadline.getMonth() + taskData.recurrenceValue);
           break;
         default:
-          console.error('Invalid recurrence interval:', taskData.recurrenceInterval);
           return;
       }
 
@@ -625,9 +595,8 @@ export async function completeTask(taskId, userId) {
       delete newTask.id;
 
       const newTaskDocRef = await db.collection(TASK_COLLECTION).add(newTask);
-      console.log(`✅ Created new recurring task instance with deadline: ${nextDeadline.toISOString()}`);
       
-      // ✅ Add new recurring instance to project's taskList if task has a projectId
+      // Add new recurring instance to project's taskList if task has a projectId
       if (taskData.projectId) {
         try {
           // Get project reference from task's projectId
@@ -647,17 +616,13 @@ export async function completeTask(taskId, userId) {
           await projectRef.update({
             taskList: admin.firestore.FieldValue.arrayUnion(newTaskRef)
           });
-          console.log(`✅ Added recurring task ${newTaskDocRef.id} to project's taskList`);
         } catch (err) {
-          console.error('Error adding recurring task to project taskList:', err);
-          // Don't throw - this is not critical enough to fail the entire operation
         }
       }
     }
 
     return { success: true, message: 'Task completed successfully' };
   } catch (error) {
-    console.error('❌ Error completing task:', error);
     throw error;
   }
 }
@@ -670,7 +635,6 @@ export async function getTaskById(taskId) {
     }
     return { id: taskDoc.id, ...taskDoc.data() };
   } catch (err) {
-    console.error("Error fetching task by ID:", err);
     throw err;
   }
 }
@@ -694,20 +658,16 @@ export async function getSubtasksForTask(taskId) {
       }
       
       // Convert taskCreatedBy reference to include path
-      console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
       if (data.taskCreatedBy && data.taskCreatedBy.path) {
         serializedData.taskCreatedBy = { path: data.taskCreatedBy.path };
       } else if (data.taskCreatedBy && data.taskCreatedBy._path && data.taskCreatedBy._path.segments) {
         // Handle Firestore DocumentReference format
         const pathString = data.taskCreatedBy._path.segments.join('/');
-        console.log('Constructed path from segments:', pathString);
         serializedData.taskCreatedBy = { path: pathString };
       } else if (data.taskCreatedBy) {
         // Handle other reference formats
-        console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
         serializedData.taskCreatedBy = data.taskCreatedBy;
       } else {
-        console.log('taskCreatedBy is null or undefined');
         serializedData.taskCreatedBy = null;
       }
       
@@ -728,7 +688,6 @@ export async function getSubtasksForTask(taskId) {
       };
     });
   } catch (err) {
-    console.error("Error fetching subtasks:", err);
     return [];
   }
 }
@@ -757,20 +716,16 @@ export async function getSubtaskById(taskId, subtaskId) {
     }
     
     // Convert taskCreatedBy reference to include path
-    console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
     if (data.taskCreatedBy && data.taskCreatedBy.path) {
       serializedData.taskCreatedBy = { path: data.taskCreatedBy.path };
     } else if (data.taskCreatedBy && data.taskCreatedBy._path && data.taskCreatedBy._path.segments) {
       // Handle Firestore DocumentReference format
       const pathString = data.taskCreatedBy._path.segments.join('/');
-      console.log('Constructed path from segments:', pathString);
       serializedData.taskCreatedBy = { path: pathString };
     } else if (data.taskCreatedBy) {
       // Handle other reference formats
-      console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
       serializedData.taskCreatedBy = data.taskCreatedBy;
     } else {
-      console.log('taskCreatedBy is null or undefined');
       serializedData.taskCreatedBy = null;
     }
     
@@ -790,7 +745,6 @@ export async function getSubtaskById(taskId, subtaskId) {
       modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
     };
   } catch (err) {
-    console.error("Error fetching subtask:", err);
     return null;
   }
 }
@@ -859,7 +813,6 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
       modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
     };
   } catch (err) {
-    console.error("Error updating subtask:", err);
     throw err;
   }
 }
@@ -877,11 +830,9 @@ export async function getAllTasks() {
 
     return tasks;
   } catch (error) {
-    console.error('Error fetching tasks from Firestore:', error);
     throw new Error('Failed to retrieve tasks from Firestore');
   }
 }
-
 
 export const taskService = {
   getTasksForUser,

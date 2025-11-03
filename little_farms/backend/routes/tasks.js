@@ -14,7 +14,6 @@ router.get('/allTasks', async (req, res) => {
       count: tasks.length
     });
   } catch (error) {
-    console.error('Error in /allTasks route:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Internal server error',
@@ -24,7 +23,7 @@ router.get('/allTasks', async (req, res) => {
 });
 
 
-// ✅ GET /api/tasks/:id?userId=abc123  (must come first)
+// GET /api/tasks/:id?userId=abc123  (must come first)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params
@@ -47,7 +46,6 @@ router.get('/:id', async (req, res) => {
 
     return res.status(200).json({ success: true, task })
   } catch (error) {
-    console.error('❌ Error fetching task detail:', error)
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch task detail',
@@ -55,7 +53,7 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// ✅ GET /api/tasks?userId=xxx (list)
+// GET /api/tasks?userId=xxx (list)
 router.get('/', async (req, res) => {
   try {
     const userId = req.query.userId
@@ -65,7 +63,6 @@ router.get('/', async (req, res) => {
     const tasks = await getTasksForUser(userId) // now includes assigneeNames
     return res.status(200).json({ success: true, tasks })
   } catch (error) {
-    console.error('Backend error fetching tasks:', error)
     return res.status(500).json({ success: false, message: error.message })
   }
 })
@@ -141,7 +138,6 @@ router.post('/', async (req, res) => {
     const newTask = await createTask(taskData);
     res.status(201).json(newTask);
   } catch (error) {
-    console.error('Error creating task:', error);
     res.status(500).json({ error: 'Failed to create task' });
   }
 });
@@ -181,7 +177,6 @@ router.post('/:id/complete', async (req, res) => {
     const result = await completeTask(req.params.id, userId)
     res.status(200).json(result)
   } catch (err) {
-    console.error('Error completing task:', err)
     res.status(500).json({ error: err.message || 'Failed to complete task' })
   }
 })
@@ -198,7 +193,6 @@ router.get('/:taskId/subtasks', async (req, res) => {
     const subtasks = await getSubtasksForTask(taskId);
     res.json(subtasks);
   } catch (error) {
-    console.error('Backend error fetching subtasks:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -219,7 +213,6 @@ router.get('/:taskId/subtasks/:subtaskId', async (req, res) => {
     
     res.json(subtask);
   } catch (error) {
-    console.error('Backend error fetching subtask:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -241,7 +234,6 @@ router.put('/:taskId/subtasks/:subtaskId', async (req, res) => {
     
     res.json(updatedSubtask);
   } catch (error) {
-    console.error('Backend error updating subtask:', error);
     res.status(500).json({ error: error.message });
   }
 });
