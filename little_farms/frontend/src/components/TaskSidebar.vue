@@ -17,7 +17,7 @@
 
       <nav class="flex flex-col gap-2">
         <router-link 
-          v-if="role != 'staff'"
+          v-if="role == 'director' || role == 'manager'"
           v-for="item in menuItems" 
           :key="item.id" 
           :to="item.path"
@@ -28,6 +28,19 @@
           }">
           <component :is="item.icon" class="w-4 h-4 mr-3" />
           <span class="font-medium">{{ item.label }}</span>
+        </router-link>
+        <router-link 
+          v-else-if="role == 'HR'"
+          v-for="tabs in HRMenuItems" 
+          :key="tabs.id" 
+          :to="tabs.path"
+          class="text-gray-700 text-start rounded-xl py-2 px-3 border-0 flex items-center no-underline transition-colors"
+          :class="{
+            'bg-gray-800 text-black': $route.path === tabs.path,
+            'hover:bg-gray-100': $route.path !== tabs.path
+          }">
+          <component :is="tabs.icon" class="w-4 h-4 mr-3" />
+          <span class="font-medium">{{ tabs.label }}</span>
         </router-link>
         <router-link 
           v-else
@@ -130,17 +143,16 @@
 
 <script setup>
 import {
-  Home,
   Folder,
   Users,
   GanttChartIcon,
   BarChart3,
-  Settings,
   LucideFolderKanban,
   CheckCircle,
   ChevronUpIcon,
   UserRound,
   LogOut,
+  UserRoundPen,
 } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 import { auth } from '../../firebase'
@@ -200,6 +212,15 @@ const staffMenuItems = [
   { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
   { id: "timeline", label: "Timeline", icon: GanttChartIcon, path: "/timeline" },
   // { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+];
+
+const HRMenuItems = [
+  // { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
+  { id: "my-tasks", label: "Tasks", icon: Users, path: "/all-tasks" },
+  { id: "projects", label: "Projects", icon: LucideFolderKanban, path: "/projects" },
+  { id: "reports", label: "Reports", icon: BarChart3, path: "/reports" },
+  { id: "timeline", label: "Timeline", icon: GanttChartIcon, path: "/timeline" },
+  { id: "User Management", label: "User", icon: UserRoundPen, path: "/userManagement" },
 ];
 </script>
 
