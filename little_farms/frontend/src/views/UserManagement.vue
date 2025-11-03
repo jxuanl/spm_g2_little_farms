@@ -86,7 +86,7 @@
                     </td>
                     <td class="px-6 py-4 text-sm text-muted-foreground">{{ user.email }}</td>
                     <td class="px-6 py-4">
-                      <span :class="getRoleBadgeClass(user.role)" class="px-2.5 py-1 rounded-full text-xs font-medium">
+                      <span :class="getRoleBadgeClass(user.role)" class="px-2 py-1 rounded-lg text-xs font-medium">
                         {{ user.role }}
                       </span>
                     </td>
@@ -208,10 +208,10 @@ const capitalizeFirstLetter = (str) => {
 
 const getRoleBadgeClass = (role) => {
   const classes = {
-    'admin': 'bg-red-100 text-red-700',
-    'staff': 'bg-blue-100 text-blue-700',
+    // 'staff': 'bg-blue-100 text-blue-700',
     'hr': 'bg-green-100 text-green-700',
-    'manager': 'bg-purple-100 text-purple-700'
+    'manager': 'bg-blue-100 text-blue-700',
+    'director': 'bg-orange-100 text-orange-700'
   };
   return classes[role?.toLowerCase()] || 'bg-gray-100 text-gray-700';
 };
@@ -281,6 +281,12 @@ const handleUserSubmit = async () => {
       }
       if (userForm.value.department && userForm.value.department !== editingUser.value.department) {
         updateData.updates.department = userForm.value.department;
+      }
+      if (userForm.value.channel && userForm.value.channel !== editingUser.value.channel) {
+        updateData.updates.channel = userForm.value.channel;
+      }
+      if (userForm.value.reminderPreference && userForm.value.reminderPreference !== editingUser.value.reminderPreference) {
+        updateData.updates.reminderPreference = userForm.value.reminderPreference;
       }
 
       const response = await fetch(`${BASE_URL}/api/users/updateUser`, {

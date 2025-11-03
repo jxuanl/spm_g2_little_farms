@@ -61,7 +61,6 @@
           >
             <option value="hr">HR</option>
             <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
             <option value="manager">Manager</option>
           </select>
         </div>
@@ -72,7 +71,7 @@
             <input
               v-if="showCustomDepartment"
               :value="userForm.department"
-              @input="updateForm('department', $event.target.value)"
+              @input="handleCustomDepartmentInput($event.target.value)"
               type="text"
               placeholder="Enter new department name"
               class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring pr-20"
@@ -187,6 +186,24 @@ const departmentInput = ref(null)
 
 const updateForm = (field, value) => {
   emit('update:userForm', { ...props.userForm, [field]: value });
+};
+
+// Capitalize department name
+const capitalizeDepartment = (department) => {
+  if (!department) return department;
+  
+  // Convert to lowercase first, then capitalize first letter of each word
+  return department
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+// Handle custom department input with capitalization
+const handleCustomDepartmentInput = (value) => {
+  const capitalizedValue = capitalizeDepartment(value);
+  updateForm('department', capitalizedValue);
 };
 
 // Fetch departments from API
