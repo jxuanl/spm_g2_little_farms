@@ -7,7 +7,6 @@
         <div>
           <label class="block text-sm font-medium mb-2">
             Name <span class="text-destructive">*</span>
-            <span v-if="editingUser" class="text-muted-foreground font-normal">(read-only)</span>
           </label>
           <input
             :value="userForm.name"
@@ -25,7 +24,6 @@
         <div>
           <label class="block text-sm font-medium mb-2">
             Email <span class="text-destructive">*</span>
-            <span v-if="editingUser" class="text-muted-foreground font-normal">(read-only)</span>
           </label>
           <input
             :value="userForm.email"
@@ -70,13 +68,40 @@
         
         <div>
           <label class="block text-sm font-medium mb-2">Department</label>
-          <input
-            :value="userForm.department"
-            @input="updateForm('department', $event.target.value)"
-            type="text"
-            placeholder="e.g., Human Resource, Sales"
-            class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          <div class="relative">
+            <input
+              v-if="showCustomDepartment"
+              :value="userForm.department"
+              @input="updateForm('department', $event.target.value)"
+              type="text"
+              placeholder="Enter new department name"
+              class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring pr-20"
+              ref="departmentInput"
+            />
+            <button
+              v-if="showCustomDepartment"
+              type="button"
+              @click="switchToDropdown"
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 px-2 py-1 text-xs bg-muted text-foreground rounded hover:bg-muted/80 transition-colors"
+            >
+              Back to list
+            </button>
+            <select
+              v-else
+              :value="userForm.department"
+              @change="handleDepartmentChange($event)"
+              class="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Select a department</option>
+              <option v-for="dept in departments" :key="dept" :value="dept">
+                {{ dept }}
+              </option>
+              <option value="custom">+ Add New Department</option>
+            </select>
+          </div>
+          <p v-if="showCustomDepartment" class="text-xs text-muted-foreground mt-1">
+            Type the new department name or click "Back to list" to choose from existing
+          </p>
         </div>
 
         <div>
@@ -89,8 +114,6 @@
           >
             <option value="in-app">In-App</option>
             <option value="email">Email</option>
-            <option value="sms">SMS</option>
-            <option value="push">Push Notification</option>
           </select>
         </div>
 
@@ -105,8 +128,8 @@
             <option :value="1">1 day before</option>
             <option :value="2">2 days before</option>
             <option :value="3">3 days before</option>
-            <option :value="7">1 week before</option>
-            <option :value="14">2 weeks before</option>
+            <option :value="4">4 days before</option>
+            <option :value="5">5 days before</option>
           </select>
         </div>
         
@@ -134,6 +157,8 @@
 </template>
 
 <script setup>
+import { ref, onMounted, watch, nextTick } from 'vue'
+
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -155,7 +180,73 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit', 'update:userForm']);
 
+// Departments state
+const departments = ref([])
+const showCustomDepartment = ref(false)
+const departmentInput = ref(null)
+
 const updateForm = (field, value) => {
   emit('update:userForm', { ...props.userForm, [field]: value });
 };
+
+// Fetch departments from API
+const fetchDepartments = async () => {
+  try {
+    const response = await fetch('/api/users/departments')
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success && data.departments) {
+        departments.value = data.departments
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch departments:', error)
+    // Fallback to default departments based on your API response
+    departments.value = ["HR", "IT", "Legal", "Logistics", "Sales", "admin"]
+  }
+}
+
+const handleDepartmentChange = (event) => {
+  const value = event.target.value
+  if (value === 'custom') {
+    showCustomDepartment.value = true
+    updateForm('department', '')
+    nextTick(() => {
+      departmentInput.value?.focus()
+    })
+  } else {
+    updateForm('department', value)
+  }
+}
+
+const switchToDropdown = () => {
+  showCustomDepartment.value = false
+  // Clear the department field when switching back to dropdown
+  // so the user can make a fresh selection
+  updateForm('department', '')
+}
+
+// Reset department state when dialog opens/closes
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen) {
+    // If the current department value is not in the list, show custom input
+    if (props.userForm.department && !departments.value.includes(props.userForm.department)) {
+      showCustomDepartment.value = true
+    } else {
+      showCustomDepartment.value = false
+    }
+  }
+})
+
+// Watch for changes to userForm.department and adjust showCustomDepartment accordingly
+watch(() => props.userForm.department, (newDept) => {
+  if (newDept && !departments.value.includes(newDept)) {
+    showCustomDepartment.value = true
+  }
+})
+
+// Fetch departments when component mounts
+onMounted(() => {
+  fetchDepartments()
+})
 </script>

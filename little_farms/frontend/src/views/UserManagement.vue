@@ -17,7 +17,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- User Management Content -->
       <div class="flex-1 p-6 overflow-auto">
         <div class="max-w-7xl mx-auto">
@@ -27,7 +27,8 @@
           </div>
 
           <!-- Error State -->
-          <div v-else-if="error" class="bg-destructive/10 border border-destructive text-destructive rounded-lg p-4 mb-6">
+          <div v-else-if="error"
+            class="bg-destructive/10 border border-destructive text-destructive rounded-lg p-4 mb-6">
             <p class="font-medium">Error loading users</p>
             <p class="text-sm mt-1">{{ error }}</p>
           </div>
@@ -38,23 +39,19 @@
             <div class="flex justify-between items-center mb-6">
               <div class="flex gap-3">
                 <div class="relative flex-1 max-w-md">
-                  <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                  <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  <input
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="Search users..."
-                    class="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+                  <input v-model="searchQuery" type="text" placeholder="Search users..."
+                    class="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
               </div>
-              <button
-                @click="openCreateModal"
-                class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              >
+              <button @click="openCreateModal"
+                class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
                 Add User
               </button>
@@ -74,12 +71,14 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
-                  <tr v-for="user in filteredUsers" :key="user.uid || user.id" class="hover:bg-muted/30 transition-colors">
+                  <tr v-for="user in filteredUsers" :key="user.uid || user.id"
+                    class="hover:bg-muted/30 transition-colors">
                     <td class="px-6 py-4">
                       <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+                        <!-- <div
+                          class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
                           {{ getInitials(user.name) }}
-                        </div>
+                        </div> -->
                         <div>
                           <div class="font-medium">{{ user.name }}</div>
                         </div>
@@ -95,22 +94,19 @@
                     <td class="px-6 py-4 text-sm text-muted-foreground">{{ formatDate(user.lastLogin) }}</td>
                     <td class="px-6 py-4">
                       <div class="flex items-center justify-end gap-2">
-                        <button
-                          @click="openEditModal(user)"
-                          class="p-2 hover:bg-muted rounded-md transition-colors"
-                          title="Edit user"
-                        >
+                        <button @click="openEditModal(user)" class="p-2 hover:bg-muted rounded-md transition-colors"
+                          title="Edit user">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
-                        <button
-                          @click="openDeleteModal(user)"
+                        <button @click="openDeleteModal(user)"
                           class="p-2 hover:bg-destructive/10 text-destructive rounded-md transition-colors"
-                          title="Delete user"
-                        >
+                          title="Delete user">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
                       </div>
@@ -130,23 +126,12 @@
     </div>
 
     <!-- Modals -->
-    <UserFormModal
-      :isOpen="isUserModalOpen"
-      :editingUser="editingUser"
-      :userForm="userForm"
-      :isSubmitting="isSubmitting"
-      @close="closeUserModal"
-      @submit="handleUserSubmit"
-      @update:userForm="userForm = $event"
-    />
+    <UserFormModal :isOpen="isUserModalOpen" :editingUser="editingUser" :userForm="userForm"
+      :isSubmitting="isSubmitting" @close="closeUserModal" @submit="handleUserSubmit"
+      @update:userForm="userForm = $event" />
 
-    <DeleteConfirmationModal
-      :isOpen="isDeleteModalOpen"
-      :userName="userToDelete?.name"
-      :isDeleting="isDeleting"
-      @close="closeDeleteModal"
-      @confirm="handleDeleteUser"
-    />
+    <DeleteConfirmationModal :isOpen="isDeleteModalOpen" :userName="userToDelete?.name" :isDeleting="isDeleting"
+      @close="closeDeleteModal" @confirm="handleDeleteUser" />
   </div>
 </template>
 
@@ -158,7 +143,7 @@ import DeleteConfirmationModal from '../components/DeleteConfirmationModal.vue';
 
 const BASE_URL = 'http://localhost:3001';
 
-const activeView = ref('users');
+// const activeView = ref('users');
 const searchQuery = ref('');
 const isUserModalOpen = ref(false);
 const isDeleteModalOpen = ref(false);
@@ -177,7 +162,9 @@ const userForm = ref({
   password: '',
   name: '',
   role: 'HR',
-  department: ''
+  department: '',
+  channel: "in-app",
+  reminderPreference: 1,
 });
 
 // Fetch all users
@@ -199,9 +186,9 @@ const fetchUsers = async () => {
 
 const filteredUsers = computed(() => {
   if (!searchQuery.value) return users.value;
-  
+
   const query = searchQuery.value.toLowerCase();
-  return users.value.filter(user => 
+  return users.value.filter(user =>
     user.name?.toLowerCase().includes(query) ||
     user.email?.toLowerCase().includes(query) ||
     user.role?.toLowerCase().includes(query) ||
@@ -209,10 +196,10 @@ const filteredUsers = computed(() => {
   );
 });
 
-const getInitials = (name) => {
-  if (!name) return '??';
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-};
+// const getInitials = (name) => {
+//   if (!name) return '??';
+//   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+// };
 
 const capitalizeFirstLetter = (str) => {
   if (!str) return '';
@@ -245,8 +232,10 @@ const openCreateModal = () => {
     email: '',
     password: '',
     name: '',
-    role: 'HR',
-    department: ''
+    role: 'staff',
+    department: '',
+    channel: "in-app",
+    reminderPreference: 1,
   };
   isUserModalOpen.value = true;
 };
@@ -258,7 +247,9 @@ const openEditModal = (user) => {
     password: '', // Don't pre-fill password for security
     name: user.name,
     role: user.role,
-    department: user.department || ''
+    department: user.department || '',
+    channel: user.channel,
+    reminderPreference: user.reminderPreference
   };
   isUserModalOpen.value = true;
 };
@@ -277,7 +268,7 @@ const handleUserSubmit = async () => {
         uid: editingUser.value.uid || editingUser.value.id,
         updates: {}
       };
-      
+
       // Only include fields that have changed
       if (userForm.value.email && userForm.value.email !== editingUser.value.email) {
         updateData.updates.email = userForm.value.email;
@@ -323,7 +314,7 @@ const handleUserSubmit = async () => {
 
       await fetchUsers(); // Refresh the list
     }
-    
+
     closeUserModal();
   } catch (err) {
     alert(`Error: ${err.message}`);
@@ -345,7 +336,7 @@ const closeDeleteModal = () => {
 
 const handleDeleteUser = async () => {
   if (!userToDelete.value) return;
-  
+
   isDeleting.value = true;
   try {
     const userId = userToDelete.value.uid || userToDelete.value.id;
