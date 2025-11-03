@@ -139,6 +139,7 @@
       :taskId="taskId"
       :subtaskId="isSubtaskView ? subtaskId : null"
       :currentUserId="currentUser.uid"
+      :taskName="task.title"
       @commentsUpdated="handleCommentsUpdated"
     />
 
