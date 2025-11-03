@@ -1,20 +1,19 @@
 // services/deadlineService.js
+import admin from 'firebase-admin';
 import { db } from '../adminFirebase.js';
 import { sendToUser } from './webSocketService.js';
 import { sendEmail } from './emailService.js';
 
+const { FieldValue } = admin.firestore;
+
+const MAX_REMINDER_DAYS_CAP = 30;
 let timer = null;
-let isRunning = false; // prevent overlapping runs
+let isRunning = false;
 
 export function startDeadlineChecker(intervalMs = 30_000) {
-  console.log(`⏱️ Deadline checker starting (every ${intervalMs / 1000}s)…`);
-
-  // run once immediately, then on interval
+  // console.log("Deadline checker starting (every ${intervalMs / 1000}s)…");
   runOnce().catch(console.error);
-
-  timer = setInterval(() => {
-    runOnce().catch(console.error);
-  }, intervalMs);
+  timer = setInterval(() => runOnce().catch(console.error), intervalMs);
 }
 
 export function stopDeadlineChecker() {
@@ -22,92 +21,161 @@ export function stopDeadlineChecker() {
   timer = null;
 }
 
-// One execution of the checker
-async function runOnce() {
+// ------------------ helpers ------------------
+
+function msUntil(deadlineTs) {
+  try {
+    if (!deadlineTs) return null;
+    return deadlineTs.toDate().getTime() - Date.now();
+  } catch {
+    return null;
+  }
+}
+
+function getReminderMsForUser(userData) {
+  const prefStr = String(userData?.reminderPreference ?? '1');
+  const days = parseInt(prefStr, 10);
+  const clampDays = Number.isFinite(days) && days > 0
+    ? Math.min(days, MAX_REMINDER_DAYS_CAP)
+    : 1;
+  return clampDays * 24 * 60 * 60 * 1000;
+}
+
+export async function resolveUserDoc(userRefLike) {
+  if (!userRefLike) return { exists: false };
+  try {
+    if (typeof userRefLike.get === 'function') {
+      return await userRefLike.get(); // DocumentReference
+    }
+    if (typeof userRefLike === 'string') {
+      const path = userRefLike.startsWith('/') ? userRefLike.slice(1) : userRefLike;
+      return await db.doc(path).get();
+    }
+    return { exists: false };
+  } catch {
+    return { exists: false };
+  }
+}
+
+/ Send email or in-app notification */
+export async function sendNotificationToUser({ taskDoc, taskData, userDoc, reminderDays }) {
+  const userData = userDoc.data();
+  const userChannel = userData?.channel;
+  const userName = userData?.name || '(unknown)';
+  const deadlineStr = taskData.deadline?.toDate?.().toLocaleString?.() || '(no deadline)';
+  const title = taskData.title || '(untitled)';
+  const content = `Reminder: "${title}" is due in ${reminderDays} day(s). Deadline: ${deadlineStr}.`;
+
+  if (userChannel === 'email') {
+    const emailMsg = {
+      to: userData?.email || 'jovanwang2002@gmail.com',
+      from: 'smuagilespm@gmail.com',
+      subject: `Task Deadline Reminder: "${title}" due in ${reminderDays} day(s)`,
+      text:
+        `Hi ${userName}, you have a task due soon!\n` +
+        `Task: ${title}\nDescription: ${taskData.description || ''}\n` +
+        `Deadline: ${deadlineStr}\n\n— Little Farms`,
+    };
+    try {
+      const resp = await sendEmail(emailMsg);
+      // console.log(`📧 Email sent to ${userDoc.id}:`, resp?.[0]?.statusCode ?? 'ok');
+    } catch (err) {
+      console.error(`Email send failed for user ${userDoc.id}`, err);
+    }
+  } else {
+    const notifId = `${taskDoc.id}_${userDoc.id}`;
+    const notifRef = db.collection('Notifications').doc(notifId);
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(notifRef);
+      if (snap.exists) return; // already exists
+      tx.set(notifRef, {
+        userId: userDoc.id,
+        taskId: taskDoc.id,
+        status: 'unread',
+        content,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    });
+
+    sendToUser({
+      type: 'deadlineReminder',
+      userId: userDoc.id,
+    });
+    
+    // console.log(`In-app reminder sent to ${userDoc.id}`);
+  }
+}
+
+/ Fetch candidate tasks */
+async function fetchCandidateTasks() {
+  const now = new Date();
+  const upper = new Date(Date.now() + MAX_REMINDER_DAYS_CAP * 5 * 60 * 60 * 1000);
+
+  const q = db.collection('Tasks')
+    .where('deadline', '>', now)
+    .where('deadline', '<=', upper)
+    .orderBy('deadline', 'asc');
+
+  const snap = await q.get();
+  return snap.docs.filter(d => {
+    const t = d.data();
+    return t?.deadline && t?.status !== 'done';
+  });
+}
+
+// ------------------ main job ------------------
+export async function runOnce() {
   if (isRunning) {
-    console.log('⏳ Previous deadline check still running; skipping this tick.');
+    // console.log('Previous run still in progress, skipping.');
     return;
   }
   isRunning = true;
+  
 
   try {
-    const userSnap = await db.collection('Users').get();
-    console.log('🔎 Users found:', userSnap.size);
+    const tasks = await fetchCandidateTasks();
+    // console.log("Candidate tasks found: ${tasks.length}");
 
-    for (const userDoc of userSnap.docs) {
-      // console.log(userDoc.id)
-      const userData = userDoc.data();
-      const userName = userData.name || '(unknown)';
-      const userChannel = userData.channel; // "email" | "in-app"
-      const prefStr = String(userData.reminderPreference ?? '1'); // e.g. "1"
-      const reminderDays = parseInt(prefStr, 10);
-      const reminderMs = reminderDays * 24 * 60 * 60 * 1000;
+    for (const taskDoc of tasks) {
+      const t = taskDoc.data();
+      const timeDiff = msUntil(t.deadline);
+      if (timeDiff === null || timeDiff <= 0) continue;
 
-      console.log(`Checking ${userName}'s tasks…`);
-
-      const assignedToPath = db.doc(`/Users/${userDoc.id}`);
-      const taskSnap = await db.collection('Tasks')
-        .where('assignedTo', 'array-contains', assignedToPath)
-        .get();
-
-      for (const taskDoc of taskSnap.docs) {
-        try {
-          const t = taskDoc.data();
-          const deadline = t.deadline;
-          const alreadySent = t.isReminderSent || false;
-          if (!deadline || alreadySent) continue;
-
-          const now = Date.now();
-          const dueMs = deadline.toDate().getTime();
-          const timeDiff = dueMs - now;
-
-          if (t.status !== 'done' && timeDiff > 0 && timeDiff <= reminderMs) {
-            console.log(`Need to notify ${userName} for "${t.title}"`);
-
-            if (userChannel === 'email') {
-              const emailMsg = {
-                to: 'jovanwang2002@gmail.com', // TODO: use userData.email when ready
-                from: 'smuagilespm@gmail.com',
-                subject: `Task Deadline Reminder: "${t.title}" due in ${reminderDays} day(s)`,
-                text:
-                  `Hi ${userName}, you have a task due soon!\n` +
-                  `Task: ${t.title}\n` +
-                  `Description: ${t.description || ''}\n` +
-                  `Deadline: ${deadline.toDate().toLocaleString()}\n\n— Little Farms`,
-              };
-
-              try {
-                const resp = await sendEmail(emailMsg); // must await sgMail.send(...)
-                console.log('Email sent:', resp?.[0]?.statusCode ?? 'ok');
-                await taskDoc.ref.update({ isReminderSent: true });
-              } catch (err) {
-                console.error('Email send failed:', err);
-              }
-            } else {
-              // (Recommended) Persist a notification row first, then nudge:
-              // const notifRef = db.collection('Notifications').doc();
-              // await notifRef.set({ id: notifRef.id, userId: userData.id, type: 'DEADLINE_REMINDER', status: 'unread', createdAt: new Date(), payload: { taskId: taskDoc.id, title: t.title, dueAt: deadline.toDate() } });
-
-              // WebSocket nudge so the client refetches notifications
-              sendToUser({
-                type: 'deadlineReminder',
-                message: `Reminder: "${t.title}" is due in ${reminderDays} day(s). Deadline: ${deadline.toDate().toLocaleString()}.`,
-              });
-              
-              const content_to_add_to_notification_db = {
-                id: userDoc.id,
-                status: 'unread',
-                content: `Reminder: "${t.title}" is due in ${reminderDays} day(s). Deadline: ${deadline.toDate().toLocaleString()}.`}
-              await db.collection('Notifications').add(content_to_add_to_notification_db)
-              await taskDoc.ref.update({ isReminderSent: true });
-            }
-          }
-        } catch (taskErr) {
-          console.error('Task processing error:', taskErr);
-          continue;
-        }
+      if (t.isReminderSent) {
+        // Skip tasks already reminded
+        continue;
       }
+
+      const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : [];
+      if (assignees.length === 0) continue;
+
+      // Use first user's preference as reference for the task window
+      const firstUserDoc = await resolveUserDoc(assignees[0]);
+      const reminderMs = getReminderMsForUser(firstUserDoc.data());
+      // console.log("Reminder in MS is: ", reminderMs);
+      if (timeDiff > reminderMs) continue;
+
+      // console.log(`Sending reminders for task "${t.title}" (${taskDoc.id}) to ${assignees.length} users`);
+
+      // Notify all users assigned to this task
+      for (const userRefLike of assignees) {
+        const userDoc = await resolveUserDoc(userRefLike);
+        if (!userDoc.exists) continue;
+        // console.log("TASK DOC, TASKDATA, USERDOC, REMINDERDAYS: ", taskDoc, t, userDoc, Math.max(1, Math.round(reminderMs / (24 * 60 * 60 * 1000))));
+        await sendNotificationToUser({
+          taskDoc,
+          taskData: t,
+          userDoc,
+          reminderDays: Math.max(1, Math.round(reminderMs / (24 * 60 * 60 * 1000))),
+        });
+      }
+
+      await taskDoc.ref.update({ isReminderSent: true });
+      // console.log(`Task ${taskDoc.id} marked as reminded.`);
     }
+
+    // console.log('Deadline check cycle completed.');
   } catch (err) {
     console.error('Deadline checker error:', err);
   } finally {

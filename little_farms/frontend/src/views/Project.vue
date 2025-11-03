@@ -185,7 +185,7 @@ const checkAuth = () => {
 
 // Computed property to check if user can create projects
 const canCreateProject = computed(() => {
-  return isLoggedIn.value && userRole.value !== 'staff';
+  return isLoggedIn.value && userRole.value !== 'staff' && userRole.value !== 'HR';
 });
 
 const setActiveProject = (project) => {

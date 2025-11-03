@@ -1,52 +1,83 @@
 <template>
   <div class="h-screen bg-background flex flex-col">
-    <div class="bg-card border-b border-border p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-semibold">{{ project?.title || 'Project Details' }}</h1>
-          <p class="text-sm text-muted-foreground mt-1">
-            <strong>Owner:</strong> {{ project?.ownerName || 'Unknown' }}
-          </p>
-          <p class="text-sm text-muted-foreground">
-            <strong>Description:</strong> {{ project?.description || 'No description' }}
-          </p>
-        </div>
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex-1 flex flex-col items-center justify-center">
+      <div class="loading-spinner"></div>
+      <p class="text-muted-foreground">Loading project...</p>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center">
+      <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-medium mb-2 text-red-800">Failed to Load Project</h3>
+      <p class="text-muted-foreground mb-4">{{ error }}</p>
+      <div class="flex gap-3">
+        <button 
+          @click="loadProject"
+          class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Retry
+        </button>
         <button 
           @click="router.push({ name: 'Projects' })"
-          class="text-sm text-blue-600 hover:text-blue-800 underline"
+          class="px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 transition-colors"
         >
-          ← Back to Projects
+          Back to Projects
         </button>
       </div>
     </div>
 
-    <div class="flex-1 overflow-auto">
-      <TaskList 
-        v-if="project?.tasks && project.tasks.length > 0"
-        :tasks="enrichedTasks" 
-        @taskClick="handleTaskClick"
-        @createTask="() => canCreateTask ? isCreateModalOpen = true : showPermissionError()"
-      />
-      <div v-else class="flex flex-col items-center justify-center h-96 text-center">
-        <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-          <span class="text-2xl">📋</span>
+    <!-- Content -->
+    <template v-else-if="project">
+      <div class="bg-card border-b border-border p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-semibold">{{ project.title }}</h1>
+            <p class="text-sm text-muted-foreground mt-1">
+              <strong>Owner:</strong> {{ project.ownerName || 'Unknown' }}
+            </p>
+            <p class="text-sm text-muted-foreground">
+              <strong>Description:</strong> {{ project.description || 'No description' }}
+            </p>
+          </div>
+          <button 
+            @click="router.push({ name: 'Projects' })"
+            class="text-sm text-blue-600 hover:text-blue-800 underline"
+          >
+            ← Back to Projects
+          </button>
         </div>
-        <h3 class="text-lg font-medium mb-2">No Tasks Yet</h3>
-        <p class="text-muted-foreground mb-4">
-          {{ canCreateTask 
-            ? "You don't have any tasks assigned in this project." 
-            : "You don't have permission to create tasks in this project." 
-          }}
-        </p>
-        <button 
-          v-if="canCreateTask"
-          @click="isCreateModalOpen = true"
-          class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-        >
-          Create First Task
-        </button>
       </div>
-    </div>
+
+      <div class="flex-1 overflow-auto">
+        <TaskList 
+          v-if="project.tasks && project.tasks.length > 0"
+          :tasks="enrichedTasks" 
+          :hideProjectFilter="true"
+          @taskClick="handleTaskClick"
+          @createTask="() => canCreateTask ? isCreateModalOpen = true : showPermissionError()"
+        />
+        <div v-else class="flex flex-col items-center justify-center h-96 text-center">
+          <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <span class="text-2xl">📋</span>
+          </div>
+          <h3 class="text-lg font-medium mb-2">No Tasks Yet</h3>
+          <p class="text-muted-foreground">
+            {{ canCreateTask 
+              ? "You don't have any tasks assigned in this project." 
+              : "You don't have permission to create tasks in this project." 
+            }}
+          </p>
+        </div>
+      </div>
+    </template>
 
     <!-- Permission Error Toast -->
     <div 
@@ -91,6 +122,8 @@ const currentUserId = ref('');
 const userRole = ref('');
 const showPermissionMessage = ref(false);
 const permissionMessage = ref('');
+const isLoading = ref(true);
+const error = ref(null);
 
 // ✅ Role-based access control
 const canCreateTask = computed(() => {
@@ -156,6 +189,9 @@ const handleTaskCreated = () => {
 };
 
 const loadProject = async () => {
+  isLoading.value = true;
+  error.value = null;
+  
   try {
     const auth = getAuth();
     const user = auth.currentUser;
@@ -172,6 +208,11 @@ const loadProject = async () => {
     const userRes = await fetch(`/api/users/${user.uid}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    
+    if (!userRes.ok) {
+      throw new Error('Failed to fetch user data');
+    }
+    
     const userData = await userRes.json();
     userRole.value = (userData.user?.role || 'staff').toLowerCase();
 
@@ -183,14 +224,25 @@ const loadProject = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     
-    if (!res.ok) throw new Error('Failed to load project');
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error('Project not found');
+      } else if (res.status === 403) {
+        throw new Error('You do not have permission to view this project');
+      } else {
+        throw new Error('Failed to load project');
+      }
+    }
     
     project.value = await res.json();
     
     console.log('✅ Project loaded with owner:', project.value.ownerName);
 
-  } catch (error) {
-    console.error('Error loading project:', error);
+  } catch (err) {
+    console.error('Error loading project:', err);
+    error.value = err.message || 'An unexpected error occurred';
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -200,5 +252,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Add any additional styles here if needed */
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 </style>

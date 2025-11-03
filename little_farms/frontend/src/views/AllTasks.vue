@@ -12,6 +12,7 @@
 
       <TaskList
         :tasks="filteredTasks"
+        :loading="loadingTasks"
         @taskClick="id => router.push({ name: 'TaskDetail', params: { id } })"
         @createTask="() => setIsCreateModalOpen(true)"
         :searchQuery="searchQuery"
@@ -51,24 +52,23 @@ const statusFilter = ref('all')
 const priorityFilter = ref('all')
 const isCreateModalOpen = ref(false)
 const currentUserId = ref(null)
+const loadingTasks = ref(false)
 
 // --- Fetch tasks from backend ---
 const fetchTasks = async (userId) => {
   try {
-    console.log('📡 Fetching tasks for user:', userId)
+    loadingTasks.value = true
     const res = await fetch(`/api/tasks?userId=${userId}`)
     const data = await res.json()
-    console.log('📦 Raw response:', data) // 👈 add this
 
     if (!data.success) throw new Error(data.message || 'Failed to fetch tasks')
 
     tasks.value = data.tasks || []
-    console.log('✅ Loaded tasks:', tasks.value)
   } catch (err) {
-    console.error('❌ Failed to load tasks:', err)
+  } finally {
+    loadingTasks.value = false
   }
 }
-
 
 // --- Filters ---
 const filteredTasks = computed(() => {
@@ -99,7 +99,6 @@ const setPriorityFilter = (priority) => priorityFilter.value = priority
 const setIsCreateModalOpen = (open) => isCreateModalOpen.value = open
 
 const handleTaskCreated = () => {
-  console.log('🔄 Task created — reloading list')
   if (currentUserId.value) fetchTasks(currentUserId.value)
 }
 
@@ -111,7 +110,6 @@ onMounted(() => {
       currentUserId.value = user.uid
       await fetchTasks(user.uid)
     } else {
-      console.warn('⚠️ No user logged in, redirecting to login...')
       window.location.href = '/login'
     }
   })

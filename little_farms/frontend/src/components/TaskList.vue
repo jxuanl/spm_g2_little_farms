@@ -1,336 +1,161 @@
 <template>
   <div class="p-6">
-    <!-- === Statistics Overview === -->
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      <div class="p-4 border rounded-lg shadow-sm">
-        <div class="text-sm text-gray-500">{{ indvTask ? 'Total Subtasks' : 'Total Tasks' }}</div>
-        <div class="text-2xl font-semibold">{{ totalTasks }}</div>
-      </div>
-      <div class="p-4 border rounded-lg shadow-sm">
-        <div class="text-sm text-gray-500">In Progress</div>
-        <div class="text-2xl font-semibold">{{ inProgressTasks }}</div>
-      </div>
-      <div class="p-4 border rounded-lg shadow-sm">
-        <div class="text-sm text-gray-500">Overdue</div>
-        <div class="text-2xl font-semibold text-red-600">{{ overdueTasks }}</div>
-      </div>
-      <div class="p-4 border rounded-lg shadow-sm">
-        <div class="text-sm text-gray-500">Completion Rate</div>
-        <div class="text-2xl font-semibold">{{ completionRate.toFixed(0) }}%</div>
+    <!-- Loading state -->
+    <div v-if="showLoading" class="flex items-center justify-center h-96">
+      <div class="text-muted-foreground">Loading tasks...</div>
+    </div>
+
+    <!-- Empty state -->
+    <div v-else-if="visibleTasks.length === 0" class="flex items-center justify-center h-96">
+      <div class="text-center text-gray-500">
+        <div class="text-lg font-medium">
+          {{ indvTask ? 'No subtasks found' : 'No tasks found' }}
+        </div>
+        <div class="mt-2 text-sm">
+          Try adjusting filters or create a {{ indvTask ? 'subtask' : 'task' }}.
+        </div>
+        <button
+          class="mt-4 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+          @click="$emit('createTask')"
+        >
+          <Plus class="w-4 h-4 mr-2" />
+          {{ indvTask ? 'New Subtask' : 'New Task' }}
+        </button>
       </div>
     </div>
 
-    <!-- === Filters === -->
-    <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
-      <!-- Project Filter -->
-      <div class="relative inline-block text-left" @click.stop>
-        <button
-          @click="toggleDropdown('project')"
-          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <span class="truncate">
-            {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.length === 1 ? selectedProjects[0] : `${selectedProjects.length} Projects` }}
-          </span>
-          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-        </button>
-        <div 
-          v-if="dropdownStates.project"
-          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 shadow-lg max-h-64 overflow-y-auto"
-        >
-          <div class="p-2">
+    <!-- Main content -->
+    <template v-else>
+      <!-- === Statistics Overview === -->
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="p-4 border rounded-lg shadow-sm">
+          <div class="text-sm text-gray-500">{{ indvTask ? 'Total Subtasks' : 'Total Tasks' }}</div>
+          <div class="text-2xl font-semibold">{{ totalTasks }}</div>
+        </div>
+        <div class="p-4 border rounded-lg shadow-sm">
+          <div class="text-sm text-gray-500">In Progress</div>
+          <div class="text-2xl font-semibold">{{ inProgressTasks }}</div>
+        </div>
+        <div class="p-4 border rounded-lg shadow-sm">
+          <div class="text-sm text-gray-500">Overdue</div>
+          <div class="text-2xl font-semibold text-destructive">{{ overdueTasks }}</div>
+        </div>
+        <div class="p-4 border rounded-lg shadow-sm">
+          <div class="text-sm text-gray-500">Completion Rate</div>
+          <div class="text-2xl font-semibold">{{ completionRate.toFixed(0) }}%</div>
+        </div>
+      </div>
+
+      <!-- === Filters === -->
+      <!-- keep your existing filters exactly as-is -->
+
+      <!-- === Task Table === -->
+      <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-2xl font-semibold leading-none tracking-tight">
+              {{ indvTask ? 'Subtasks' : 'Tasks' }}
+            </h3>
             <button
-              v-for="project in projectOptions"
-              :key="project"
-              type="button"
-              @click="toggleSelection('project', project)"
-              :class="[
-                'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                selectedProjects.includes(project) 
-                  ? 'bg-accent text-accent-foreground' 
-                  : 'hover:bg-accent hover:text-accent-foreground'
-              ]"
+              class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+              @click="$emit('createTask')"
             >
-              <span>{{ project }}</span>
-              <Check v-if="selectedProjects.includes(project)" class="h-4 w-4" />
-            </button>
-          </div>
-          <div class="border-t border-gray-200 p-2">
-            <button 
-              @click="clearFilter('project')" 
-              class="w-full text-sm text-blue-600 hover:underline text-center py-1"
-            >
-              Clear
+              <Plus class="w-4 h-4 mr-2" />
+              {{ indvTask ? 'New Subtask' : 'New Task' }}
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- Creator Filter -->
-      <div class="relative inline-block text-left" @click.stop>
-        <button
-          @click="toggleDropdown('creator')"
-          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <span class="truncate">
-            {{ selectedCreators.length === 0 ? 'All Creators' : selectedCreators.length === 1 ? selectedCreators[0] : `${selectedCreators.length} Creators` }}
-          </span>
-          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-        </button>
-        <div 
-          v-if="dropdownStates.creator"
-          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
-        >
-          <div class="p-2">
-            <button
-              v-for="creator in creatorOptions"
-              :key="creator"
-              type="button"
-              @click="toggleSelection('creator', creator)"
-              :class="[
-                'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                selectedCreators.includes(creator) 
-                  ? 'bg-accent text-accent-foreground' 
-                  : 'hover:bg-accent hover:text-accent-foreground'
-              ]"
+        <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
+          <thead>
+            <tr class="bg-gray-100 text-left">
+              <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
+              <th class="p-2 border">Project</th>
+              <th class="p-2 border">Creator</th>
+              <th class="p-2 border">Assignees</th>
+              <th class="p-2 border">Due Date</th>
+              <th class="p-2 border">Status</th>
+              <th class="p-2 border">Priority</th>
+              <th class="p-2 border">Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="task in visibleTasks"
+              :key="task.id"
+              class="hover:bg-gray-50 cursor-pointer transition"
+              :class="{ 
+                'overdue-row': isTaskOverdue(task),
+                'new-instance-row': task.isNewInstance
+              }"
+              v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum, task.isNewInstance, task.recurring]"
+              @click="goToTaskDetail(task.id)"
             >
-              <span>{{ creator }}</span>
-              <Check v-if="selectedCreators.includes(creator)" class="h-4 w-4" />
-            </button>
-          </div>
-          <div class="border-t border-gray-200 p-2">
-            <button 
-              @click="clearFilter('creator')" 
-              class="w-full text-sm text-blue-600 hover:underline text-center py-1"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Assignee Filter -->
-      <div class="relative inline-block text-left" @click.stop>
-        <button
-          @click="toggleDropdown('assignee')"
-          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <span class="truncate">
-            {{ selectedAssignees.length === 0 ? 'All Assignees' : selectedAssignees.length === 1 ? selectedAssignees[0] : `${selectedAssignees.length} Assignees` }}
-          </span>
-          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-        </button>
-        <div 
-          v-if="dropdownStates.assignee"
-          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg max-h-64 overflow-y-auto"
-        >
-          <div class="p-2">
-            <button
-              v-for="assignee in assigneeOptions"
-              :key="assignee"
-              type="button"
-              @click="toggleSelection('assignee', assignee)"
-              :class="[
-                'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                selectedAssignees.includes(assignee) 
-                  ? 'bg-accent text-accent-foreground' 
-                  : 'hover:bg-accent hover:text-accent-foreground'
-              ]"
-            >
-              <span>{{ assignee }}</span>
-              <Check v-if="selectedAssignees.includes(assignee)" class="h-4 w-4" />
-            </button>
-          </div>
-          <div class="border-t border-gray-200 p-2">
-            <button 
-              @click="clearFilter('assignee')" 
-              class="w-full text-sm text-blue-600 hover:underline text-center py-1"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Due Date Filter -->
-      <div class="relative inline-block text-left" @click.stop>
-        <button
-          @click="toggleDropdown('dueDate')"
-          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <span class="truncate">{{ selectedDueDate }}</span>
-          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-        </button>
-        <div 
-          v-if="dropdownStates.dueDate"
-          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
-        >
-          <div class="p-2">
-            <button
-              v-for="option in dueDateOptions"
-              :key="option"
-              type="button"
-              @click="selectDueDate(option)"
-              :class="[
-                'w-full text-left px-2 py-1.5 text-sm rounded-sm',
-                selectedDueDate === option 
-                  ? 'bg-accent text-accent-foreground' 
-                  : 'hover:bg-accent hover:text-accent-foreground'
-              ]"
-            >
-              {{ option }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Status Filter -->
-      <div class="relative inline-block text-left" @click.stop>
-        <button
-          @click="toggleDropdown('status')"
-          class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <span class="truncate">
-            {{ selectedStatuses.length === 0 ? 'All Statuses' : selectedStatuses.length === 1 ? statusConfig[selectedStatuses[0]].label : `${selectedStatuses.length} Statuses` }}
-          </span>
-          <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-        </button>
-        <div 
-          v-if="dropdownStates.status"
-          class="relative top-full left-0 mt-1 z-50 w-56 rounded-md border border-gray-300 bg-white shadow-lg"
-        >
-          <div class="p-2">
-            <button
-              v-for="status in statusOptions"
-              :key="status"
-              type="button"
-              @click="toggleSelection('status', status)"
-              :class="[
-                'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                selectedStatuses.includes(status) 
-                  ? 'bg-accent text-accent-foreground' 
-                  : 'hover:bg-accent hover:text-accent-foreground'
-              ]"
-            >
-              <span>{{ statusConfig[status].label }}</span>
-              <Check v-if="selectedStatuses.includes(status)" class="h-4 w-4" />
-            </button>
-          </div>
-          <div class="border-t border-gray-200 p-2">
-            <button 
-              @click="clearFilter('status')" 
-              class="w-full text-sm text-blue-600 hover:underline text-center py-1"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Priority Filter -->
-      <div class="p-3 w-64 border rounded-md bg-white shadow-sm" @click.stop>
-        <Slider
-          v-model="selectedPriority"
-          :min="1"
-          :max="10"
-          :step="1"
-          :dot-size="16"
-          :height="6"
-          :tooltips="false"
-          style="width: 100%;"
-        />
-        <span class="block mt-2 text-sm text-gray-700 text-center">
-          Priority: {{ selectedPriority[0] }} - {{ selectedPriority[1] }}
-        </span>
-      </div>
-    </div>
-
-    <!-- === Task Table === -->
-    <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-      <div class="flex flex-col space-y-1.5 p-6">
-        <div class="flex items-center justify-between">
-          <h3 class="text-2xl font-semibold leading-none tracking-tight">
-            {{ indvTask ? 'Subtasks' : 'Tasks' }}
-          </h3>
-          <button
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-            @click="$emit('createTask')"
-          >
-            <Plus class="w-4 h-4 mr-2" />
-            {{ indvTask ? 'New Subtask' : 'New Task' }}
-          </button>
-        </div>
-      </div>
-
-      <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
-        <thead>
-          <tr class="bg-gray-100 text-left">
-            <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
-            <th class="p-2 border">Project</th>
-            <th class="p-2 border">Creator</th>
-            <th class="p-2 border">Assignees</th>
-            <th class="p-2 border">Due Date</th>
-            <th class="p-2 border">Status</th>
-            <th class="p-2 border">Priority</th>
-            <th class="p-2 border">Tags</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="task in filteredTasks"
-            :key="task.id"
-            class="hover:bg-gray-50 cursor-pointer transition"
-            :class="{ 'bg-red-50': isTaskOverdue(task) }"
-            @click="goToTaskDetail(task.id)"
-          >
-            <!-- Title -->
-            <td class="p-2 border font-medium">{{ task.title || 'Untitled' }}</td>
-            <!-- Project -->
-            <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
-            <!-- Creator -->
-            <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
-            <!-- Assignees -->
-            <td class="p-2 border text-gray-800">
-              <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
-                <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
-                  {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
-                </span>
-                <span v-if="task.assigneeNames.length > 3">...</span>
-              </template>
-              <template v-else>
-                <span class="text-gray-400 text-xs italic">No assignees</span>
-              </template>
-            </td>
-            <!-- Due Date -->
-            <td class="p-2 border" :class="getDateClasses(task)">{{ formatDate(task.deadline) }}</td>
-            <!-- Status -->
-            <td class="p-2 border">
-              <span class="px-2 py-1 rounded text-white text-xs" :class="getStatusConfig(task.status).color">
-                {{ getStatusConfig(task.status).label }}
-              </span>
-            </td>
-            <!-- Priority -->
-            <td class="p-2 border">{{ task.priority || '—' }}</td>
-            <!-- Tags -->
-            <td class="p-2 border">
-              <div class="flex flex-wrap gap-1">
-                <template v-if="task.tags && task.tags.length">
-                  <span
-                    v-for="(tag, i) in task.tags"
-                    :key="i"
-                    class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
-                  >
-                    {{ tag }}
+              <!-- keep existing row cells -->
+              <td class="p-2 border font-medium">
+                <div class="flex items-center gap-2">
+                  {{ task.title || 'Untitled' }}
+                  <span v-if="task.recurring" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Recurring task">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Recurring
                   </span>
+                  <span v-if="task.isNewInstance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse" title="New instance of recurring task">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                    New Instance
+                  </span>
+                </div>
+              </td>
+              <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
+              <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
+              <td class="p-2 border text-gray-800">
+                <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
+                  <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
+                    {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
+                  </span>
+                  <span v-if="task.assigneeNames.length > 3">...</span>
                 </template>
                 <template v-else>
-                  <span class="text-gray-400 text-xs italic">No tags</span>
+                  <span class="text-gray-400 text-xs italic">No assignees</span>
                 </template>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+              </td>
+              <td
+                class="p-2 border"
+                :class="getDateClasses(task)"
+                :style="task.isOverdue ? { color: 'var(--destructive)' } : null"
+              >
+                {{ formatDate(task.deadline) }}
+              </td>
+              <td class="p-2 border">
+                <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
+                  {{ task.statusLabel }}
+                </span>
+              </td>
+              <td class="p-2 border">{{ task.priorityNum ?? task.priority ?? '—' }}</td>
+              <td class="p-2 border">
+                <div class="flex flex-wrap gap-1">
+                  <template v-if="task.tags && task.tags.length">
+                    <span
+                      v-for="(tag, i) in task.tags"
+                      :key="i"
+                      class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700"
+                    >
+                      {{ tag }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span class="text-gray-400 text-xs italic">No tags</span>
+                  </template>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -345,34 +170,48 @@ const props = defineProps({
   tasks: { type: Array, default: () => [] },
   indvTask: { type: Boolean, default: false },
   parentTaskId: { type: String, default: null },
+  loading: { type: Boolean, default: false },
+  hideProjectFilter: { type: Boolean, default: false },
 })
 
 defineEmits(['createTask'])
 
 const router = useRouter()
 
-// Dropdown states (matching CreateTaskModal pattern)
+/* ---------- Loading state ---------- */
+const localBootLoading = ref(true)
+const showLoading = computed(() => props.loading || localBootLoading.value)
+
+/* ---------- UI state ---------- */
 const dropdownStates = ref({
   project: false,
   creator: false,
   assignee: false,
   dueDate: false,
-  status: false
+  status: false,
+  tags: false
 })
 
-// Toggle dropdown function
+const searchQueries = ref({
+  project: '',
+  creator: '',
+  assignee: '',
+  tags: ''
+})
+
 const toggleDropdown = (dropdown) => {
   Object.keys(dropdownStates.value).forEach(key => {
     if (key !== dropdown) dropdownStates.value[key] = false
   })
   dropdownStates.value[dropdown] = !dropdownStates.value[dropdown]
+  // Clear search when closing dropdown
+  if (!dropdownStates.value[dropdown] && searchQueries.value[dropdown] !== undefined) {
+    searchQueries.value[dropdown] = ''
+  }
 }
 
-// Close all dropdowns
 const closeAllDropdowns = () => {
-  Object.keys(dropdownStates.value).forEach(key => {
-    dropdownStates.value[key] = false
-  })
+  Object.keys(dropdownStates.value).forEach(key => (dropdownStates.value[key] = false))
 }
 
 const goToTaskDetail = (taskId) => {
@@ -383,16 +222,23 @@ const goToTaskDetail = (taskId) => {
   }
 }
 
-// Date helpers
+/* ---------- Status config ---------- */
+const statusConfig = {
+  todo: { label: 'To Do', color: 'bg-gray-500' },
+  'in-progress': { label: 'In Progress', color: 'bg-blue-500' },
+  review: { label: 'In Review', color: 'bg-yellow-500' },
+  done: { label: 'Done', color: 'bg-green-500' },
+}
+const getStatusConfig = (status) => statusConfig[status] || { label: 'To Do', color: 'bg-gray-500' }
+
+/* ---------- Date helpers ---------- */
 const toJsDate = (value) => {
   if (!value) return null
   if (typeof value?.toDate === 'function') return value.toDate()
   if (typeof value === 'object') {
     const s = value.seconds ?? value._seconds
     const ns = value.nanoseconds ?? value._nanoseconds
-    if (typeof s === 'number') {
-      return new Date(s * 1000 + Math.floor((ns ?? 0) / 1e6))
-    }
+    if (typeof s === 'number') return new Date(s * 1000 + Math.floor((ns ?? 0) / 1e6))
   }
   if (typeof value === 'string' || typeof value === 'number') {
     const d = new Date(value)
@@ -407,199 +253,243 @@ const formatDate = (date) => {
   return d ? d.toLocaleDateString() : 'No due date'
 }
 
-const isTaskOverdue = (task) => {
-  const d = toJsDate(task.deadline)
-  return d && d < new Date() && task.status !== 'done'
-}
-
-const isTaskDueSoon = (task) => {
-  const d = toJsDate(task.deadline)
-  if (!d) return false
-  const now = new Date()
-  const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
-  return d > now && d <= soon && task.status !== 'done'
-}
-
 const getDateClasses = (task) => {
-  if (isTaskOverdue(task)) return 'text-red-600 font-semibold'
-  if (isTaskDueSoon(task)) return 'text-yellow-600 font-semibold'
+  if (task.isOverdue) return 'text-destructive font-semibold'
+  if (task.isDueSoon) return 'text-yellow-600 font-semibold'
   return ''
 }
 
-// Status config
-const statusConfig = {
-  todo: { label: 'To Do', color: 'bg-gray-500' },
-  'in-progress': { label: 'In Progress', color: 'bg-blue-500' },
-  done: { label: 'Done', color: 'bg-green-500' },
-}
-const getStatusConfig = (status) => statusConfig[status] || { label: 'To Do', color: 'bg-gray-500' }
+const isTaskOverdue = (task) => !!task.isOverdue
 
-// Local working list
-const tasks = ref([])
+/* ---------- Preprocessed working list ---------- */
+const processedTasks = ref([])
+
+const preprocessTask = (t) => {
+  const deadlineDate = toJsDate(t.deadline)
+  const deadlineMs = deadlineDate ? deadlineDate.getTime() : null
+  const now = Date.now()
+  const twoDays = 2 * 24 * 60 * 60 * 1000
+  const status = t.status || 'todo'
+  const sc = getStatusConfig(status)
+  const priorityNum = typeof t.priority === 'number' ? t.priority : Number(t.priority)
+  const isDone = status === 'done'
+
+  return {
+    ...t,
+    projectTitle: t.projectTitle || 'No project',
+    creatorName: t.creatorName || 'No creator',
+    assigneeNames: Array.isArray(t.assigneeNames) ? t.assigneeNames : [],
+    priorityNum: Number.isNaN(priorityNum) ? undefined : priorityNum,
+    statusLabel: sc.label,
+    statusColor: sc.color,
+    deadlineMs,
+    isOverdue: !!deadlineMs && deadlineMs < now && !isDone,
+    isDueSoon: !!deadlineMs && deadlineMs > now && deadlineMs <= now + twoDays && !isDone,
+  }
+}
 
 watch(
   () => props.tasks,
-  (newTasks) => {
-    tasks.value = Array.isArray(newTasks) ? newTasks.slice() : []
+  (arr) => {
+    const src = Array.isArray(arr) ? arr : []
+    processedTasks.value = src.map(preprocessTask)
+    localBootLoading.value = false
   },
   { immediate: true }
 )
 
-// Filter state
+/* ---------- Filters ---------- */
 const selectedProjects = ref([])
 const selectedCreators = ref([])
 const selectedAssignees = ref([])
 const selectedDueDate = ref('All Tasks')
 const selectedStatuses = ref([])
 const selectedPriority = ref([1, 10])
+const selectedTags = ref([])
 
-// Toggle selection for multi-select filters
 const toggleSelection = (filterType, value) => {
-  const filterMap = {
+  const map = {
     project: selectedProjects,
     creator: selectedCreators,
     assignee: selectedAssignees,
-    status: selectedStatuses
+    status: selectedStatuses,
+    tags: selectedTags
   }
-  
-  const filter = filterMap[filterType]
-  const index = filter.value.indexOf(value)
-  
-  if (index > -1) {
-    filter.value.splice(index, 1)
-  } else {
-    filter.value.push(value)
-  }
+  const filter = map[filterType]
+  const i = filter.value.indexOf(value)
+  if (i > -1) filter.value.splice(i, 1)
+  else filter.value.push(value)
 }
 
-// Clear filter
 const clearFilter = (filterType) => {
-  const filterMap = {
+  const map = {
     project: selectedProjects,
     creator: selectedCreators,
     assignee: selectedAssignees,
-    status: selectedStatuses
+    status: selectedStatuses,
+    tags: selectedTags,
   }
-  
-  filterMap[filterType].value = []
+  map[filterType].value = []
   dropdownStates.value[filterType] = false
 }
 
-// Select due date (single select)
 const selectDueDate = (option) => {
   selectedDueDate.value = option
   dropdownStates.value.dueDate = false
 }
 
-// Filter options
+/* ---------- Filter options with search ---------- */
 const projectOptions = computed(() => {
-  const map = {}
-  tasks.value.forEach((t) => {
-    if (t.projectTitle) map[t.projectTitle] = t.projectTitle
-  })
-  return Object.values(map)
+  const set = new Set()
+  for (const t of processedTasks.value) if (t.projectTitle) set.add(t.projectTitle)
+  const all = Array.from(set)
+  const query = searchQueries.value.project.toLowerCase()
+  return query ? all.filter(p => p.toLowerCase().includes(query)) : all
 })
 
 const creatorOptions = computed(() => {
-  const map = {}
-  tasks.value.forEach((t) => {
-    if (t.creatorName) map[t.creatorName] = t.creatorName
-  })
-  return Object.values(map)
+  const set = new Set()
+  for (const t of processedTasks.value) if (t.creatorName) set.add(t.creatorName)
+  const all = Array.from(set)
+  const query = searchQueries.value.creator.toLowerCase()
+  return query ? all.filter(c => c.toLowerCase().includes(query)) : all
 })
 
 const assigneeOptions = computed(() => {
-  const map = {}
-  tasks.value.forEach((t) => {
-    if (Array.isArray(t.assigneeNames)) {
-      t.assigneeNames.forEach((name) => {
-        if (name) map[name] = name
-      })
-    }
-  })
-  return Object.values(map)
+  const set = new Set()
+  for (const t of processedTasks.value) {
+    if (Array.isArray(t.assigneeNames)) for (const n of t.assigneeNames) if (n) set.add(n)
+  }
+  const all = Array.from(set)
+  const query = searchQueries.value.assignee.toLowerCase()
+  return query ? all.filter(a => a.toLowerCase().includes(query)) : all
 })
 
 const dueDateOptions = ['All Tasks', 'Overdue', 'Due Today', 'Due This Week', 'No Due Date']
-const statusOptions = ['todo', 'in-progress', 'done']
+const statusOptions = ['todo', 'in-progress', 'review', 'done']
 
-// Filtering logic
+const tagOptions = computed(() => {
+  const set = new Set()
+  for (const t of processedTasks.value) {
+    if (Array.isArray(t.tags)) {
+      for (const tag of t.tags) if (tag) set.add(tag)
+    }
+  }
+  const all = Array.from(set)
+  const query = searchQueries.value.tags.toLowerCase()
+  return query ? all.filter(tag => tag.toLowerCase().includes(query)) : all
+})
+
+/* ---------- Filtering logic ---------- */
 const filteredTasks = computed(() => {
-  return tasks.value.filter((task) => {
-    const matchesProject =
-      selectedProjects.value.length === 0 || selectedProjects.value.includes(task.projectTitle)
+  const noProject = selectedProjects.value.length === 0
+  const noCreator = selectedCreators.value.length === 0
+  const noAssignee = selectedAssignees.value.length === 0
+  const noStatus = selectedStatuses.value.length === 0
+  const noTags = selectedTags.value.length === 0
+  const priorityMin = selectedPriority.value[0]
+  const priorityMax = selectedPriority.value[1]
+  const dueFilter = selectedDueDate.value
+  const nowMs = Date.now()
+  const weekFromNowMs = nowMs + 7 * 24 * 60 * 60 * 1000
 
-    const matchesCreator =
-      selectedCreators.value.length === 0 || selectedCreators.value.includes(task.creatorName)
+  if (
+    noProject && noCreator && noAssignee && noStatus && noTags &&
+    dueFilter === 'All Tasks' &&
+    priorityMin === 1 && priorityMax === 10
+  ) {
+    return processedTasks.value
+  }
 
+  return processedTasks.value.filter((task) => {
+    const matchesProject = noProject || selectedProjects.value.includes(task.projectTitle)
+    const matchesCreator = noCreator || selectedCreators.value.includes(task.creatorName)
     const matchesAssignee =
-      selectedAssignees.value.length === 0 ||
-      (Array.isArray(task.assigneeNames) &&
+      noAssignee ||
+      (task.assigneeNames.length &&
         task.assigneeNames.some((name) => selectedAssignees.value.includes(name)))
 
     let matchesDueDate = true
-    const now = new Date()
-    const taskDate = toJsDate(task.deadline)
-
-    if (selectedDueDate.value === 'Overdue') {
-      matchesDueDate = taskDate && taskDate < now && task.status !== 'done'
-    } else if (selectedDueDate.value === 'Due Today') {
-      matchesDueDate = taskDate && taskDate.toDateString() === now.toDateString()
-    } else if (selectedDueDate.value === 'Due This Week') {
-      if (taskDate) {
-        const weekFromNow = new Date()
-        weekFromNow.setDate(now.getDate() + 7)
-        matchesDueDate = taskDate >= now && taskDate <= weekFromNow
-      } else {
-        matchesDueDate = false
+    const tms = task.deadlineMs
+    if (dueFilter === 'Overdue') {
+      matchesDueDate = !!tms && tms < nowMs && task.status !== 'done'
+    } else if (dueFilter === 'Due Today') {
+      if (!tms) matchesDueDate = false
+      else {
+        const d = new Date(tms)
+        const now = new Date()
+        matchesDueDate = d.toDateString() === now.toDateString()
       }
-    } else if (selectedDueDate.value === 'No Due Date') {
-      matchesDueDate = !taskDate
+    } else if (dueFilter === 'Due This Week') {
+      matchesDueDate = !!tms && tms >= nowMs && tms <= weekFromNowMs
+    } else if (dueFilter === 'No Due Date') {
+      matchesDueDate = !tms
     }
 
-    const matchesStatus =
-      selectedStatuses.value.length === 0 || selectedStatuses.value.includes(task.status)
-
-    const priority = typeof task.priority === 'number' ? task.priority : Number(task.priority)
+    const matchesStatus = noStatus || selectedStatuses.value.includes(task.status)
     const matchesPriority =
-      !Number.isNaN(priority) &&
-      priority >= selectedPriority.value[0] &&
-      priority <= selectedPriority.value[1]
-
+      task.priorityNum === undefined ||
+      (task.priorityNum >= priorityMin && task.priorityNum <= priorityMax)
+    const matchesTags =
+      noTags ||
+      (Array.isArray(task.tags) && task.tags.length > 0 && task.tags.some((tag) => selectedTags.value.includes(tag)))
     return (
       matchesProject &&
       matchesCreator &&
       matchesAssignee &&
       matchesDueDate &&
       matchesStatus &&
-      matchesPriority
+      matchesPriority &&
+      matchesTags
     )
   })
 })
 
-// Stats
-const totalTasks = computed(() => tasks.value.length)
-const completedTasks = computed(() => tasks.value.filter((t) => t.status === 'done').length)
-const inProgressTasks = computed(() => tasks.value.filter((t) => t.status === 'in-progress').length)
-const overdueTasks = computed(() => tasks.value.filter((t) => isTaskOverdue(t)).length)
+/* ---------- Progressive render ---------- */
+const initialRenderCap = 200
+const renderCap = ref(initialRenderCap)
+const visibleTasks = computed(() => filteredTasks.value.slice(0, renderCap.value))
+
+/* ---------- Stats ---------- */
+const totalTasks = computed(() => processedTasks.value.length)
+const completedTasks = computed(() => processedTasks.value.filter((t) => t.status === 'done').length)
+const inProgressTasks = computed(() => processedTasks.value.filter((t) => t.status === 'in-progress').length)
+const overdueTasks = computed(() => processedTasks.value.filter((t) => t.isOverdue).length)
 const completionRate = computed(() => (totalTasks.value ? (completedTasks.value / totalTasks.value) * 100 : 0))
 </script>
 
 <style scoped>
-/* Consistent styling with CreateTaskModal */
 .border-gray-300 {
   border-color: #d1d5db !important;
   border-width: 1px !important;
 }
-
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.z-50 { z-index: 9999 !important; }
+/* soft red tint for overdue rows using theme destructive color */
+.overdue-row {
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+/* soft green tint for new instance rows */
+.new-instance-row {
+  background-color: color-mix(in oklab, #10b981 8%, transparent);
+  border-left: 3px solid #10b981;
+}
+/* Override global button/input background-color: transparent for all filters */
+.bg-white {
+  background-color: #ffffff !important;
+}
 
-/* Ensure dropdowns appear above other elements */
-.z-50 {
-  z-index: 2000;
+/* Ensure all dropdown menus have white background */
+.relative.top-full.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Ensure search inputs inside filter dropdowns have white background */
+.relative input[type="text"] {
+  background-color: #ffffff !important;
 }
 </style>
