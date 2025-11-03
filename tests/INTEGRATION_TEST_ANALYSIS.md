@@ -229,7 +229,7 @@ npm test
 npm run test:coverage
 
 # Run specific suite
-npm test -- tests/backend/api/tasks.test.js
+npm test -- tests/unit/tasks.test.js
 ```
 
 ### 3. Environment Configuration

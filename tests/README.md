@@ -124,7 +124,7 @@ npm run emulator
 npm test
 
 # Run specific test suite
-npm test -- backend/api/tasks.test.js
+npm test -- backend/unit/tasks.test.js
 
 # Run with coverage
 npm run test:coverage
