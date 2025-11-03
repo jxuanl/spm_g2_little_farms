@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// import MyTasks from './src/views/MyTasks.vue'
 import Calendar from './src/views/Calendar.vue'
 import Reports from './src/views/Reports.vue'
 import Settings from './src/views/Settings.vue'
@@ -14,7 +13,6 @@ import generateReport from './src/views/GenerateReport.vue'
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/all-tasks', name: 'AllTasks', component: AllTasks }, 
-  // { path: '/my-tasks', name: 'MyTasks', component: MyTasks }, 
   { path: '/all-tasks/:id', name: 'TaskDetail', component: TaskDetail, props: true },
   { path: '/all-tasks/:id/:subtaskId', name: 'SubtaskDetail', component: TaskDetail },
   { path: '/calendar', name: 'Calendar', component: Calendar }, 
