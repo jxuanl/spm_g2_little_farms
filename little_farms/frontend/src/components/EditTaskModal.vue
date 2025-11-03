@@ -687,17 +687,89 @@ const removeTag = (tag) => {
 // save flow
 const saveClicked = async () => {
   if (!validateForm()) return;
+
+  // ensure user + token are available for notification POST
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    errors.title = 'User not logged in.';
+    return;
+  }
+  const token = await user.getIdToken();
+
+  // compute changes: { field: { old, new } }
+  const computeChanges = () => {
+    const out = {};
+    const keys = Object.keys(originalValues);
+    for (const k of keys) {
+      const oldVal = originalValues[k];
+      const newVal = formData[k];
+
+      // simple deep-ish comparisons for arrays and primitives
+      const isArray = Array.isArray(oldVal) || Array.isArray(newVal);
+      if (isArray) {
+        const aOld = Array.isArray(oldVal) ? oldVal : [];
+        const aNew = Array.isArray(newVal) ? newVal : [];
+        if (JSON.stringify(aOld) !== JSON.stringify(aNew)) {
+          out[k] = { old: aOld, new: aNew };
+        }
+        continue;
+      }
+
+      // normalize dates (strings)
+      if (k === 'deadline') {
+        const o = oldVal || null;
+        const n = newVal || null;
+        if (o !== n) out[k] = { old: o, new: n };
+        continue;
+      }
+
+      // primitives / objects
+      const oStr = oldVal === undefined || oldVal === null ? '' : String(oldVal);
+      const nStr = newVal === undefined || newVal === null ? '' : String(newVal);
+      if (oStr !== nStr) out[k] = { old: oldVal, new: newVal };
+    }
+    return out;
+  };
+
+  const changes = computeChanges();
+
   const changingToDone = formData.status === 'done' && originalValues.status !== 'done';
   if (changingToDone) {
     emit('close');
     setTimeout(() => {
       showLogTimePrompt.value = true;
     }, 300);
-  } else {
-    await saveTaskUpdate();
+    return;
+  }
+
+  // perform the actual task update
+  await saveTaskUpdate();
+
+  // Prepare payload for manager-update notification endpoint
+  const sendUpdatedData = {
+    id: props.task.id,
+    userId: user.uid,
+    ...changes
+  };
+
+  try {
+    const response = await fetch('/api/notifications/update/tasks/manager', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(sendUpdatedData),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`Failed to log changes: ${response.status} ${text}`);
+    }
+  } catch (err) {
+    console.error('Error sending manager update notification:', err);
   }
 };
-
 
 const cancelLogTime = () => {
   showLogTimePrompt.value = false;
