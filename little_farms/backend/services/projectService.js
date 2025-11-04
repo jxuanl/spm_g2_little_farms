@@ -171,9 +171,16 @@ export async function getProjectDetailForUser(projectId, userId) {
     // Fetch task documents with resolved user/project data
     const taskSnapshots = await Promise.all(
       taskList.map(async (taskRef) => {
-        const taskSnap = await taskRef.get();
-        if (!taskSnap.exists) return null;
-        const taskData = taskSnap.data();
+        // Handle null/undefined task references gracefully
+        if (!taskRef) {
+          console.warn("Null or undefined task reference found in taskList");
+          return null;
+        }
+        
+        try {
+          const taskSnap = await taskRef.get();
+          if (!taskSnap.exists) return null;
+          const taskData = taskSnap.data();
 
         // If user owns the project, show ALL tasks
         if (isProjectOwner) {
@@ -229,6 +236,10 @@ export async function getProjectDetailForUser(projectId, userId) {
           creatorId: creatorData?.id,
           assigneeIds: assigneeDataArray.filter(Boolean).map(u => u.id)
         };
+        } catch (err) {
+          console.warn("Failed to fetch task:", taskRef?.path || taskRef, err);
+          return null;
+        }
       })
     );
 
@@ -236,6 +247,11 @@ export async function getProjectDetailForUser(projectId, userId) {
     const userTasks = taskSnapshots.filter(t => t !== null);
 
     console.log('Total tasks returned:', userTasks.length, 'out of', taskList.length);
+
+    // If user is not the owner and has no tasks, return null (which will trigger 404)
+    if (!isProjectOwner && userTasks.length === 0) {
+      return null;
+    }
 
     return {
       id: projectDoc.id,
