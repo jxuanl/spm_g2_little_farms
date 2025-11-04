@@ -77,7 +77,7 @@ jobs:
           timeout 60 bash -c 'until curl -s http://localhost:9099 > /dev/null; do sleep 2; done'
           echo "✅ Firebase emulators are ready!"
       
-      - name: Run integration tests
+      - name: Run unit tests
         working-directory: ./tests
         env:
           FIRESTORE_EMULATOR_HOST: localhost:8080

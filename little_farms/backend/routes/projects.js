@@ -29,6 +29,21 @@ router.post('/createProject', async (req, res) => {
   try {
     const { title, desc, userId } = req.body;
 
+    // Validate required fields
+    if (!title || !title.trim()) {
+      return res.status(500).json({
+        success: false,
+        error: 'Title is required and cannot be empty'
+      });
+    }
+
+    if (!userId) {
+      return res.status(500).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
+
     const userRef = admin.firestore().collection('Users').doc(userId);
 
     const projectData = {
