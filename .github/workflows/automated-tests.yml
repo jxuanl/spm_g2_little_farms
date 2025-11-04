@@ -93,7 +93,7 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           files: ./tests/coverage/lcov.info
-          flags: integration-tests
+          flags: unit-tests
           name: codecov-umbrella
           fail_ci_if_error: false
         env:
@@ -106,7 +106,7 @@ jobs:
         with:
           script: |
             try {
-              const testResults = '✅ Integration tests passed!';
+              const testResults = '✅ Unit tests passed!';
               
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
