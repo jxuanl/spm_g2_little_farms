@@ -157,19 +157,27 @@ export async function createTask(taskData) {
   try {
     // Check if this is a subtask
     const isSubtask = !!taskData.parentTaskId;
+    console.log(`📝 createTask - isSubtask: ${isSubtask}, parentTaskId: ${taskData.parentTaskId}`);
     
     // Convert assignee IDs to Firestore user references
     const assignedToRefs = [];
     if (taskData.assigneeIds && taskData.assigneeIds.length > 0) {
       for (const userId of taskData.assigneeIds) {
-        if (userId) { // ✅ Check if userId is not null
+        // ✅ Validate userId is a non-empty string
+        if (userId && typeof userId === 'string' && userId.trim() !== '') {
           const userDoc = await db.collection('Users').doc(userId).get();
           if (userDoc.exists) {
             assignedToRefs.push(db.collection('Users').doc(userId));
+            console.log(`✅ Assignee found: ${userId}`);
+          } else {
+            console.warn(`⚠️ User ${userId} not found`);
           }
+        } else {
+          console.warn(`⚠️ Invalid userId: ${userId}`);
         }
       }
     }
+    console.log(`📝 Total valid assignees: ${assignedToRefs.length}`);
     
     // Convert project ID to Firestore project reference
     let projectRef = null;
@@ -179,15 +187,24 @@ export async function createTask(taskData) {
       if (projectDoc.exists) {
         projectRef = db.collection('Projects').doc(taskData.projectId);
       }
+    } else {
+      console.log('ℹ️ No projectId provided or invalid projectId');
     }
     
     // Convert creator ID to Firestore user reference
     let taskCreatedByRef = null;
-    if (taskData.createdBy) {
+    if (taskData.createdBy && typeof taskData.createdBy === 'string' && taskData.createdBy.trim() !== '') {
       const creatorDoc = await db.collection('Users').doc(taskData.createdBy).get();
       if (creatorDoc.exists) {
-      taskCreatedByRef = db.collection('Users').doc(taskData.createdBy);
+        taskCreatedByRef = db.collection('Users').doc(taskData.createdBy);
+        console.log(`✅ Creator found: ${taskData.createdBy}`);
+      } else {
+        console.warn(`⚠️ Creator ${taskData.createdBy} not found`);
+        throw new Error(`Creator user not found: ${taskData.createdBy}`);
       }
+    } else {
+      console.error('❌ No valid createdBy provided');
+      throw new Error('createdBy is required and must be a valid user ID');
     }
     
     // Convert date strings to Firestore timestamps
@@ -218,12 +235,23 @@ export async function createTask(taskData) {
     
     if (isSubtask) {
       // Create subtask in the parent task's Subtasks subcollection
+      console.log(`📝 Creating subtask under parent task: ${taskData.parentTaskId}`);
+      
+      // Verify parent task exists
+      const parentTaskDoc = await db.collection(TASK_COLLECTION).doc(taskData.parentTaskId).get();
+      if (!parentTaskDoc.exists) {
+        throw new Error(`Parent task ${taskData.parentTaskId} not found`);
+      }
+      console.log(`✅ Parent task exists`);
+      
       docRef = await db.collection(TASK_COLLECTION)
         .doc(taskData.parentTaskId)
         .collection('Subtasks')
         .add(newTask);
+      console.log(`✅ Subtask created with ID: ${docRef.id}`);
     } else {
       // Create regular task
+      console.log(`📝 Creating regular task`);
       docRef = await db.collection(TASK_COLLECTION).add(newTask);
       
       // Add task to project's taskList if task has a projectId
@@ -658,16 +686,20 @@ export async function getSubtasksForTask(taskId) {
       }
       
       // Convert taskCreatedBy reference to include path
+      // console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
       if (data.taskCreatedBy && data.taskCreatedBy.path) {
         serializedData.taskCreatedBy = { path: data.taskCreatedBy.path };
       } else if (data.taskCreatedBy && data.taskCreatedBy._path && data.taskCreatedBy._path.segments) {
         // Handle Firestore DocumentReference format
         const pathString = data.taskCreatedBy._path.segments.join('/');
+        // console.log('Constructed path from segments:', pathString);
         serializedData.taskCreatedBy = { path: pathString };
       } else if (data.taskCreatedBy) {
         // Handle other reference formats
+        // console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
         serializedData.taskCreatedBy = data.taskCreatedBy;
       } else {
+        // console.log('taskCreatedBy is null or undefined');
         serializedData.taskCreatedBy = null;
       }
       
@@ -716,16 +748,20 @@ export async function getSubtaskById(taskId, subtaskId) {
     }
     
     // Convert taskCreatedBy reference to include path
+    // console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
     if (data.taskCreatedBy && data.taskCreatedBy.path) {
       serializedData.taskCreatedBy = { path: data.taskCreatedBy.path };
     } else if (data.taskCreatedBy && data.taskCreatedBy._path && data.taskCreatedBy._path.segments) {
       // Handle Firestore DocumentReference format
       const pathString = data.taskCreatedBy._path.segments.join('/');
+      // console.log('Constructed path from segments:', pathString);
       serializedData.taskCreatedBy = { path: pathString };
     } else if (data.taskCreatedBy) {
       // Handle other reference formats
+      // console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
       serializedData.taskCreatedBy = data.taskCreatedBy;
     } else {
+      // console.log('taskCreatedBy is null or undefined');
       serializedData.taskCreatedBy = null;
     }
     
@@ -813,6 +849,253 @@ export async function updateSubtask(taskId, subtaskId, updateData) {
       modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
     };
   } catch (err) {
+    console.error("Error updating subtask:", err);
+    throw err;
+  }
+}
+
+// === Comments Functions ===
+export async function getCommentsForTask(taskId, subtaskId = null) {
+  try {
+    let commentsRef;
+    
+    if (subtaskId) {
+      // Get comments for a subtask
+      commentsRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Comments');
+    } else {
+      // Get comments for a regular task
+      commentsRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Comments');
+    }
+    
+    const snapshot = await commentsRef.orderBy('createdDate', 'desc').get();
+    
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // Serialize the author reference
+      const serializedData = { ...data };
+      if (data.author && data.author._path && data.author._path.segments) {
+        const pathString = data.author._path.segments.join('/');
+        serializedData.author = { path: pathString };
+      } else if (data.author && data.author.path) {
+        serializedData.author = { path: data.author.path };
+      }
+      
+      // Serialize mentioned users references
+      if (data.mentionedUsers && Array.isArray(data.mentionedUsers)) {
+        serializedData.mentionedUsers = data.mentionedUsers.map(ref => {
+          if (ref && ref._path && ref._path.segments) {
+            return { path: ref._path.segments.join('/') };
+          } else if (ref && ref.path) {
+            return { path: ref.path };
+          }
+          return ref;
+        });
+      }
+      
+      return {
+        id: doc.id,
+        ...serializedData,
+        createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
+        modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
+      };
+    });
+  } catch (err) {
+    console.error("Error fetching comments:", err);
+    return [];
+  }
+}
+
+export async function createComment(taskId, commentData, subtaskId = null) {
+  try {
+    // Validate required fields
+    if (!commentData.content || !commentData.authorId) {
+      throw new Error('Content and authorId are required');
+    }
+    
+    // Convert author ID to Firestore user reference
+    let authorRef = null;
+    if (commentData.authorId) {
+      const authorDoc = await db.collection('Users').doc(commentData.authorId).get();
+      if (authorDoc.exists) {
+        authorRef = db.collection('Users').doc(commentData.authorId);
+      } else {
+        throw new Error('Author not found');
+      }
+    }
+    
+    // Convert mentioned user IDs to Firestore user references
+    const mentionedUsersRefs = [];
+    if (commentData.mentionedUsers && Array.isArray(commentData.mentionedUsers)) {
+      for (const userId of commentData.mentionedUsers) {
+        if (userId) {
+          const userDoc = await db.collection('Users').doc(userId).get();
+          if (userDoc.exists) {
+            mentionedUsersRefs.push(db.collection('Users').doc(userId));
+          }
+        }
+      }
+    }
+    
+    // Validate attachments (optional)
+    let attachments = []
+    if (Array.isArray(commentData.attachments)) {
+      // Enforce a maximum of 3 files and size <= 500KB each if size provided
+      const MAX_FILES = 3
+      const MAX_BYTES = 500 * 1024
+      if (commentData.attachments.length > MAX_FILES) {
+        throw new Error(`A maximum of ${MAX_FILES} attachments are allowed`)
+      }
+      attachments = commentData.attachments
+        .filter(a => a && typeof a === 'object')
+        .slice(0, MAX_FILES)
+        .map(a => ({
+          name: a.name,
+          url: a.url,
+          contentType: a.contentType,
+          size: typeof a.size === 'number' ? a.size : null,
+          storagePath: a.storagePath || null,
+        }))
+      // Soft-validate sizes if provided
+      for (const a of attachments) {
+        if (a.size != null && a.size > MAX_BYTES) {
+          throw new Error('Attachment exceeds 500KB size limit')
+        }
+      }
+    }
+
+    const now = new Date();
+    const newComment = {
+      content: commentData.content.trim(),
+      author: authorRef,
+      mentionedUsers: mentionedUsersRefs,
+      attachments,
+      createdDate: now,
+      modifiedDate: now
+    };
+    
+    let commentsRef;
+    if (subtaskId) {
+      // Create comment for a subtask
+      commentsRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Comments');
+    } else {
+      // Create comment for a regular task
+      commentsRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Comments');
+    }
+    
+    const docRef = await commentsRef.add(newComment);
+    
+    return {
+      id: docRef.id,
+      ...newComment,
+      author: { path: authorRef.path },
+      mentionedUsers: mentionedUsersRefs.map(ref => ({ path: ref.path })),
+      createdDate: now,
+      modifiedDate: now
+    };
+  } catch (err) {
+    console.error("Error creating comment:", err);
+    throw err;
+  }
+}
+
+export async function updateComment(taskId, commentId, updateData, subtaskId = null) {
+  try {
+    let commentRef;
+    if (subtaskId) {
+      // Update comment for a subtask
+      commentRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Comments')
+        .doc(commentId);
+    } else {
+      // Update comment for a regular task
+      commentRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Comments')
+        .doc(commentId);
+    }
+    
+    // Check if comment exists
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
+      return null;
+    }
+    
+    const updatedFields = {
+      content: updateData.content.trim(),
+      modifiedDate: new Date()
+    };
+    
+    await commentRef.update(updatedFields);
+    
+    // Return the updated comment
+    const updatedDoc = await commentRef.get();
+    const data = updatedDoc.data();
+    
+    return {
+      id: updatedDoc.id,
+      ...data,
+      createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
+      modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
+    };
+  } catch (err) {
+    console.error("Error updating comment:", err);
+    throw err;
+  }
+}
+
+export async function deleteComment(taskId, commentId, subtaskId = null) {
+  try {
+    let commentRef;
+    if (subtaskId) {
+      // Delete comment for a subtask
+      commentRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Subtasks')
+        .doc(subtaskId)
+        .collection('Comments')
+        .doc(commentId);
+    } else {
+      // Delete comment for a regular task
+      commentRef = db
+        .collection(TASK_COLLECTION)
+        .doc(taskId)
+        .collection('Comments')
+        .doc(commentId);
+    }
+    
+    // Check if comment exists
+    const commentDoc = await commentRef.get();
+    if (!commentDoc.exists) {
+      return false;
+    }
+    
+    await commentRef.delete();
+    return true;
+  } catch (err) {
+    console.error("Error deleting comment:", err);
     throw err;
   }
 }
@@ -834,7 +1117,7 @@ export async function getAllTasks() {
   }
 }
 
-// --- NEW: delete a task (creator-only) ---
+// delete a task (creator OR project-owning manager)
 export async function deleteTask(taskId, userId) {
   try {
     const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
@@ -851,12 +1134,22 @@ export async function deleteTask(taskId, userId) {
       taskData.taskCreatedBy?.id ||
       (creatorPath ? creatorPath.split('/').slice(-1)[0] : null);
 
-    if (!creatorId || creatorId !== userId) {
-      // Only creator may delete
-      return false;
+    // Fast-path: creator can delete
+    if (creatorId && creatorId === userId) {
+      // proceed
+    } else {
+      // Not the creator — check if user is a manager who owns the project
+      const role = await getUserRole(userId);
+      if (role !== 'manager') return false;
+
+      const projectOwnerId = await getProjectOwnerId(taskData.projectId);
+      if (!projectOwnerId || projectOwnerId !== userId) {
+        // Manager but not the owner of this task's project
+        return false;
+      }
     }
 
-    // If the task has a Subtasks subcollection, delete its docs first
+    // Delete subtasks (if any) then the task
     const subCol = await taskRef.collection('Subtasks').get();
     const batch = db.batch();
     subCol.forEach((doc) => batch.delete(doc.ref));
@@ -869,21 +1162,18 @@ export async function deleteTask(taskId, userId) {
   }
 }
 
-// --- NEW: delete a subtask (creator-only) ---
+// delete a subtask (creator OR project-owning manager)
 export async function deleteSubtask(taskId, subtaskId, userId) {
   try {
-    const subRef = db
-      .collection(TASK_COLLECTION)
-      .doc(taskId)
-      .collection('Subtasks')
-      .doc(subtaskId);
+    const taskRef = db.collection(TASK_COLLECTION).doc(taskId);
+    const subRef = taskRef.collection('Subtasks').doc(subtaskId);
 
     const subSnap = await subRef.get();
     if (!subSnap.exists) return false;
 
     const data = subSnap.data();
 
-    // Resolve creator id robustly
+    // Resolve creator id robustly (stored on subtask)
     const creatorPath = data.taskCreatedBy?.path
       || data.taskCreatedBy?._path?.segments?.join('/')
       || null;
@@ -891,9 +1181,26 @@ export async function deleteSubtask(taskId, subtaskId, userId) {
       data.taskCreatedBy?.id ||
       (creatorPath ? creatorPath.split('/').slice(-1)[0] : null);
 
-    if (!creatorId || creatorId !== userId) {
-      // Only creator may delete
-      return false;
+    // Fast-path: creator can delete
+    if (creatorId && creatorId === userId) {
+      // proceed
+    } else {
+      // Not the creator — check if user is a manager who owns the project
+      const role = await getUserRole(userId);
+      if (role !== 'manager') return false;
+
+      // Prefer subtask.projectId; if absent, fall back to parent task's projectId
+      let projectOwnerId = await getProjectOwnerId(data.projectId);
+      if (!projectOwnerId) {
+        const parentSnap = await taskRef.get();
+        if (parentSnap.exists) {
+          const parentData = parentSnap.data();
+          projectOwnerId = await getProjectOwnerId(parentData?.projectId);
+        }
+      }
+      if (!projectOwnerId || projectOwnerId !== userId) {
+        return false;
+      }
     }
 
     await subRef.delete();
@@ -910,6 +1217,10 @@ export const taskService = {
   getSubtasksForTask,
   getSubtaskById,
   updateSubtask,
+  getCommentsForTask,
+  createComment,
+  updateComment,
+  deleteComment,
   updateTask,
   completeTask,
   getAllTasks,
