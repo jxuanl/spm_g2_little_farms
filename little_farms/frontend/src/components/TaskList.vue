@@ -396,7 +396,7 @@
               v-for="task in visibleTasks"
               :key="task.id"
               class="hover:bg-gray-50 cursor-pointer transition"
-              :class="{ 'bg-red-50': isTaskOverdue(task) }"
+              :class="{ 'overdue-row': isTaskOverdue(task) }"
               v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum]"
               @click="goToTaskDetail(task.id)"
             >
@@ -414,7 +414,13 @@
                   <span class="text-gray-400 text-xs italic">No assignees</span>
                 </template>
               </td>
-              <td class="p-2 border" :class="getDateClasses(task)">{{ formatDate(task.deadline) }}</td>
+              <td
+                class="p-2 border"
+                :class="getDateClasses(task)"
+                :style="task.isOverdue ? { color: 'var(--destructive)' } : null"
+              >
+                {{ formatDate(task.deadline) }}
+              </td>
               <td class="p-2 border">
                 <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
                   {{ task.statusLabel }}
