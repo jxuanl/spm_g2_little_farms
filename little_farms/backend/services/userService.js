@@ -1,4 +1,5 @@
 import { auth, db } from '../adminFirebase.js';
+import admin from "../adminFirebase.js";
 
 class UserService {
   /**
@@ -171,7 +172,7 @@ class UserService {
         });
       });
 
-      console.log('getAllUsers result:', users);
+      // console.log('getAllUsers result:', users);
 
       return {
         success: true,

@@ -1,3 +1,4 @@
+import admin from "../adminFirebase.js";
 import { db } from "../adminFirebase.js";
 
 // Helper function to resolve user data from DocumentReference

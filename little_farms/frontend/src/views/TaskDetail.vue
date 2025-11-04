@@ -128,16 +128,25 @@
         />
       </div>
 
-      <CreateTaskModal
-        v-if="!isSubtaskView"
-        :isOpen="isCreateModalOpen"
-        :parentTaskId="taskId"
-        :parentProject="{ id: task?.projectId?.id || task?.projectId, name: projectTitle }"
-        @close="() => isCreateModalOpen = false"
-        @taskCreated="handleSubtaskCreated"
-      />
-    </template>
-
+    <CreateTaskModal
+      v-if="!isSubtaskView"
+      :isOpen="isCreateModalOpen"
+      :parentTaskId="taskId"
+      :parentProject="{ id: task?.projectId?.id || task?.projectId, name: projectTitle }"
+      @close="() => isCreateModalOpen = false"
+      @taskCreated="handleSubtaskCreated"
+    />
+    
+    <!-- === Comments Section === -->
+    <CommentsSection 
+      v-if="task && currentUser"
+      :taskId="taskId"
+      :subtaskId="isSubtaskView ? subtaskId : null"
+      :currentUserId="currentUser.uid"
+      :taskName="task.title"
+      @commentsUpdated="handleCommentsUpdated"
+    />
+  </template>
   </div>
 
 </template>
@@ -150,6 +159,7 @@ import { getAuth } from 'firebase/auth';
 import EditTaskModal from '../components/EditTaskModal.vue';
 import TaskList from '../components/TaskList.vue';
 import CreateTaskModal from '../components/CreateTaskModal.vue';
+import CommentsSection from '../components/CommentsSection.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -403,6 +413,59 @@ const handleSubtaskCreated = (newSubtask) => {
 // === Handle Subtask Click ===
 const handleSubtaskClick = (subtaskId) => {
   router.push({ name: 'SubtaskDetail', params: { id: taskId.value, subtaskId } });
+};
+
+// === Get Current User ID ===
+const getCurrentUserId = () => {
+  try {
+    const userSession = sessionStorage.getItem('userSession');
+    if (userSession) {
+      const userData = JSON.parse(userSession);
+      return userData.uid || null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user ID from session:', error);
+    return null;
+  }
+};
+
+// Add user state management
+const currentUser = ref(null);
+
+// Add function to get full user data
+const getCurrentUser = () => {
+  try {
+    const userSession = sessionStorage.getItem('userSession');
+    if (userSession) {
+      return JSON.parse(userSession);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user from session:', error);
+    return null;
+  }
+};
+
+// Update onMounted to check user session
+onMounted(() => {
+  currentUser.value = getCurrentUser();
+  
+  if (!currentUser.value) {
+    console.warn('No user session found');
+    // Optionally redirect to login
+    // router.push({ name: 'Login' });
+    return;
+  }
+  
+  fetchTask();
+  fetchSubtasks();
+});
+
+// === Handle Comments Updated ===
+const handleCommentsUpdated = () => {
+  // Optional: refresh task data or perform other actions when comments are updated
+  console.log('Comments updated');
 };
 
 onMounted(() => {
