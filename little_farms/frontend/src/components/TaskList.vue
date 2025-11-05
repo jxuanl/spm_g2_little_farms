@@ -27,12 +27,30 @@
         </div>
       </div>
 
-      <!-- === Filters === -->
+      
+
+      <!-- === Task Table / Empty === -->
+      <div class="rounded-lg bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-2xl font-semibold leading-none tracking-tight">
+              {{ indvTask ? 'Subtasks' : 'Tasks' }}
+            </h3>
+            <button
+              class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+              @click="$emit('createTask')">
+              <Plus class="w-4 h-4 mr-2" />
+              {{ indvTask ? 'New Subtask' : 'New Task' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- === Filters === -->
       <div class="mb-6" @click="closeAllDropdowns">
-        <!-- Filter header -->
+        <!-- Filter header
         <div class="flex items-center gap-3 mb-3">
           <h4 class="text-lg font-medium">Filters</h4>
-        </div>
+        </div> -->
 
         <!-- Filter chips row -->
         <div class="flex flex-wrap gap-2 bg-[#f8f9fa] p-3 rounded-lg items-center">
@@ -263,22 +281,6 @@
           </div>
         </div>
       </div>
-
-      <!-- === Task Table / Empty === -->
-      <div class="rounded-lg bg-card text-card-foreground shadow-sm">
-        <div class="flex flex-col space-y-1.5 p-6">
-          <div class="flex items-center justify-between">
-            <h3 class="text-2xl font-semibold leading-none tracking-tight">
-              {{ indvTask ? 'Subtasks' : 'Tasks' }}
-            </h3>
-            <button
-              class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-              @click="$emit('createTask')">
-              <Plus class="w-4 h-4 mr-2" />
-              {{ indvTask ? 'New Subtask' : 'New Task' }}
-            </button>
-          </div>
-        </div>
 
         <!-- Show table when there are results -->
         <template v-if="visibleTasks.length > 0">
