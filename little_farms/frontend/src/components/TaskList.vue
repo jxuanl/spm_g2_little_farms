@@ -395,6 +395,7 @@
                 <td class="p-2 border font-medium">
                   <div class="flex items-center gap-2">
                     {{ task.title || 'Untitled' }}
+                    <span v-if="task.showId" class="text-xs text-gray-400 ml-2">#{{ (task.id || '').slice(0,6) }}</span>
                     <span v-if="task.recurring" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Recurring task">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -628,7 +629,18 @@ watch(
   () => props.tasks,
   (arr) => {
     const src = Array.isArray(arr) ? arr : []
-    processedTasks.value = src.map(preprocessTask)
+    // Preprocess tasks and mark tasks that share a duplicate title so we can
+    // optionally show the task id when multiple tasks have the same title.
+    const pre = src.map(preprocessTask)
+    const titleCounts = {}
+    for (const t of pre) {
+      const key = (t.title || 'Untitled').trim()
+      titleCounts[key] = (titleCounts[key] || 0) + 1
+    }
+    processedTasks.value = pre.map(t => {
+      const key = (t.title || 'Untitled').trim()
+      return { ...t, showId: titleCounts[key] > 1 }
+    })
     // once first props.tasks arrives (even empty), stop showing "Loading"
     localBootLoading.value = false
   },

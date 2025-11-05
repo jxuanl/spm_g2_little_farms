@@ -94,32 +94,57 @@ export async function getTasksForUser(userId) {
       return enriched
     }
 
-    // === Manager → can see all tasks in projects they created ===
+    // === Manager → can see all tasks in projects they created, tasks they created,
+    // and tasks they are assigned to. Previously managers only saw project tasks;
+    // now we also include assigned tasks so managers don't miss tasks assigned to them.
     if (role === "manager") {
       const projectSnap = await db
         .collection("Projects")
         .where("owner", "==", userDocRef)
         .get()
 
-      if (projectSnap.empty) {
-        return []
+      const projectRefs = projectSnap.empty ? [] : projectSnap.docs.map((d) => d.ref)
+
+      // Collect snaps: project tasks (only if we have projectRefs), created tasks, and assigned tasks
+      let tasksSnap = { docs: [] }
+      if (projectRefs.length > 0) {
+        try {
+          tasksSnap = await db
+            .collection("Tasks")
+            .where("projectId", "in", projectRefs)
+            .get()
+        } catch (err) {
+          // If 'in' fails (e.g., too many refs), fallback to fetching all tasks and filtering
+          try {
+            const allTasksSnap = await db.collection('Tasks').get()
+            tasksSnap = { docs: allTasksSnap.docs.filter(d => {
+              const p = d.data().projectId
+              if (!p) return false
+              // compare DocumentReference paths if possible
+              const path = p.path || (p._path && p._path.segments && p._path.segments.join('/'))
+              return projectRefs.some(r => r.path === path)
+            }) }
+          } catch (e) {
+            tasksSnap = { docs: [] }
+          }
+        }
       }
-
-      const projectIds = projectSnap.docs.map((d) => d.ref)
-
-      const tasksSnap = await db
-        .collection("Tasks")
-        .where("projectId", "in", projectIds)
-        .get()
 
       const createdSnap = await db
         .collection("Tasks")
         .where("taskCreatedBy", "==", userDocRef)
         .get()
 
+      const assignedSnap = await db
+        .collection("Tasks")
+        .where("assignedTo", "array-contains", userDocRef)
+        .get()
+
       const taskMap = new Map()
+      // union all sources
       tasksSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
       createdSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
+      assignedSnap.docs.forEach((d) => taskMap.set(d.id, { id: d.id, ...d.data() }))
 
       const tasks = Array.from(taskMap.values())
         .filter((t) => t.isCurrentInstance !== false); // show only current instance
