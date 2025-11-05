@@ -2,7 +2,7 @@
   <div>
     <!-- ====================== Edit Task Modal ====================== -->
     <Teleport to="body">
-      <div v-if="isOpen" class="fixed inset-0 z-[9998]">
+      <div v-if="isOpen" class="fixed inset-0 z-9998">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/80" @click="closeDropdowns"></div>
 
@@ -62,13 +62,14 @@
               <!-- Priority & Status -->
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
-                  <label class="text-sm font-medium">Priority (1–10)</label>
+                  <label class="text-sm font-medium">Priority (1–10) *</label>
                   <input
                     v-model.number="formData.priority"
                     type="number"
                     min="1"
                     max="10"
                     placeholder="Enter priority (1-10)"
+                    required
                     :class="[
                       'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                       errors.priority ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
@@ -79,21 +80,24 @@
                 </div>
 
                 <div class="space-y-2">
-                  <label class="text-sm font-medium">Status</label>
+                  <label class="text-sm font-medium">Status *</label>
                   <div class="relative">
                     <button
                       type="button"
                       @click="toggleDropdown('status')"
-                      class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      :class="[
+                        'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring',
+                        errors.status ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                      ]"
                     >
-                      <span :class="formData.status ? 'text-foreground' : 'text-muted-foreground'">
+                      <span :class="[formData.status ? 'text-foreground' : 'text-muted-foreground', 'truncate']">
                         {{ getStatusLabel() }}
                       </span>
-                      <ChevronDown class="h-4 w-4 opacity-50" />
+                      <ChevronDown class="h-4 w-4 opacity-50 shrink-0" />
                     </button>
                     <div
                       v-if="dropdownStates.status"
-                      class="absolute top-full left-0 mt-1 z-[10001] w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+                      class="absolute top-full left-0 mt-1 z-10001 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
                     >
                       <div class="p-1">
                         <button
@@ -109,6 +113,7 @@
                       </div>
                     </div>
                   </div>
+                  <p v-if="errors.status" class="text-sm text-red-500 mt-1">{{ errors.status }}</p>
                 </div>
               </div>
 
@@ -122,19 +127,19 @@
                       @click="!isSubtask && toggleDropdown('project')"
                       :disabled="isSubtask"
                       :class="[
-                        'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-left',
+                        'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-left',
                         isSubtask ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60' : 'bg-transparent'
                       ]"
                     >
-                      <span :class="formData.projectId ? 'text-foreground' : 'text-muted-foreground'">
+                      <span :class="[formData.projectId ? 'text-foreground' : 'text-muted-foreground', 'truncate']">
                         {{ getProjectPlaceholder() }}
                       </span>
-                      <ChevronDown class="h-4 w-4 opacity-50" />
+                      <ChevronDown class="h-4 w-4 opacity-50 shrink-0" />
                     </button>
 
                     <div
                       v-if="dropdownStates.project && !isSubtask"
-                      class="absolute top-full left-0 mt-1 z-[10001] w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-56 overflow-y-auto"
+                      class="absolute top-full left-0 mt-1 z-10001 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
                     >
                       <div v-if="projects.length === 0" class="p-3 text-sm text-muted-foreground text-center">
                         No projects available
@@ -156,22 +161,25 @@
                 </div>
 
                 <div class="space-y-2">
-                  <label class="text-sm font-medium">Assignees</label>
+                  <label class="text-sm font-medium">Assignees *</label>
                   <div class="relative">
                     <button
                       type="button"
                       @click="toggleDropdown('assignees')"
-                      class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-left"
+                      :class="[
+                        'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-left',
+                        errors.assignedTo ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                      ]"
                     >
-                      <span :class="formData.assignedTo.length > 0 ? 'text-foreground' : 'text-muted-foreground'">
+                      <span :class="[formData.assignedTo.length > 0 ? 'text-foreground' : 'text-muted-foreground', 'truncate']">
                         {{ getAssigneesPlaceholder() }}
                       </span>
-                      <ChevronDown class="h-4 w-4 opacity-50" />
+                      <ChevronDown class="h-4 w-4 opacity-50 shrink-0" />
                     </button>
 
                     <div
                       v-if="dropdownStates.assignees"
-                      class="absolute top-full left-0 mt-1 z-[10001] w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-56 overflow-y-auto"
+                      class="absolute top-full left-0 mt-1 z-10001 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
                     >
                       <div v-if="users.length === 0" class="p-3 text-sm text-muted-foreground text-center">
                         No users available
@@ -191,6 +199,7 @@
                       </div>
                     </div>
                   </div>
+                  <p v-if="errors.assignedTo" class="text-sm text-red-500 mt-1">{{ errors.assignedTo }}</p>
                 </div>
               </div>
 
@@ -246,7 +255,7 @@
 
                   <div
                     v-if="showTagSuggestions && tagSuggestions.length > 0"
-                    class="absolute top-full left-0 mt-1 z-[10001] w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-40 overflow-y-auto"
+                    class="absolute top-full left-0 mt-1 z-10001 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-40 overflow-y-auto"
                   >
                     <div class="p-1">
                       <button
@@ -287,7 +296,7 @@
 
     <!-- ====================== Log Time Modal (Card) ====================== -->
     <Teleport to="body">
-      <div v-if="showLogTimePrompt" class="fixed inset-0 z-[10000]">
+      <div v-if="showLogTimePrompt" class="fixed inset-0 z-10000">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/80" @click.stop></div>
 
@@ -363,8 +372,10 @@ const props = defineProps({
 const showSuccessMessage = ref(false);
 const projects = ref([]);
 const users = ref([]);
+const allUsers = ref([]); // Store all users before filtering
+const currentUserRole = ref('staff'); // Store current user's role
 const dropdownStates = reactive({ status: false, project: false, assignees: false });
-const errors = reactive({ title: '', priority: '', deadline: '' });
+const errors = reactive({ title: '', priority: '', deadline: '', status: '', assignedTo: '' });
 
 const formData = reactive({
   title: '',
@@ -418,6 +429,31 @@ const statusOptions = [
   { value: 'done', label: 'Done' }
 ];
 
+// Helper function to filter users based on role
+const filterUsersByRole = (usersList, currentRole) => {
+  return usersList.filter(user => {
+    const userRole = user.role || 'staff';
+    
+    // Exclude HR users
+    if (userRole === 'HR' || userRole === 'hr') {
+      return false;
+    }
+    
+    // Staff can only see other staff
+    if (currentRole === 'staff') {
+      return userRole === 'staff';
+    }
+    
+    // Manager can see staff and other managers
+    if (currentRole === 'manager') {
+      return userRole === 'staff' || userRole === 'manager';
+    }
+    
+    // Default: show all non-HR users
+    return true;
+  });
+};
+
 // 1. fetch projects/users
 onMounted(async () => {
   try {
@@ -438,9 +474,18 @@ onMounted(async () => {
       ? projectData.data.map((p) => ({ id: p.id, name: p.name || p.title || 'Unnamed Project' }))
       : (projectData.projects || []).map((p) => ({ id: p.id, name: p.name || p.title || 'Unnamed Project' }));
 
-    users.value = Array.isArray(userData?.data)
-      ? userData.data.map((u) => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }))
-      : (userData.users || []).map((u) => ({ id: u.uid || u.id, name: u.name || 'Unknown User' }));
+    // Store all users with role information
+    allUsers.value = Array.isArray(userData?.data)
+      ? userData.data.map((u) => ({ id: u.uid || u.id, name: u.name || 'Unknown User', role: u.role || 'staff' }))
+      : (userData.users || []).map((u) => ({ id: u.uid || u.id, name: u.name || 'Unknown User', role: u.role || 'staff' }));
+    
+    // Get current user's role
+    const currentUserId = user.uid;
+    const currentUserData = allUsers.value.find(u => u.id === currentUserId);
+    currentUserRole.value = currentUserData?.role || 'staff';
+    
+    // Filter users based on role
+    users.value = filterUsersByRole(allUsers.value, currentUserRole.value);
   } catch (err) {
     console.error('❌ Error fetching dropdown data:', err);
   }
@@ -532,13 +577,38 @@ const validateTitle = () => {
 };
 
 const validatePriority = () => {
-  if (formData.priority == null || formData.priority === '') {
-    errors.priority = '';
+  errors.priority = '';
+  if (!formData.priority) {
+    errors.priority = 'Priority is required';
+  } else {
+    const p = Number(formData.priority);
+    if (p < 1 || p > 10) errors.priority = 'Priority must be a number between 1 and 10';
+    else errors.priority = '';
+  }
+};
+
+const validateStatus = () => {
+  errors.status = '';
+  if (!formData.status) {
+    errors.status = 'Status is required';
+  }
+};
+
+const validateAssignees = () => {
+  errors.assignedTo = '';
+  if (!formData.assignedTo || formData.assignedTo.length === 0) {
+    errors.assignedTo = 'At least one assignee is required';
     return;
   }
-  const p = Number(formData.priority);
-  if (p < 1 || p > 10) errors.priority = 'Priority must be a number between 1 and 10';
-  else errors.priority = '';
+  
+  // Staff must include themselves as an assignee
+  if (currentUserRole.value === 'staff') {
+    const auth = getAuth();
+    const currentUserId = auth.currentUser?.uid;
+    if (!formData.assignedTo.includes(currentUserId)) {
+      errors.assignedTo = 'Staff members must include themselves as an assignee';
+    }
+  }
 };
 
 const validateDueDate = () => {
@@ -558,7 +628,9 @@ const validateForm = () => {
   validateTitle();
   validatePriority();
   validateDueDate();
-  return !errors.title && !errors.priority && !errors.deadline;
+  validateStatus();
+  validateAssignees();
+  return !errors.title && !errors.priority && !errors.deadline && !errors.status && !errors.assignedTo;
 };
 
 // dropdown helpers
@@ -575,6 +647,9 @@ const closeDropdowns = () => {
 
 const selectOption = (key, value) => {
   formData[key] = value;
+  if (key === 'status') {
+    validateStatus();
+  }
   closeDropdowns();
 };
 
@@ -588,6 +663,7 @@ const toggleAssignee = (id) => {
     formData.assignedTo.push(id);
     loggedTimes[id] = '';
   }
+  validateAssignees();
 };
 
 const getStatusLabel = () => {
@@ -811,3 +887,50 @@ watch([showLogTimePrompt, () => props.isOpen], ([logOpen, editOpen]) => {
   document.body.style.overflow = open ? 'hidden' : '';
 });
 </script>
+
+<style scoped>
+/* Ensure red error text always shows */
+.text-red-500 {
+  color: #ef4444 !important;
+}
+
+/* Red error borders */
+.border-red-500 {
+  border-color: #ef4444 !important;
+}
+
+.focus-visible\:ring-red-500:focus-visible,
+.focus\:ring-red-500:focus {
+  --tw-ring-color: #ef4444 !important;
+}
+
+/* Truncate text with ellipsis */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Success message styling */
+.text-green-800 {
+  color: #166534 !important;
+}
+
+.bg-green-50 {
+  background-color: #f0fdf4 !important;
+}
+
+.border-green-200 {
+  border-color: #bbf7d0 !important;
+}
+
+/* Dark mode adjustments */
+.dark .text-red-500 {
+  color: #f87171 !important;
+}
+
+.dark .border-red-500 {
+  border-color: #f87171 !important;
+}
+</style>
