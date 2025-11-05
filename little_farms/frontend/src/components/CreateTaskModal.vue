@@ -848,22 +848,14 @@ const handleSubmit = async () => {
       status: formData.status || 'todo',
       deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
       assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [getCurrentUser()?.uid],
+      projectId: formData.projectId,
       createdBy: currentUser.uid || 'default-user',
       tags: formData.tags || [],
       recurring: Boolean(formData.recurring),
       recurrenceInterval: formData.recurring ? formData.recurrenceInterval : null,
       recurrenceValue: formData.recurring ? Number(formData.recurrenceValue) : null,
+      ...(props.parentTaskId && { parentTaskId: props.parentTaskId })
     };
-
-    // Only include projectId if it's set (subtasks will inherit from parent)
-    if (formData.projectId) {
-      taskData.projectId = formData.projectId;
-    }
-
-    // Add parentTaskId for subtasks
-    if (props.parentTaskId) {
-      taskData.parentTaskId = props.parentTaskId;
-    }
 
     console.log(`Creating ${props.parentTaskId ? 'subtask' : 'task'} with data:`, taskData);
     

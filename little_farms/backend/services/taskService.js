@@ -182,13 +182,36 @@ export async function createTask(taskData) {
     // Convert project ID to Firestore project reference
     let projectRef = null;
     let projectDoc = null;
-    if (taskData.projectId) {
+    
+    // For subtasks, always inherit project from parent task
+    if (isSubtask) {
+      // console.log('📁 Subtask detected - inheriting project from parent task...');
+      const parentTaskDoc = await db.collection(TASK_COLLECTION).doc(taskData.parentTaskId).get();
+      if (parentTaskDoc.exists) {
+        const parentData = parentTaskDoc.data();
+        if (parentData.projectId) {
+          projectRef = parentData.projectId;
+          // console.log('✅ Inherited project from parent task');
+        } else {
+          throw new Error('Parent task has no associated project');
+        }
+      } else {
+        throw new Error(`Parent task ${taskData.parentTaskId} not found`);
+      }
+    } else {
+      // For regular tasks, projectId is required
+      if (!taskData.projectId || typeof taskData.projectId !== 'string' || taskData.projectId.trim() === '') {
+        throw new Error('projectId is required for tasks');
+      }
+      
+      // console.log(`📁 Fetching project: ${taskData.projectId}`);
       projectDoc = await db.collection('Projects').doc(taskData.projectId).get();
       if (projectDoc.exists) {
         projectRef = db.collection('Projects').doc(taskData.projectId);
+        console.log(`✅ Project found: ${taskData.projectId}`);
+      } else {
+        throw new Error(`Project ${taskData.projectId} not found`);
       }
-    } else {
-      console.log('ℹ️ No projectId provided or invalid projectId');
     }
     
     // Convert creator ID to Firestore user reference
@@ -237,13 +260,7 @@ export async function createTask(taskData) {
       // Create subtask in the parent task's Subtasks subcollection
       console.log(`📝 Creating subtask under parent task: ${taskData.parentTaskId}`);
       
-      // Verify parent task exists
-      const parentTaskDoc = await db.collection(TASK_COLLECTION).doc(taskData.parentTaskId).get();
-      if (!parentTaskDoc.exists) {
-        throw new Error(`Parent task ${taskData.parentTaskId} not found`);
-      }
-      console.log(`✅ Parent task exists`);
-      
+      // Parent task already validated when fetching project
       docRef = await db.collection(TASK_COLLECTION)
         .doc(taskData.parentTaskId)
         .collection('Subtasks')
@@ -674,51 +691,11 @@ export async function getSubtasksForTask(taskId) {
       .collection('Subtasks')
       .get();
       
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-      
-      // Serialize Firestore references properly
-      const serializedData = { ...data };
-      
-      // Convert projectId reference to include path
-      if (data.projectId && data.projectId.path) {
-        serializedData.projectId = { path: data.projectId.path };
-      }
-      
-      // Convert taskCreatedBy reference to include path
-      // console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
-      if (data.taskCreatedBy && data.taskCreatedBy.path) {
-        serializedData.taskCreatedBy = { path: data.taskCreatedBy.path };
-      } else if (data.taskCreatedBy && data.taskCreatedBy._path && data.taskCreatedBy._path.segments) {
-        // Handle Firestore DocumentReference format
-        const pathString = data.taskCreatedBy._path.segments.join('/');
-        // console.log('Constructed path from segments:', pathString);
-        serializedData.taskCreatedBy = { path: pathString };
-      } else if (data.taskCreatedBy) {
-        // Handle other reference formats
-        // console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
-        serializedData.taskCreatedBy = data.taskCreatedBy;
-      } else {
-        // console.log('taskCreatedBy is null or undefined');
-        serializedData.taskCreatedBy = null;
-      }
-      
-      // Convert assignedTo references to include paths
-      if (data.assignedTo && Array.isArray(data.assignedTo)) {
-        serializedData.assignedTo = data.assignedTo.map(ref => 
-          ref && ref.path ? { path: ref.path } : ref
-        );
-      }
-      
-      // Convert Firestore Timestamps to JavaScript Dates for JSON serialization
-      return {
-        id: doc.id,
-        ...serializedData,
-        deadline: data.deadline?.toDate ? data.deadline.toDate() : data.deadline,
-        createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
-        modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
-      };
-    });
+    // Map all subtasks and enrich them with project/creator/assignee names
+    const subtasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const enrichedSubtasks = await Promise.all(subtasks.map(st => enrichTaskData(st)));
+    
+    return enrichedSubtasks;
   } catch (err) {
     return [];
   }
@@ -739,47 +716,10 @@ export async function getSubtaskById(taskId, subtaskId) {
     
     const data = doc.data();
     
-    // Serialize Firestore references properly
-    const serializedData = { ...data };
+    // Use enrichTaskData to get project title, creator name, and assignee names
+    const enriched = await enrichTaskData({ id: doc.id, ...data });
     
-    // Convert projectId reference to include path
-    if (data.projectId && data.projectId.path) {
-      serializedData.projectId = { path: data.projectId.path };
-    }
-    
-    // Convert taskCreatedBy reference to include path
-    // console.log('Raw taskCreatedBy data:', data.taskCreatedBy);
-    if (data.taskCreatedBy && data.taskCreatedBy.path) {
-      serializedData.taskCreatedBy = { path: data.taskCreatedBy.path };
-    } else if (data.taskCreatedBy && data.taskCreatedBy._path && data.taskCreatedBy._path.segments) {
-      // Handle Firestore DocumentReference format
-      const pathString = data.taskCreatedBy._path.segments.join('/');
-      // console.log('Constructed path from segments:', pathString);
-      serializedData.taskCreatedBy = { path: pathString };
-    } else if (data.taskCreatedBy) {
-      // Handle other reference formats
-      // console.log('taskCreatedBy exists but no recognizable path format, full object:', data.taskCreatedBy);
-      serializedData.taskCreatedBy = data.taskCreatedBy;
-    } else {
-      // console.log('taskCreatedBy is null or undefined');
-      serializedData.taskCreatedBy = null;
-    }
-    
-    // Convert assignedTo references to include paths
-    if (data.assignedTo && Array.isArray(data.assignedTo)) {
-      serializedData.assignedTo = data.assignedTo.map(ref => 
-        ref && ref.path ? { path: ref.path } : ref
-      );
-    }
-    
-    // Convert Firestore Timestamps to JavaScript Dates for JSON serialization
-    return {
-      id: doc.id,
-      ...serializedData,
-      deadline: data.deadline?.toDate ? data.deadline.toDate() : data.deadline,
-      createdDate: data.createdDate?.toDate ? data.createdDate.toDate() : data.createdDate,
-      modifiedDate: data.modifiedDate?.toDate ? data.modifiedDate.toDate() : data.modifiedDate
-    };
+    return enriched;
   } catch (err) {
     return null;
   }
