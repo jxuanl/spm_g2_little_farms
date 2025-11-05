@@ -266,9 +266,9 @@ router.post('/verify-token', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    console.log('Fetching all users...');
+    // console.log('Fetching all users...');
     const result = await AuthService.getAllUsers();
-    console.log('Users result:', result);
+    // console.log('Users result:', result);
     res.status(200).json(result);
   } catch (error) {
     console.error('Error fetching users:', error);

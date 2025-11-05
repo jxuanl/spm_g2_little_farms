@@ -32,7 +32,14 @@ export async function logoutUser() {
 
 export async function createUser(userData) {
   try {
-    const { email, password, name, role, department } = userData;
+    // console.log("User Data")
+    // console.log(userData)
+    const { email, password, name, role, department, channel, reminderPreference } = userData;
+
+    // Validate password strength (since Admin SDK doesn't enforce it)
+    if (password && password.length < 6) {
+      throw new Error('The password is too weak.');
+    }
 
     // 1. Create user in Firebase Authentication
     const userRecord = await auth.createUser({
@@ -50,9 +57,12 @@ export async function createUser(userData) {
       name: name || '',
       role: role || 'staff',
       department: department || '',
-      channel: 'in-app',
-      reminderPreference: 1
+      channel: channel || 'in-app',
+      reminderPreference: reminderPreference || 1
     };
+
+    // console.log("=================FirestoreData=================y")
+    // console.log(firestoreUserData);
 
     // 3. Create user document in Firestore
     const userRef = db.collection('Users').doc(userRecord.uid);
@@ -80,60 +90,50 @@ export async function createUser(userData) {
       throw new Error('The email address is invalid.');
     } else if (error.code === 'auth/weak-password') {
       throw new Error('The password is too weak.');
+    } else if (error.message === 'The password is too weak.') {
+      // Handle our custom validation error
+      throw error;
     } else {
       throw new Error(`Failed to create user: ${error.message}`);
     }
   }
 }
 
-// export async function updateUser(uid, updateData) {
-//   try {
-//     const { name, email, role, department, ...otherData } = updateData;
-
-//     // 1. Update Firebase Auth if relevant fields are provided
-//     const authUpdate = {};
-//     if (name !== undefined) authUpdate.displayName = name;
-//     if (email !== undefined) authUpdate.email = email;
-
-//     if (Object.keys(authUpdate).length > 0) {
-//       await auth.updateUser(uid, authUpdate);
-//     }
-
-//     // 2. Update Firestore
-//     const firestoreUpdate = {
-//       ...updateData,
-//       updatedAt: admin.firestore.FieldValue.serverTimestamp()
-//     };
-
-//     const userRef = db.collection('Users').doc(uid);
-//     await userRef.update(firestoreUpdate);
-
-//     console.log(`User updated: ${uid}`);
-
-//     return {
-//       success: true,
-//       user: {
-//         uid,
-//         ...firestoreUpdate
-//       }
-//     };
-
-//   } catch (error) {
-//     console.error('Error updating user:', error);
-//     throw new Error(`Failed to update user: ${error.message}`);
-//   }
-// }
-
 export async function deleteUser(uid) {
-  try {
-    // 1. Delete from Firestore
-    await db.collection('Users').doc(uid).delete();
+  let authExists = false;
+  let firestoreExists = false;
 
-    // 2. Delete from Firebase Auth
-    await auth.deleteUser(uid);
+  try {
+    // 1. Check if user exists in Firestore
+    const userDoc = await db.collection('Users').doc(uid).get();
+    firestoreExists = userDoc.exists;
+
+    // 2. Check if user exists in Auth
+    try {
+      await auth.getUser(uid);
+      authExists = true;
+    } catch (authError) {
+      if (authError.code !== 'auth/user-not-found') {
+        throw authError;
+      }
+    }
+
+    // If user doesn't exist in either location, throw error
+    if (!authExists && !firestoreExists) {
+      throw new Error('User not found in Auth or Firestore');
+    }
+
+    // 3. Delete from Firestore if exists
+    if (firestoreExists) {
+      await db.collection('Users').doc(uid).delete();
+    }
+
+    // 4. Delete from Auth if exists
+    if (authExists) {
+      await auth.deleteUser(uid);
+    }
 
     console.log(`User deleted: ${uid}`);
-
     return {
       success: true,
       message: 'User deleted successfully'
@@ -141,10 +141,6 @@ export async function deleteUser(uid) {
 
   } catch (error) {
     console.error('Error deleting user:', error);
-    throw new Error(`Failed to delete user: ${error.message}`);
+    throw new Error('Failed to delete user');
   }
 }
-
-
-
-
