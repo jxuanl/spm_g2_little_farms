@@ -120,88 +120,128 @@
     </div>
     
     <div v-else class="space-y-3">
-      <div
-        v-for="comment in comments"
-        :key="comment.id"
-        class="p-4 border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow"
-      >
-        <div class="flex justify-between items-start mb-3">
-          <div class="flex items-center space-x-2">
-            <span class="font-semibold text-foreground">{{ comment.authorName || 'Unknown User' }}</span>
-            <span class="text-sm text-muted-foreground">•</span>
-            <span class="text-sm text-muted-foreground">{{ formatDate(comment.createdDate) }}</span>
-            <span v-if="comment.modifiedDate && comment.modifiedDate !== comment.createdDate" class="text-xs text-muted-foreground italic">
-              (edited)
-            </span>
-          </div>
-          <div v-if="canEditComment(comment)" class="flex space-x-3">
-            <button
-              @click="startEditComment(comment)"
-              class="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+      <!-- Comments Scroller Container -->
+      <div class="relative">
+        <!-- Comments Container with fixed height and scroll -->
+        <div 
+          class="overflow-y-auto transition-all duration-300"
+          :class="{
+            'max-h-96': comments.length > 4,
+            'max-h-auto': comments.length <= 4
+          }"
+          ref="commentsContainer"
+        >
+          <div class="space-y-3 pb-1">
+            <div
+              v-for="comment in visibleComments"
+              :key="comment.id"
+              class="p-4 border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow"
             >
-              Edit
-            </button>
-            <button
-              @click="handleDeleteComment(comment.id)"
-              class="text-sm text-destructive hover:text-destructive/80 font-medium transition-colors"
-              :disabled="isDeleting === comment.id"
-            >
-              {{ isDeleting === comment.id ? 'Deleting...' : 'Delete' }}
-            </button>
-          </div>
-        </div>
-        
-        <!-- Comment Content -->
-        <div v-if="editingCommentId !== comment.id" class="whitespace-pre-wrap text-foreground leading-relaxed">
-          {{ comment.content }}
-          <!-- Mentioned users display -->
-          <div v-if="comment.mentions && comment.mentions.length" class="mt-3 flex flex-wrap gap-2">
-            <span
-              v-for="u in comment.mentions"
-              :key="u.id"
-              class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20"
-            >
-              @{{ u.name || u.email || u.id }}
-            </span>
-          </div>
-          <div v-if="comment.attachments && comment.attachments.length" class="mt-3 space-y-1.5">
-            <div v-for="att in comment.attachments" :key="att.url" class="text-sm">
-              <a class="text-primary hover:text-primary/80 hover:underline break-all font-medium transition-colors inline-flex items-center gap-1" :href="att.url" target="_blank" rel="noopener">
-                📎 {{ att.name || 'attachment' }}
-              </a>
-              <span v-if="att.size" class="text-muted-foreground text-xs ml-1">({{ formatSize(att.size) }})</span>
+              <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center space-x-2">
+                  <span class="font-semibold text-foreground">{{ comment.authorName || 'Unknown User' }}</span>
+                  <span class="text-sm text-muted-foreground">•</span>
+                  <span class="text-sm text-muted-foreground">{{ formatDate(comment.createdDate) }}</span>
+                  <span v-if="comment.modifiedDate && comment.modifiedDate !== comment.createdDate" class="text-xs text-muted-foreground italic">
+                    (edited)
+                  </span>
+                </div>
+                <div v-if="canEditComment(comment)" class="flex space-x-3">
+                  <button
+                    @click="startEditComment(comment)"
+                    class="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    @click="handleDeleteComment(comment.id)"
+                    class="text-sm text-destructive hover:text-destructive/80 font-medium transition-colors"
+                    :disabled="isDeleting === comment.id"
+                  >
+                    {{ isDeleting === comment.id ? 'Deleting...' : 'Delete' }}
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Comment Content -->
+              <div v-if="editingCommentId !== comment.id" class="whitespace-pre-wrap text-foreground leading-relaxed">
+                {{ comment.content }}
+                <!-- Mentioned users display -->
+                <div v-if="comment.mentions && comment.mentions.length" class="mt-3 flex flex-wrap gap-2">
+                  <span
+                    v-for="u in comment.mentions"
+                    :key="u.id"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20"
+                  >
+                    @{{ u.name || u.email || u.id }}
+                  </span>
+                </div>
+                <div v-if="comment.attachments && comment.attachments.length" class="mt-3 space-y-1.5">
+                  <div v-for="att in comment.attachments" :key="att.url" class="text-sm">
+                    <a class="text-primary hover:text-primary/80 hover:underline break-all font-medium transition-colors inline-flex items-center gap-1" :href="att.url" target="_blank" rel="noopener">
+                      📎 {{ att.name || 'attachment' }}
+                    </a>
+                    <span v-if="att.size" class="text-muted-foreground text-xs ml-1">({{ formatSize(att.size) }})</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Edit Form -->
+              <div v-else class="space-y-3">
+                <textarea
+                  v-model="editContent"
+                  class="w-full p-3 border border-border rounded-md resize-none bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+                  rows="3"
+                  :maxlength="2000"
+                ></textarea>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-muted-foreground">
+                    {{ editContent.length }}/2000 characters
+                  </span>
+                  <div class="flex gap-2">
+                    <button
+                      @click="cancelEdit"
+                      class="px-3 py-1.5 text-sm font-medium border border-border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      @click="handleUpdateComment(comment.id)"
+                      :disabled="!editContent.trim() || isUpdating"
+                      class="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {{ isUpdating ? 'Saving...' : 'Save' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        
-        <!-- Edit Form -->
-        <div v-else class="space-y-3">
-          <textarea
-            v-model="editContent"
-            class="w-full p-3 border border-border rounded-md resize-none bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
-            rows="3"
-            :maxlength="2000"
-          ></textarea>
-          <div class="flex justify-between items-center">
-            <span class="text-sm text-muted-foreground">
-              {{ editContent.length }}/2000 characters
-            </span>
-            <div class="flex gap-2">
-              <button
-                @click="cancelEdit"
-                class="px-3 py-1.5 text-sm font-medium border border-border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                @click="handleUpdateComment(comment.id)"
-                :disabled="!editContent.trim() || isUpdating"
-                class="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {{ isUpdating ? 'Saving...' : 'Save' }}
-              </button>
-            </div>
-          </div>
+
+        <!-- Scroll indicators -->
+        <div v-if="comments.length > 4" class="flex justify-center items-center mt-3 space-x-2">
+          <button
+            @click="scrollComments('up')"
+            :disabled="!canScrollUp"
+            class="p-2 rounded-full border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <span class="text-sm text-muted-foreground">
+            {{ currentStartIndex + 1 }}-{{ Math.min(currentStartIndex + 4, comments.length) }} of {{ comments.length }}
+          </span>
+          <button
+            @click="scrollComments('down')"
+            :disabled="!canScrollDown"
+            class="p-2 rounded-full border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -209,7 +249,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -239,6 +279,24 @@ const mentionQuery = ref('');
 const allUsers = ref([]); // [{id, name, email}]
 const loadingUsers = ref(false);
 const selectedMentions = ref([]); // [{id, name, email}]
+
+// Scrolling state
+const currentStartIndex = ref(0);
+const commentsContainer = ref(null);
+const commentsPerView = 4;
+
+// Computed properties for scrolling
+const visibleComments = computed(() => {
+  return comments.value.slice(currentStartIndex.value, currentStartIndex.value + commentsPerView);
+});
+
+const canScrollUp = computed(() => {
+  return currentStartIndex.value > 0;
+});
+
+const canScrollDown = computed(() => {
+  return currentStartIndex.value + commentsPerView < comments.value.length;
+});
 
 // Check if current user can edit a comment (only author can edit)
 const canEditComment = (comment) => {
@@ -310,6 +368,9 @@ const fetchComments = async () => {
       
       // console.log('Enriched comments:', enrichedComments.length, 'comments');
       comments.value = enrichedComments;
+      
+      // Reset scroll position when comments are loaded
+      currentStartIndex.value = Math.max(0, comments.value.length - commentsPerView);
     } else {
       console.error('Failed to fetch comments, status:', response.status);
       const errorText = await response.text().catch(() => 'Unable to read error');
@@ -319,6 +380,25 @@ const fetchComments = async () => {
     console.error('Error fetching comments:', error);
     // Don't throw - allow the UI to continue functioning
   }
+};
+
+// Scroll comments up or down
+const scrollComments = (direction) => {
+  if (direction === 'up' && canScrollUp.value) {
+    currentStartIndex.value = Math.max(0, currentStartIndex.value - commentsPerView);
+  } else if (direction === 'down' && canScrollDown.value) {
+    currentStartIndex.value = Math.min(
+      comments.value.length - commentsPerView, 
+      currentStartIndex.value + commentsPerView
+    );
+  }
+  
+  // Scroll to top of container after changing visible comments
+  nextTick(() => {
+    if (commentsContainer.value) {
+      commentsContainer.value.scrollTop = 0;
+    }
+  });
 };
 
 // Send notification after comment is posted
