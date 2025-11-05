@@ -1,298 +1,272 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" @click="closeDropdowns">
-    <div 
-      class="create-task-modal fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-gray-200 bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg sm:max-w-[500px]"
-      @click.stop
-    >
-      <div class="flex flex-col space-y-1.5 text-center sm:text-left">
-        <h2 class="text-lg font-semibold leading-none tracking-tight">{{ props.parentTaskId ? 'Create New Subtask' : 'Create New Task' }}</h2>
-      </div>
-      
-      <div v-if="showSuccessMessage" class="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
-        <div class="text-sm text-green-800">
-          {{ props.parentTaskId ? '✓ Subtask created successfully!' : '✓ Task created successfully!' }}
-        </div>
-      </div>
-      
-      <form @submit.prevent="handleSubmit" class="space-y-4">
-        <div class="space-y-2">
-          <div class="flex justify-between items-center">
-            <label for="title" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{{ props.parentTaskId ? 'Subtask Title *' : 'Task Title *' }}</label>
-            <span class="text-xs text-muted-foreground">{{ formData.title.length }}/50</span>
-          </div>
-          <input
-            id="title"
-            v-model="formData.title"
-            type="text"
-            :placeholder="indvTask ? 'Enter task title...' : 'Enter subtask title...'"
-            required
-            :class="[
-              'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
-              errors.title ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
-            ]"
-            @input="validateTitle"
-          />
-          <div v-if="errors.title" class="text-sm text-red-500 mt-1">
-            {{ errors.title }}
-          </div>
+  <div v-if="isOpen" class="fixed inset-0 z-9998">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/80" @click="closeDropdowns"></div>
+
+    <!-- Centered card -->
+    <div class="pointer-events-none fixed inset-0 grid place-items-center p-4">
+      <div
+        class="create-task-modal pointer-events-auto w-full max-w-[700px] rounded-lg bg-background p-6 shadow-2xl ring-1 ring-black/5 max-h-[85vh] overflow-y-auto"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="props.parentTaskId ? 'Create new subtask' : 'Create new task'"
+        @click.stop
+      >
+        <div class="flex flex-col space-y-1.5 text-center sm:text-left">
+          <h2 class="text-lg font-semibold leading-none tracking-tight">{{ props.parentTaskId ? 'Create New Subtask' : 'Create New Task' }}</h2>
         </div>
 
-        <div class="space-y-2">
-          <label for="description" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Description</label>
-          <textarea
-            id="description"
-            v-model="formData.description"
-            placeholder="Describe the task..."
-            rows="3"
-            class="flex min-h-[60px] w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-          />
+        <div v-if="showSuccessMessage" class="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+          <div class="text-sm text-green-800">✓ {{ props.parentTaskId ? 'Subtask' : 'Task' }} created successfully!</div>
         </div>
-
-        <div class="grid grid-cols-2 gap-4">
+      
+              <form @submit.prevent="handleSubmit" class="space-y-4">
+          <!-- Title -->
           <div class="space-y-2">
-            <label for="priority" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Priority (1-10)</label>
+            <div class="flex justify-between items-center">
+              <label class="text-sm font-medium">{{ props.parentTaskId ? 'Subtask' : 'Task' }} Title *</label>
+              <span class="text-xs text-muted-foreground">{{ formData.title.length }}/50</span>
+            </div>
             <input
-              id="priority"
-              v-model.number="formData.priority"
-              type="number"
-              min="1"
-              max="10"
-              placeholder="Enter priority (1-10)"
+              v-model="formData.title"
+              type="text"
+              :placeholder="props.parentTaskId ? 'Enter subtask title...' : 'Enter task title...'"
+              required
+              maxlength="50"
               :class="[
-                'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
-                errors.priority ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+                'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                errors.title ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
               ]"
-              @input="validatePriority"
+              @input="validateTitle"
             />
-            <div v-if="errors.priority" class="text-sm text-red-500 mt-1">
-              {{ errors.priority }}
+            <p v-if="errors.title" class="text-sm text-red-500 mt-1">{{ errors.title }}</p>
+          </div>
+
+          <!-- Description -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Description</label>
+            <textarea
+              v-model="formData.description"
+              rows="3"
+              :placeholder="props.parentTaskId ? 'Describe the subtask...' : 'Describe the task...'"
+              class="flex min-h-[60px] w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+
+          <!-- Priority & Status -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Priority (1–10) *</label>
+              <input
+                v-model.number="formData.priority"
+                type="number"
+                min="1"
+                max="10"
+                placeholder="Enter priority (1-10)"
+                required
+                :class="[
+                  'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  errors.priority ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+                ]"
+                @input="validatePriority"
+              />
+              <p v-if="errors.priority" class="text-sm text-red-500 mt-1">{{ errors.priority }}</p>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Status *</label>
+              <div class="relative">
+                <button
+                  type="button"
+                  @click="toggleDropdown('status')"
+                  :class="[
+                    'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring',
+                    errors.status ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  ]"
+                >
+                  <span :class="[formData.status ? 'text-foreground' : 'text-muted-foreground', 'truncate']">
+                    {{ getStatusOptions() }}
+                  </span>
+                  <ChevronDown class="h-4 w-4 opacity-50 shrink-0" />
+                </button>
+                <div
+                  v-if="dropdownStates.status"
+                  class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
+                >
+                  <div class="p-1">
+                    <button
+                      v-for="option in statusOptions"
+                      :key="option.value"
+                      type="button"
+                      @click="selectOption('status', option.value)"
+                      class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm flex justify-between items-center"
+                    >
+                      <span>{{ option.label }}</span>
+                      <Check v-if="formData.status === option.value" class="w-4 h-4 text-primary" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p v-if="errors.status" class="text-sm text-red-500 mt-1">{{ errors.status }}</p>
             </div>
           </div>
 
+          <!-- Project & Assignees -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Project *</label>
+              <div class="relative">
+                <button
+                  type="button"
+                  @click="!props.parentTaskId && toggleDropdown('project')"
+                  :disabled="props.parentTaskId || loadingStates.projects"
+                  :class="[
+                    'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-left',
+                    props.parentTaskId ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60' : 'bg-transparent',
+                    errors.projectId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  ]"
+                >
+                  <span :class="[formData.projectId ? 'text-foreground' : 'text-muted-foreground', 'truncate']">
+                    {{ getProjectPlaceholder() }}
+                  </span>
+                  <ChevronDown class="h-4 w-4 opacity-50 shrink-0" />
+                </button>
+
+                <div
+                  v-if="dropdownStates.project && !props.parentTaskId"
+                  class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
+                >
+                  <div v-if="projects.length === 0" class="p-3 text-sm text-muted-foreground text-center">
+                    No projects available
+                  </div>
+                  <div v-else class="p-1">
+                    <button
+                      v-for="project in projects"
+                      :key="project.id"
+                      type="button"
+                      @click="selectOption('project', project.id)"
+                      class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm flex justify-between items-center"
+                    >
+                      <span>{{ project.name }}</span>
+                      <Check v-if="formData.projectId === project.id" class="w-4 h-4 text-primary" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p v-if="errors.projectId" class="text-sm text-red-500 mt-1">{{ errors.projectId }}</p>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Assignees *</label>
+              <div class="relative">
+                <button
+                  type="button"
+                  @click="toggleDropdown('assignees')"
+                  :class="[
+                    'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring text-left',
+                    errors.assigneeIds ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  ]"
+                >
+                  <span :class="[formData.assigneeIds.length > 0 ? 'text-foreground' : 'text-muted-foreground', 'truncate']">
+                    {{ getAssigneesPlaceholder() }}
+                  </span>
+                  <ChevronDown class="h-4 w-4 opacity-50 shrink-0" />
+                </button>
+                <div
+                  v-if="dropdownStates.assignees"
+                  class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
+                >
+                  <div v-if="users.length === 0" class="p-3 text-sm text-muted-foreground text-center">
+                    No users available
+                  </div>
+                  <div v-else class="p-1">
+                    <button
+                      v-for="user in users"
+                      :key="user.id"
+                      type="button"
+                      @click="toggleAssignee(user.id)"
+                      class="w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between hover:bg-accent hover:text-accent-foreground"
+                      :class="{ 'bg-accent text-accent-foreground': formData.assigneeIds.includes(user.id) }"
+                    >
+                      <span>{{ user.name }}</span>
+                      <Check v-if="formData.assigneeIds.includes(user.id)" class="w-4 h-4 text-primary" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p v-if="errors.assigneeIds" class="text-sm text-red-500 mt-1">{{ errors.assigneeIds }}</p>
+            </div>
+          </div>
+
+          <!-- Due Date -->
           <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Status</label>
-            <div class="relative">
-              <button
-                type="button"
-                @click="toggleDropdown('status')"
-                class="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            <label class="text-sm font-medium">Due Date *</label>
+            <input
+              v-model="formData.dueDate"
+              type="date"
+              required
+              :class="[
+                'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                errors.dueDate ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
+              ]"
+              @change="validateDueDate"
+            />
+            <p v-if="errors.dueDate" class="text-sm text-red-500 mt-1">{{ errors.dueDate }}</p>
+          </div>
+
+          <!-- Tags -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Tags</label>
+            <div v-if="formData.tags.length > 0" class="flex flex-wrap gap-2 mb-2">
+              <span
+                v-for="tag in formData.tags"
+                :key="tag"
+                class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs border border-primary/20"
               >
-                <span :class="formData.status ? 'text-foreground' : 'text-muted-foreground'">
-                  {{ getStatusOptions() }}
-                </span>
-                <ChevronDown class="h-4 w-4 opacity-50" />
-              </button>
-              <div 
-                v-if="dropdownStates.status"
-                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+                {{ tag }}
+                <button type="button" @click="removeTag(tag)" class="text-primary hover:text-primary/80 text-xs">×</button>
+              </span>
+            </div>
+
+            <div class="relative">
+              <div class="flex gap-2">
+                <input
+                  v-model="newTag"
+                  type="text"
+                  placeholder="Add a tag and press Enter"
+                  class="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  @keypress.enter.prevent="addTag"
+                  @input="updateTagSuggestions"
+                  @focus="updateTagSuggestions"
+                  @blur="() => setTimeout(() => (showTagSuggestions = false), 200)"
+                />
+                <button
+                  type="button"
+                  @click="addTag"
+                  class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div
+                v-if="showTagSuggestions && tagSuggestions.length > 0"
+                class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-40 overflow-y-auto"
               >
                 <div class="p-1">
                   <button
+                    v-for="suggestion in tagSuggestions"
+                    :key="suggestion"
                     type="button"
-                    @click="selectOption('status', 'todo')"
+                    @click="selectTagSuggestion(suggestion)"
                     class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
                   >
-                    To Do
-                  </button>
-                  <button
-                    type="button"
-                    @click="selectOption('status', 'in-progress')"
-                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                  >
-                    In Progress
-                  </button>
-                  <button
-                    type="button"
-                    @click="selectOption('status', 'review')"
-                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                  >
-                    In Review
-                  </button>
-                  <button
-                    type="button"
-                    @click="selectOption('status', 'done')"
-                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                  >
-                    Done
+                    {{ suggestion }}
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              Project *
-            </label>
-            <div class="relative">
-              <button
-                type="button"
-                @click="!props.parentTaskId ? toggleDropdown('project') : null"
-                :class="[
-                  'flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-left',
-                  errors.projectId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300',
-                  props.parentTaskId ? 'cursor-not-allowed opacity-50' : ''
-                ]"
-                :disabled="loadingStates.projects || !!props.parentTaskId"
-              >
-                <span :class="[
-                  formData.projectId ? 'text-foreground' : 'text-muted-foreground',
-                  'truncate'
-                ]">
-                  {{ getProjectPlaceholder() }}
-                </span>
-                <ChevronDown v-if="!loadingStates.projects" class="h-4 w-4 opacity-50" />
-                <div v-else class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
-              </button>
-              <div 
-                v-if="dropdownStates.project && !loadingStates.projects && !props.parentTaskId"
-                class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
-              >
-                <div v-if="projects.length === 0" class="p-3 text-sm text-muted-foreground text-center">
-                  No projects available
-                </div>
-                <div v-else class="p-1">
-                  <button
-                    v-for="project in projects"
-                    :key="project.id"
-                    type="button"
-                    @click="selectOption('project', project.id)"
-                    class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                  >
-                    {{ project.name }}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div v-if="errors.projectId" class="text-sm text-red-500 mt-1">
-              {{ errors.projectId }}
-            </div>
-          </div>          <div class="space-y-2">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Assignees</label>
-            <div class="relative">
-              <button
-                type="button"
-                @click="toggleDropdown('assignees')"
-                :class="[
-                  'flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-left',
-                  'border-gray-300'
-                ]"
-                :disabled="loadingStates.users"
-              >
-                <span :class="[
-                  formData.assigneeIds.length > 0 ? 'text-foreground' : 'text-muted-foreground',
-                  'truncate'
-                ]">
-                  {{ getAssigneesPlaceholder() }}
-                </span>
-                <ChevronDown v-if="!loadingStates.users" class="h-4 w-4 opacity-50" />
-                <div v-else class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
-              </button>
-              <div 
-                v-if="dropdownStates.assignees && !loadingStates.users"
-                class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
-              >
-                <div v-if="users.length === 0" class="p-3 text-sm text-muted-foreground text-center">
-                  No users available
-                </div>
-                <div v-else class="p-1">
-                  <button
-                    v-for="user in users"
-                    :key="user.id"
-                    type="button"
-                    @click="toggleAssignee(user.id)"
-                    :class="[
-                      'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                      formData.assigneeIds.includes(user.id) 
-                        ? 'bg-accent text-accent-foreground' 
-                        : 'hover:bg-accent hover:text-accent-foreground'
-                    ]"
-                  >
-                    <span>{{ user.name }}</span>
-                    <Check v-if="formData.assigneeIds.includes(user.id)" class="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Due Date</label>
-          <input
-            v-model="formData.dueDate"
-            type="date"
-            :class="[
-              'flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
-              errors.dueDate ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-300'
-            ]"
-            @change="validateDueDate"
-          />
-          <div v-if="errors.dueDate" class="text-sm text-red-500 mt-1">
-            {{ errors.dueDate }}
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Tags</label>
-          <div class="relative">
-            <div class="flex gap-2">
-              <input
-                v-model="newTag"
-                type="text"
-                placeholder="Add tag..."
-                class="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                @input="updateTagSuggestions"
-                @keypress.enter.prevent="addTag"
-                @blur="() => setTimeout(() => showTagSuggestions = false, 150)"
-              />
-              <button
-                type="button"
-                @click="addTag"
-                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-              >
-                Add
-              </button>
-            </div>
-            
-            <!-- Tag suggestions dropdown -->
-            <div 
-              v-if="showTagSuggestions"
-              class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg max-h-32 overflow-y-auto"
-            >
-              <div class="p-1">
-                <button
-                  type="button"
-                  v-for="suggestion in tagSuggestions" 
-                  :key="suggestion"
-                  @click="selectTagSuggestion(suggestion)"
-                  class="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
-                >
-                  {{ suggestion }}
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div v-if="formData.tags.length > 0" class="flex flex-wrap gap-2">
-            <span 
-              v-for="tag in formData.tags" 
-              :key="tag"
-              class="inline-flex items-center rounded-md border border-gray-200 px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 gap-1"
-            >
-              {{ tag }}
-              <button
-                type="button"
-                @click="removeTag(tag)"
-                class="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
-              >
-                <X class="w-3 h-3" />
-              </button>
-            </span>
-          </div>
-        </div>
 
         <!-- Recurring Task Section -->
         <div class="space-y-3 border border-gray-300 rounded-md p-4 bg-gray-50">
@@ -335,9 +309,7 @@
                   ]"
                   @input="validateRecurrence"
                 />
-                <div v-if="errors.recurrenceValue" class="text-sm text-red-500 mt-1">
-                  {{ errors.recurrenceValue }}
-                </div>
+                <p v-if="errors.recurrenceValue" class="text-sm text-red-500 mt-1">{{ errors.recurrenceValue }}</p>
               </div>
 
               <div class="space-y-2">
@@ -360,7 +332,7 @@
                   </button>
                   <div 
                     v-if="dropdownStates.recurrenceInterval"
-                    class="absolute top-full left-0 mt-1 z-50 w-full rounded-md border border-gray-300 bg-popover shadow-lg"
+                    class="absolute top-full left-0 mt-1 z-50 w-full max-h-60 overflow-y-auto rounded-md border border-gray-300 bg-popover shadow-lg"
                   >
                     <div class="p-1">
                       <button
@@ -387,9 +359,7 @@
                     </div>
                   </div>
                 </div>
-                <div v-if="errors.recurrenceInterval" class="text-sm text-red-500 mt-1">
-                  {{ errors.recurrenceInterval }}
-                </div>
+                <p v-if="errors.recurrenceInterval" class="text-sm text-red-500 mt-1">{{ errors.recurrenceInterval }}</p>
               </div>
             </div>
 
@@ -400,22 +370,24 @@
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 pt-4">
-          <button 
-            type="button" 
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 border border-gray-300 bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-            @click="() => { resetForm(); $emit('close'); }"
-          >
-            Cancel
-          </button>
-          <button 
-            type="submit"
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 border border-primary h-9 px-4 py-2"
-          >
-            {{ props.parentTaskId ? 'Create Subtask' : 'Create Task' }}
-          </button>
-        </div>
+          <!-- Buttons -->
+          <div class="flex justify-end gap-2 pt-4">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium border border-gray-300 bg-background text-foreground hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+              @click="() => { resetForm(); $emit('close'); }"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 border border-primary h-9 px-4 py-2"
+            >
+              {{ props.parentTaskId ? 'Create Subtask' : 'Create Task' }}
+            </button>
+          </div>
       </form>
+      </div>
     </div>
   </div>
 </template>
@@ -561,6 +533,8 @@ const errors = reactive({
   dueDate: '',
   projectId: '',
   priority: '',
+  status: '',
+  assigneeIds: '',
   recurrenceValue: '',
   recurrenceInterval: ''
 });
@@ -600,6 +574,8 @@ const showCalendar = ref(false);
 // Dynamic data from API
 const projects = ref([]);
 const users = ref([]);
+const allUsers = ref([]); // Store all users before filtering
+const currentUserRole = ref('staff'); // Store current user's role
 const loadingStates = reactive({
   projects: false,
   users: false
@@ -613,6 +589,14 @@ const existingTags = ref([
 const tagSuggestions = ref([]);
 const showTagSuggestions = ref(false);
 
+// Status options
+const statusOptions = [
+  { value: 'todo', label: 'To Do' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'review', label: 'In Review' },
+  { value: 'done', label: 'Done' }
+];
+
 // Validation functions
 const validateTitle = () => {
   errors.title = '';
@@ -625,7 +609,9 @@ const validateTitle = () => {
 
 const validateDueDate = () => {
   errors.dueDate = '';
-  if (formData.dueDate.trim()) {
+  if (!formData.dueDate || !formData.dueDate.trim()) {
+    errors.dueDate = 'Due date is required';
+  } else {
     const inputDate = new Date(formData.dueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -651,9 +637,37 @@ const validateProject = () => {
 
 const validatePriority = () => {
   errors.priority = '';
-  const priority = Number(formData.priority);
-  if ((priority && priority < 1) || (priority && priority > 10)) {
-    errors.priority = 'Priority must be a number between 1 and 10';
+  if (!formData.priority) {
+    errors.priority = 'Priority is required';
+  } else {
+    const priority = Number(formData.priority);
+    if (priority < 1 || priority > 10) {
+      errors.priority = 'Priority must be a number between 1 and 10';
+    }
+  }
+};
+
+const validateStatus = () => {
+  errors.status = '';
+  if (!formData.status) {
+    errors.status = 'Status is required';
+  }
+};
+
+const validateAssignees = () => {
+  errors.assigneeIds = '';
+  if (!formData.assigneeIds || formData.assigneeIds.length === 0) {
+    errors.assigneeIds = 'At least one assignee is required';
+    return;
+  }
+  
+  // Staff must include themselves as an assignee
+  if (currentUserRole.value === 'staff') {
+    const currentUser = getCurrentUser();
+    const currentUserId = currentUser?.uid || auth.currentUser?.uid;
+    if (!formData.assigneeIds.includes(currentUserId)) {
+      errors.assigneeIds = 'Staff members must include themselves as an assignee';
+    }
   }
 };
 
@@ -690,8 +704,10 @@ const validateForm = () => {
   validateDueDate();
   validateProject();
   validatePriority();
+  validateStatus();
+  validateAssignees();
   validateRecurrence();
-  return !errors.title && !errors.dueDate && !errors.projectId && !errors.priority && !errors.recurrenceValue && !errors.recurrenceInterval;
+  return !errors.title && !errors.dueDate && !errors.projectId && !errors.priority && !errors.status && !errors.assigneeIds && !errors.recurrenceValue && !errors.recurrenceInterval;
 };
 
 // Dropdown helper functions
@@ -708,6 +724,9 @@ const selectOption = (dropdown, value) => {
   } else if (dropdown === 'recurrenceInterval') {
     formData.recurrenceInterval = value;
     validateRecurrence();
+  } else if (dropdown === 'status') {
+    formData.status = value;
+    validateStatus();
   } else {
     formData[dropdown] = value;
   }
@@ -720,6 +739,7 @@ const toggleAssignee = (assigneeId) => {
   } else {
     formData.assigneeIds.push(assigneeId);
   }
+  validateAssignees();
 };
 
 const getSelectedAssigneeNames = () => {
@@ -777,6 +797,31 @@ const getAssigneesPlaceholder = () => {
   return formData.assigneeIds.length > 0 ? getSelectedAssigneeNames() : 'Select assignees';
 };
 
+// Helper function to filter users based on role
+const filterUsersByRole = (usersList, currentRole) => {
+  return usersList.filter(user => {
+    const userRole = user.role || 'staff';
+    
+    // Exclude HR users
+    if (userRole === 'HR' || userRole === 'hr') {
+      return false;
+    }
+    
+    // Staff can only see other staff
+    if (currentRole === 'staff') {
+      return userRole === 'staff';
+    }
+    
+    // Manager can see staff and other managers
+    if (currentRole === 'manager') {
+      return userRole === 'staff' || userRole === 'manager';
+    }
+    
+    // Default: show all non-HR users
+    return true;
+  });
+};
+
 // Load data functions
 const loadDropdownData = async () => {
   try {
@@ -799,16 +844,28 @@ const loadDropdownData = async () => {
       name: project.name || project.title || 'Unnamed Project'
     }));
     
-    users.value = usersData.map(user => ({
+    // Store all users and map them with role information
+    allUsers.value = usersData.map(user => ({
       id: user.uid || user.id,
-      name: user.name || 'Unknown User'
+      name: user.name || 'Unknown User',
+      role: user.role || 'staff'
     }));
+    
+    // Get current user's role
+    const currentUser = getCurrentUser();
+    const currentUserId = currentUser?.uid || auth.currentUser?.uid;
+    const currentUserData = allUsers.value.find(u => u.id === currentUserId);
+    currentUserRole.value = currentUserData?.role || 'staff';
+    
+    // Filter users based on role
+    users.value = filterUsersByRole(allUsers.value, currentUserRole.value);
     
   } catch (error) {
     console.error('Error loading dropdown data:', error);
     // Fallback to empty arrays if API fails
     projects.value = [];
     users.value = [];
+    allUsers.value = [];
   } finally {
     loadingStates.projects = false;
     loadingStates.users = false;
@@ -848,22 +905,14 @@ const handleSubmit = async () => {
       status: formData.status || 'todo',
       deadline: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
       assigneeIds: formData.assigneeIds.length > 0 ? formData.assigneeIds : [getCurrentUser()?.uid],
+      projectId: formData.projectId,
       createdBy: currentUser.uid || 'default-user',
       tags: formData.tags || [],
       recurring: Boolean(formData.recurring),
       recurrenceInterval: formData.recurring ? formData.recurrenceInterval : null,
       recurrenceValue: formData.recurring ? Number(formData.recurrenceValue) : null,
+      ...(props.parentTaskId && { parentTaskId: props.parentTaskId })
     };
-
-    // Only include projectId if it's set (subtasks will inherit from parent)
-    if (formData.projectId) {
-      taskData.projectId = formData.projectId;
-    }
-
-    // Add parentTaskId for subtasks
-    if (props.parentTaskId) {
-      taskData.parentTaskId = props.parentTaskId;
-    }
 
     console.log(`Creating ${props.parentTaskId ? 'subtask' : 'task'} with data:`, taskData);
     
@@ -911,6 +960,8 @@ const resetForm = () => {
   errors.dueDate = '';
   errors.projectId = '';
   errors.priority = '';
+  errors.status = '';
+  errors.assigneeIds = '';
   errors.recurrenceValue = '';
   errors.recurrenceInterval = ''; 
   closeDropdowns();
@@ -964,51 +1015,57 @@ watch(() => props.parentProject, (newParentProject) => {
 </script>
 
 <style scoped>
-@import '../../styles/CreateTaskModal.css';
-
-/* Component-specific border overrides */
-.border-gray-300 {
-  border-color: #d1d5db !important;
-  border-width: 1px !important;
+/* Ensure red error text always shows */
+.text-red-500 {
+  color: #ef4444 !important;
 }
 
-.border-gray-200 {
-  border-color: #e5e7eb !important;
-  border-width: 1px !important;
+/* Red error borders */
+.border-red-500 {
+  border-color: #ef4444 !important;
 }
 
-/* Ensure all input elements have visible borders */
-input, textarea, button[type="button"] {
-  border-width: 1px !important;
+.focus-visible\:ring-red-500:focus-visible,
+.focus\:ring-red-500:focus {
+  --tw-ring-color: #ef4444 !important;
 }
 
-/* Dropdown hover effects */
-button:hover .dropdown-option {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
-}
-
-/* Focus ring for better accessibility */
-.focus-visible\:ring-1:focus-visible {
-  --tw-ring-shadow: 0 0 0 1px var(--ring);
-  box-shadow: var(--tw-ring-shadow);
-}
-
-/* Dark mode border adjustments */
-.dark .border-gray-300 {
-  border-color: #6b7280 !important;
-}
-
-.dark .border-gray-200 {
-  border-color: #4b5563 !important;
-}
-
-/* Text truncation for dropdown buttons */
+/* Truncate text with ellipsis */
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
-  flex: 1;
+}
+
+/* Success message styling */
+.text-green-800 {
+  color: #166534 !important;
+}
+
+.bg-green-50 {
+  background-color: #f0fdf4 !important;
+}
+
+.border-green-200 {
+  border-color: #bbf7d0 !important;
+}
+
+/* Consistent styling with EditTaskModal */
+.border-gray-300 {
+  border-color: #d1d5db !important;
+}
+
+/* Dark mode adjustments */
+.dark .border-gray-300 {
+  border-color: #6b7280 !important;
+}
+
+.dark .text-red-500 {
+  color: #f87171 !important;
+}
+
+.dark .border-red-500 {
+  border-color: #f87171 !important;
 }
 </style>
