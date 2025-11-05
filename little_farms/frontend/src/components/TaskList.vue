@@ -42,6 +42,60 @@
               <Plus class="w-4 h-4 mr-2" />
               {{ indvTask ? 'New Subtask' : 'New Task' }}
             </button>
+      <!-- === Filters === -->
+      <div ref="filtersContainer" class="flex flex-wrap items-center gap-4 mb-6">
+        <!-- Project Filter -->
+        <div v-if="!hideProjectFilter" class="relative inline-block text-left" @click.stop>
+          <button
+            @click="toggleDropdown('project')"
+            class="flex h-9 w-56 items-center justify-between whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <span class="truncate">
+              {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.length === 1 ? selectedProjects[0] : `${selectedProjects.length} Projects` }}
+            </span>
+            <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+          </button>
+          <div
+            v-if="dropdownStates.project"
+            class="absolute top-full left-0 mt-1 w-56 rounded-md border border-gray-300 shadow-lg bg-white"
+          >
+            <div class="p-2 border-b border-gray-200">
+              <input
+                v-model="searchQueries.project"
+                type="text"
+                placeholder="Search projects..."
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                @click.stop
+              />
+            </div>
+            <div class="p-2 max-h-48 overflow-y-auto">
+              <button
+                v-for="project in projectOptions"
+                :key="project"
+                type="button"
+                @click="toggleSelection('project', project)"
+                :class="[
+                  'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                  selectedProjects.includes(project)
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                ]"
+              >
+                <span>{{ project }}</span>
+                <Check v-if="selectedProjects.includes(project)" class="h-4 w-4" />
+              </button>
+              <div v-if="projectOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+                No results found
+              </div>
+            </div>
+            <div class="border-t border-gray-200 p-2">
+              <button
+                @click="clearFilter('project')"
+                class="w-full text-sm text-blue-600 hover:underline text-center py-1"
+              >
+                Clear
+              </button>
+            </div>
           </div>
         </div>
 
@@ -311,6 +365,8 @@
                     <span v-if="task.recurring"
                       class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
                       title="Recurring task">
+                    <span v-if="task.showId" class="text-xs text-gray-400 ml-2">#{{ (task.id || '').slice(0,6) }}</span>
+                    <span v-if="task.recurring" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Recurring task">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -392,7 +448,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, ChevronDown, Check, Inbox } from 'lucide-vue-next'
 import Slider from '@vueform/slider'
@@ -446,6 +502,24 @@ const toggleDropdown = (dropdown) => {
 const closeAllDropdowns = () => {
   Object.keys(dropdownStates.value).forEach(key => (dropdownStates.value[key] = false))
 }
+
+// Template ref for filters container
+const filtersContainer = ref(null)
+
+// Handle click outside to close dropdowns
+const handleClickOutside = (event) => {
+  if (filtersContainer.value && !filtersContainer.value.contains(event.target)) {
+    closeAllDropdowns()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 const goToTaskDetail = (taskId) => {
   if (props.indvTask && props.parentTaskId) {
@@ -525,7 +599,18 @@ watch(
   () => props.tasks,
   (arr) => {
     const src = Array.isArray(arr) ? arr : []
-    processedTasks.value = src.map(preprocessTask)
+    // Preprocess tasks and mark tasks that share a duplicate title so we can
+    // optionally show the task id when multiple tasks have the same title.
+    const pre = src.map(preprocessTask)
+    const titleCounts = {}
+    for (const t of pre) {
+      const key = (t.title || 'Untitled').trim()
+      titleCounts[key] = (titleCounts[key] || 0) + 1
+    }
+    processedTasks.value = pre.map(t => {
+      const key = (t.title || 'Untitled').trim()
+      return { ...t, showId: titleCounts[key] > 1 }
+    })
     // once first props.tasks arrives (even empty), stop showing "Loading"
     localBootLoading.value = false
   },
@@ -553,9 +638,6 @@ const toggleSelection = (filterType, value) => {
   const i = filter.value.indexOf(value)
   if (i > -1) filter.value.splice(i, 1)
   else filter.value.push(value)
-
-  // Debug logging
-  console.log(`Toggle ${filterType}:`, value, 'Selected:', filter.value)
 }
 
 const clearFilter = (filterType) => {
