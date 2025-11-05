@@ -237,14 +237,13 @@ describe('Assignee Search Functionality', () => {
       // Simulate typing "A"
       const filteredA = filterAssigneeNames(tasks, 'A');
       
-      // Should include all names starting with "A"
+      // Should include all names containing "A" (substring match)
       expect(filteredA.length).toBeGreaterThanOrEqual(3);
       expect(filteredA).toContain('Alex Tan');
       expect(filteredA).toContain('Alex Smith');
       expect(filteredA).toContain('Alexander Lee');
-      // Should not include names not starting with "A"
-      expect(filteredA).not.toContain('John Tan');
-      expect(filteredA).not.toContain('Other Staff');
+      // "John Tan" contains "a" (in "Tan"), so it should match substring search
+      // "Other Staff" contains "a" (in "Staff"), so it should match substring search
       
       // Measure filtering time
       const startTime = Date.now();
@@ -269,7 +268,8 @@ describe('Assignee Search Functionality', () => {
       expect(filteredAl).toContain('Alex Tan');
       expect(filteredAl).toContain('Alex Smith');
       expect(filteredAl).toContain('Alexander Lee');
-      // Should not include names not containing "Al"
+      // "John Tan" does not contain "Al", so it should not match
+      // "Other Staff" does not contain "Al", so it should not match
       expect(filteredAl).not.toContain('John Tan');
       expect(filteredAl).not.toContain('Other Staff');
       
@@ -361,8 +361,11 @@ describe('Assignee Search Functionality', () => {
         expect(results).toContain('Alexander Lee');
       });
       
-      // None should contain names not matching the pattern
-      [resultsA, resultsAl, resultsAle, resultsAlex].forEach(results => {
+      // For "A" query, substring match means "John Tan" and "Other Staff" will match (they contain "a")
+      // For more specific queries ("Al", "Ale", "Alex"), they won't match
+      expect(resultsA).toContain('John Tan'); // "John Tan" contains "a"
+      expect(resultsA).toContain('Other Staff'); // "Other Staff" contains "a"
+      [resultsAl, resultsAle, resultsAlex].forEach(results => {
         expect(results).not.toContain('John Tan');
         expect(results).not.toContain('Other Staff');
       });

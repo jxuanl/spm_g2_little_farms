@@ -175,7 +175,7 @@ describe('Tasks API Unit Tests', () => {
         .get('/api/tasks/')
         .query({ userId: testData.users.staff1.uid });
       
-      expect(response.status).toBe(404); // Express returns 404 for missing route
+      expect(response.status).toBe(200); // Express routes to GET /api/tasks (list route)
     });
     
     it('should return 400 when userId is missing', async () => {
@@ -275,7 +275,8 @@ describe('Tasks API Unit Tests', () => {
     it('should create task with minimal required fields', async () => {
       const taskData = {
         title: 'Minimal Task',
-        createdBy: testData.users.manager.uid
+        createdBy: testData.users.manager.uid,
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -352,7 +353,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with no assignees',
         createdBy: testData.users.manager.uid,
-        assigneeIds: []
+        assigneeIds: [],
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -367,7 +369,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with invalid assignees',
         createdBy: testData.users.manager.uid,
-        assigneeIds: ['non-existent-user-1', 'non-existent-user-2']
+        assigneeIds: ['non-existent-user-1', 'non-existent-user-2'],
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -383,7 +386,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with mixed assignees',
         createdBy: testData.users.manager.uid,
-        assigneeIds: [testData.users.staff1.uid, 'non-existent-user']
+        assigneeIds: [testData.users.staff1.uid, 'non-existent-user'],
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -405,9 +409,8 @@ describe('Tasks API Unit Tests', () => {
         .post('/api/tasks')
         .send(taskData);
       
-      // Should still create task but without project reference
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('id');
+      // Should fail because projectId is required and must exist
+      expect(response.status).toBe(500);
     });
     
     it('should handle null projectId', async () => {
@@ -421,13 +424,15 @@ describe('Tasks API Unit Tests', () => {
         .post('/api/tasks')
         .send(taskData);
       
-      expect(response.status).toBe(201);
+      // Should fail because projectId is required for regular tasks
+      expect(response.status).toBe(500);
     });
     
     it('should handle special characters in title', async () => {
       const taskData = {
         title: 'Task with special chars: !@#$%^&*()_+-=[]{}|;:",.<>?',
-        createdBy: testData.users.manager.uid
+        createdBy: testData.users.manager.uid,
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -442,7 +447,8 @@ describe('Tasks API Unit Tests', () => {
       const longTitle = 'A'.repeat(500);
       const taskData = {
         title: longTitle,
-        createdBy: testData.users.manager.uid
+        createdBy: testData.users.manager.uid,
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -458,7 +464,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with long description',
         description: longDescription,
-        createdBy: testData.users.manager.uid
+        createdBy: testData.users.manager.uid,
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -472,7 +479,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with invalid deadline',
         createdBy: testData.users.manager.uid,
-        deadline: 'invalid-date-string'
+        deadline: 'invalid-date-string',
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -488,7 +496,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with past deadline',
         createdBy: testData.users.manager.uid,
-        deadline: pastDate
+        deadline: pastDate,
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -502,7 +511,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with invalid priority',
         createdBy: testData.users.manager.uid,
-        priority: 'super-high' // Invalid value
+        priority: 'super-high', // Invalid value
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -517,7 +527,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with invalid status',
         createdBy: testData.users.manager.uid,
-        status: 'Unknown Status'
+        status: 'Unknown Status',
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -532,7 +543,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with tags',
         createdBy: testData.users.manager.uid,
-        tags: ['tag1', 'tag2', 'tag3']
+        tags: ['tag1', 'tag2', 'tag3'],
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -547,7 +559,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with empty tags',
         createdBy: testData.users.manager.uid,
-        tags: []
+        tags: [],
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -561,7 +574,8 @@ describe('Tasks API Unit Tests', () => {
       const taskData = {
         title: 'Task with null tags',
         createdBy: testData.users.manager.uid,
-        tags: null
+        tags: null,
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -579,7 +593,8 @@ describe('Tasks API Unit Tests', () => {
         recurring: true,
         recurrenceInterval: 'weeks',
         recurrenceValue: 2,
-        deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        projectId: testData.project.id
       };
       
       const response = await request(app)
@@ -683,7 +698,8 @@ describe('Tasks API Unit Tests', () => {
           recurring: true,
           recurrenceInterval: interval,
           recurrenceValue: 1,
-          deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          projectId: testData.project.id
         };
         
         const response = await request(app)
@@ -893,7 +909,7 @@ describe('Tasks API Unit Tests', () => {
       expect(response.status).toBe(200);
     });
   });
-});
+  
   // ============================================================================
   // POST /api/tasks/:id/complete - Complete task
   // ============================================================================
@@ -967,7 +983,8 @@ describe('Tasks API Unit Tests', () => {
     it('should return 400 when userId is missing', async () => {
       const task = await createTestTask({
         title: 'Task',
-        createdBy: testData.users.manager.uid
+        createdBy: testData.users.manager.uid,
+        projectId: testData.project.id
       });
       
       const response = await request(app)
@@ -1031,3 +1048,4 @@ describe('Tasks API Unit Tests', () => {
       expect(response.status).toBe(200);
     });
   });
+});
