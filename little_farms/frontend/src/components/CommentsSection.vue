@@ -334,6 +334,7 @@ const sendCommentNotification = async (commentText, commenterName, mentionedUser
       },
       body: JSON.stringify({
         taskId: props.taskId,
+        subtaskId: props.subtaskId || '',
         taskName: props.taskName || 'Untitled Task',
         commentText,
         commenterName,

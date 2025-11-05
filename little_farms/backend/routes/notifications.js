@@ -100,6 +100,7 @@ router.post('/update/comment', async (req, res) => {
   Expected body in req.body:
   {
     "taskId": "",
+    "subtaskId": "",
     "taskName": "",
     "commentText": "",
     "commenterName": "",
