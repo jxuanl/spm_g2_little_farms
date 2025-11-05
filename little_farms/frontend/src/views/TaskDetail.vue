@@ -327,77 +327,9 @@ const fetchSubtasks = async () => {
 
   try {
     const response = await fetch(`/api/tasks/${taskId.value}/subtasks`);
-    const rawSubtasks = response.ok ? await response.json() : [];
+    const enrichedSubtasks = response.ok ? await response.json() : [];
 
-    const auth = getAuth();
-    const user = auth.currentUser;
-    const token = user ? await user.getIdToken() : null;
-
-    // Enrich each subtask (project + creator)
-    const enrichedSubtasks = await Promise.all(
-      rawSubtasks.map(async (sub) => {
-        let projectName = 'No project';
-        let creatorName = 'No creator';
-        let assigneeNames = [];
-
-        try {
-          // --- Fetch Project Title ---
-          if (sub.projectId?.path) {
-            const projectPathParts = sub.projectId.path.split('/');
-            const projectId = projectPathParts[projectPathParts.length - 1];
-            const projectRes = await fetch(`/api/projects/${projectId}`, {
-              headers: token ? { Authorization: `Bearer ${token}` } : {}
-            });
-            if (projectRes.ok) {
-              const projectData = await projectRes.json();
-              projectName = projectData.project?.title || projectData.title || 'Untitled Project';
-            }
-          }
-
-          // --- Fetch Creator Name ---
-          if (sub.taskCreatedBy?.path) {
-            const userPathParts = sub.taskCreatedBy.path.split('/');
-            const creatorId = userPathParts[userPathParts.length - 1];
-            const creatorRes = await fetch(`/api/users/${creatorId}`, {
-              headers: token ? { Authorization: `Bearer ${token}` } : {}
-            });
-            if (creatorRes.ok) {
-              const creatorData = await creatorRes.json();
-              creatorName = creatorData.user?.name || creatorData.name || 'Unnamed Creator';
-            }
-          }
-
-          // --- Fetch Assignee Names ---
-          if (Array.isArray(sub.assignedTo)) {
-            const assigneeFetches = sub.assignedTo.map(async (ref) => {
-              const pathParts = ref.path?.split('/') || [];
-              const assigneeId = pathParts[pathParts.length - 1];
-              if (assigneeId) {
-                const assigneeRes = await fetch(`/api/users/${assigneeId}`, {
-                  headers: token ? { Authorization: `Bearer ${token}` } : {}
-                });
-                if (assigneeRes.ok) {
-                  const assigneeData = await assigneeRes.json();
-                  return assigneeData.user?.name || assigneeData.name || 'Unnamed';
-                }
-              }
-              return null;
-            });
-            assigneeNames = (await Promise.all(assigneeFetches)).filter(Boolean);
-          }
-
-        } catch (err) {
-        }
-
-        return {
-          ...sub,
-          projectTitle: projectName,
-          creatorName,
-          assigneeNames,
-        };
-      })
-    );
-
+    // Backend now returns subtasks already enriched with projectTitle, creatorName, and assigneeNames
     subtasks.value = enrichedSubtasks;
   } catch (error) {
     subtasks.value = [];
