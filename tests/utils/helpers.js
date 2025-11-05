@@ -58,7 +58,10 @@ export async function createTestTask({
   createdBy,
   tags = [],
   isSubtask = false,
-  parentTaskId = null
+  parentTaskId = null,
+  recurring = false,
+  recurrenceInterval = null,
+  recurrenceValue = null
 }) {
   // Convert assignee IDs to references
   const assignedToRefs = assigneeIds.map(id => db.collection('Users').doc(id));
@@ -81,7 +84,11 @@ export async function createTestTask({
     tags,
     isOverdue: false,
     createdDate: new Date(),
-    modifiedDate: new Date()
+    modifiedDate: new Date(),
+    recurring: recurring || false,
+    recurrenceInterval: recurring ? recurrenceInterval : null,
+    recurrenceValue: recurring ? recurrenceValue : null,
+    isCurrentInstance: true
   };
   
   let taskRef;

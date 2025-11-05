@@ -1057,6 +1057,67 @@ export async function getAllTasks() {
   }
 }
 
+// --- Helper: Get user role ---
+async function getUserRole(userId) {
+  try {
+    if (!userId) return null;
+    const userDoc = await db.collection('Users').doc(userId).get();
+    if (!userDoc.exists) return null;
+    const userData = userDoc.data();
+    return (userData.role || 'staff').toLowerCase();
+  } catch (err) {
+    return null;
+  }
+}
+
+// --- Helper: Get project owner ID from project reference ---
+async function getProjectOwnerId(projectRef) {
+  try {
+    if (!projectRef) return null;
+    
+    let projectDoc;
+    
+    // Handle DocumentReference (most common case)
+    if (projectRef.path || projectRef.get) {
+      // It's a DocumentReference, fetch the document
+      projectDoc = await projectRef.get();
+    } else if (typeof projectRef === 'string') {
+      // It's a string ID, fetch by ID
+      projectDoc = await db.collection('Projects').doc(projectRef).get();
+    } else {
+      return null;
+    }
+    
+    if (!projectDoc || !projectDoc.exists) return null;
+    
+    const projectData = projectDoc.data();
+    const owner = projectData.owner;
+    
+    if (!owner) return null;
+    
+    // Extract owner ID from owner reference (owner is a DocumentReference)
+    if (typeof owner === 'string') {
+      // owner is already a string ID
+      return owner;
+    } else if (owner.path) {
+      // owner is a DocumentReference with path property
+      const pathParts = owner.path.split('/');
+      return pathParts[pathParts.length - 1];
+    } else if (owner._path && owner._path.segments) {
+      // owner is a DocumentReference with _path.segments
+      return owner._path.segments[owner._path.segments.length - 1];
+    } else if (owner.id) {
+      // owner has an id property
+      return owner.id;
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('Error getting project owner ID:', err);
+    return null;
+  }
+}
+
 // delete a task (creator OR project-owning manager)
 export async function deleteTask(taskId, userId) {
   try {
