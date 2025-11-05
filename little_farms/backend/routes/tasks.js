@@ -91,13 +91,15 @@ router.post('/', async (req, res) => {
       title,
       isSubtask: !!parentTaskId,
       parentTaskId,
-      projectId,
+      projectId: projectId || '(empty)',
+      projectIdType: typeof projectId,
       createdBy,
       recurring
     });
 
     // Validate required fields
     if (!title || !createdBy) {
+      console.log('❌ Validation failed: missing title or createdBy');
       return res.status(400).json({ 
         error: 'Missing required fields: title and createdBy are required' 
       });
@@ -129,6 +131,13 @@ router.post('/', async (req, res) => {
     }
 
 
+    // Sanitize projectId - ensure it's either a valid string or undefined
+    const sanitizedProjectId = (projectId && typeof projectId === 'string' && projectId.trim() !== '') 
+      ? projectId.trim() 
+      : undefined;
+    
+    console.log('🧹 Sanitized projectId:', sanitizedProjectId || '(none)');
+
     const taskData = {
       title,
       description,
@@ -136,7 +145,7 @@ router.post('/', async (req, res) => {
       status,
       deadline,
       assigneeIds,
-      projectId,
+      projectId: sanitizedProjectId,
       createdBy,
       tags,
       parentTaskId,
@@ -145,6 +154,7 @@ router.post('/', async (req, res) => {
       recurrenceValue: recurring ? recurrenceValue : null
     };
 
+    console.log('🚀 Calling createTask with taskData');
     const newTask = await createTask(taskData);
     console.log('✅ Task/subtask created successfully:', newTask.id);
     res.status(201).json(newTask);

@@ -1,3 +1,4 @@
+
 <template>
   <div class="p-6">
     <!-- Loading state -->
@@ -28,7 +29,7 @@
       </div>
 
       <!-- === Filters === -->
-        <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
+      <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
         <!-- Project Filter -->
         <div v-if="!hideProjectFilter" class="relative inline-block text-left" @click.stop>
           <button
@@ -346,7 +347,7 @@
         </div>
       </div>
 
-            <!-- === Task Table / Empty === -->
+      <!-- === Task Table / Empty === -->
       <div class="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6">
           <div class="flex items-center justify-between">
@@ -493,6 +494,7 @@ defineEmits(['createTask'])
 const router = useRouter()
 
 /* ---------- Loading state ---------- */
+// keep a local boot flag so first paint shows "Loading tasks..." until initial props processed
 const localBootLoading = ref(true)
 const showLoading = computed(() => props.loading || localBootLoading.value)
 
@@ -607,6 +609,7 @@ watch(
   (arr) => {
     const src = Array.isArray(arr) ? arr : []
     processedTasks.value = src.map(preprocessTask)
+    // once first props.tasks arrives (even empty), stop showing "Loading"
     localBootLoading.value = false
   },
   { immediate: true }
@@ -633,6 +636,9 @@ const toggleSelection = (filterType, value) => {
   const i = filter.value.indexOf(value)
   if (i > -1) filter.value.splice(i, 1)
   else filter.value.push(value)
+  
+  // Debug logging
+  console.log(`Toggle ${filterType}:`, value, 'Selected:', filter.value)
 }
 
 const clearFilter = (filterType) => {
