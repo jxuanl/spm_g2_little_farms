@@ -252,9 +252,12 @@ const fetchComments = async () => {
       ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/comments`
       : `http://localhost:3001/api/tasks/${props.taskId}/comments`;
     
+    // console.log('Fetching comments from:', endpoint);
     const response = await fetch(endpoint);
+    
     if (response.ok) {
       const commentsData = await response.json();
+      // console.log('Received comments data:', commentsData.length, 'comments');
       
       // Enrich comments with author names and mentioned user names (with a simple cache)
       const userCache = new Map();
@@ -305,12 +308,16 @@ const fetchComments = async () => {
         })
       );
       
+      // console.log('Enriched comments:', enrichedComments.length, 'comments');
       comments.value = enrichedComments;
     } else {
-      console.error('Failed to fetch comments');
+      console.error('Failed to fetch comments, status:', response.status);
+      const errorText = await response.text().catch(() => 'Unable to read error');
+      console.error('Error response:', errorText);
     }
   } catch (error) {
     console.error('Error fetching comments:', error);
+    // Don't throw - allow the UI to continue functioning
   }
 };
 
@@ -374,26 +381,29 @@ const handleAddComment = async () => {
     });
     
     if (response.ok) {
-      // Send notification after successful comment post
-      const commenterName = currentUser.displayName || currentUser.email || 'Unknown User';
-      await sendCommentNotification(
-        newCommentContent.value.trim(),
-        commenterName,
-        mentionedUserIds
-      );
-      
+      // Clear form immediately after successful post
       newCommentContent.value = '';
       selectedFiles.value = [];
       selectedMentions.value = [];
+      
+      // Send notification (don't await - run in background)
+      const commenterName = currentUser.displayName || currentUser.email || 'Unknown User';
+      sendCommentNotification(
+        newCommentContent.value.trim(),
+        commenterName,
+        mentionedUserIds
+      ).catch(err => console.error('Notification failed:', err));
+      
+      // Refresh comments
       await fetchComments();
       emit('commentsUpdated');
     } else {
-      const error = await response.json();
-      alert('Failed to add comment: ' + error.error);
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      alert('Failed to add comment: ' + (error.error || 'Unknown error'));
     }
   } catch (error) {
     console.error('Error adding comment:', error);
-    alert('Failed to add comment');
+    alert('Failed to add comment: ' + error.message);
   } finally {
     isSubmitting.value = false;
   }
