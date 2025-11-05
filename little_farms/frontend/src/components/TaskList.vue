@@ -29,7 +29,7 @@
       </div>
 
       <!-- === Filters === -->
-      <div class="flex flex-wrap items-center gap-4 mb-6" @click="closeAllDropdowns">
+      <div ref="filtersContainer" class="flex flex-wrap items-center gap-4 mb-6">
         <!-- Project Filter -->
         <div v-if="!hideProjectFilter" class="relative inline-block text-left" @click.stop>
           <button
@@ -477,7 +477,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, ChevronDown, Check, Inbox } from 'lucide-vue-next'
 import Slider from '@vueform/slider'
@@ -531,6 +531,24 @@ const toggleDropdown = (dropdown) => {
 const closeAllDropdowns = () => {
   Object.keys(dropdownStates.value).forEach(key => (dropdownStates.value[key] = false))
 }
+
+// Template ref for filters container
+const filtersContainer = ref(null)
+
+// Handle click outside to close dropdowns
+const handleClickOutside = (event) => {
+  if (filtersContainer.value && !filtersContainer.value.contains(event.target)) {
+    closeAllDropdowns()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 const goToTaskDetail = (taskId) => {
   if (props.indvTask && props.parentTaskId) {
@@ -638,9 +656,6 @@ const toggleSelection = (filterType, value) => {
   const i = filter.value.indexOf(value)
   if (i > -1) filter.value.splice(i, 1)
   else filter.value.push(value)
-  
-  // Debug logging
-  console.log(`Toggle ${filterType}:`, value, 'Selected:', filter.value)
 }
 
 const clearFilter = (filterType) => {
