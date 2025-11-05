@@ -41,7 +41,7 @@ router.post("/logout", async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { email, password, name, role, department } = req.body;
+    const { email, password, name, role, department, channel, reminderPreference } = req.body;
 
     // Validate required fields
     if (!email || !password) {
@@ -56,7 +56,9 @@ router.post('/', async (req, res) => {
       password,
       name: name || '',
       role: role || 'staff',
-      department: department || ''
+      department: department || '',
+      channel: channel || "in-app",
+      reminderPreference: reminderPreference || 1
     });
 
     res.status(201).json({

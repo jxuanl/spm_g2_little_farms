@@ -196,16 +196,6 @@ const filteredUsers = computed(() => {
   );
 });
 
-// const getInitials = (name) => {
-//   if (!name) return '??';
-//   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-// };
-
-const capitalizeFirstLetter = (str) => {
-  if (!str) return '';
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
-
 const getRoleBadgeClass = (role) => {
   const classes = {
     // 'staff': 'bg-blue-100 text-blue-700',

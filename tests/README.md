@@ -92,6 +92,21 @@ tests/
 - ✅ Verify Firestore security rules are respected
 - ✅ Session-based user identification
 
+### 4. **Authentication API** (`authService.test.js`)
+- ✅ Verify valid user token and update lastLogin
+- ✅ Throw error for invalid token
+- ✅ Throw error for non-existent user in Firestore
+- ✅ Create user successfully with all fields
+- ✅ Create user with minimum required fields
+- ✅ Throw error for existing email
+- ✅ Throw error for invalid email
+- ✅ Throw error for weak password
+- ✅ Delete user successfully (Auth + Firestore)
+- ✅ Throw error for non-existent user
+- ✅ Handle delete when user exists in Auth but not in Firestore
+- ✅ Handle delete when user exists in Firestore but not in Auth
+
+
 ## Running Tests
 
 ### Prerequisites
