@@ -3,6 +3,7 @@ import request from 'supertest';
 import express from 'express';
 import tasksRouter from '../../../little_farms/backend/routes/tasks.js';
 import { createTestUser, createTestProject, createTestTask, seedTestData, db } from '../../utils/helpers.js';
+import admin from 'firebase-admin';
 
 // Create test app
 const app = express();
@@ -458,8 +459,10 @@ describe('Recurring Task Behavior', () => {
   
   describe('T305-T307: Recurrence logic for all interval units', () => {
     it('should correctly calculate next instance for days interval', async () => {
-      const baseDate = new Date('2025-11-01');
-      const deadline = new Date(baseDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
+      // Use a date in the future to ensure task is completed before deadline
+      const now = new Date();
+      const baseDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 1 day in the future
+      const deadline = new Date(baseDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days after baseDate
       
       const recurringTask = await createTestTask({
         title: 'Daily Recurring Task',
@@ -472,10 +475,14 @@ describe('Recurring Task Behavior', () => {
         deadline: deadline.toISOString()
       });
       
+      // Use Firestore Timestamp to ensure consistent date storage
       await db.collection('Tasks').doc(recurringTask.id).update({
-        createdDate: baseDate,
-        deadline: deadline
+        createdDate: admin.firestore.Timestamp.fromDate(baseDate),
+        deadline: admin.firestore.Timestamp.fromDate(deadline)
       });
+      
+      // Small delay to ensure task completion happens after task creation
+      await new Promise(resolve => setTimeout(resolve, 10));
       
       await request(app)
         .post(`/api/tasks/${recurringTask.id}/complete`)
@@ -491,7 +498,9 @@ describe('Recurring Task Behavior', () => {
       
       expect(newInstance).toBeDefined();
       const newDeadline = new Date(newInstance.deadline);
+      // Expected deadline should be deadline + 3 days (since task is completed before deadline)
       const expectedDeadline = new Date(deadline.getTime() + 3 * 24 * 60 * 60 * 1000);
+      // Allow for timezone/rounding differences (within 1 day)
       const diff = Math.abs(newDeadline.getTime() - expectedDeadline.getTime());
       expect(diff).toBeLessThan(24 * 60 * 60 * 1000);
     });
@@ -536,8 +545,8 @@ describe('Recurring Task Behavior', () => {
     });
     
     it('should correctly calculate next instance for months interval', async () => {
-      const baseDate = new Date('2025-11-01');
-      const deadline = new Date('2025-12-01'); // 1 month later
+      const baseDate = new Date('2025-11-01T00:00:00.000Z');
+      const deadline = new Date('2025-12-01T00:00:00.000Z'); // 1 month later
       
       const recurringTask = await createTestTask({
         title: 'Monthly Recurring Task',
@@ -550,9 +559,10 @@ describe('Recurring Task Behavior', () => {
         deadline: deadline.toISOString()
       });
       
+      // Use Firestore Timestamp to ensure consistent date storage
       await db.collection('Tasks').doc(recurringTask.id).update({
-        createdDate: baseDate,
-        deadline: deadline
+        createdDate: admin.firestore.Timestamp.fromDate(baseDate),
+        deadline: admin.firestore.Timestamp.fromDate(deadline)
       });
       
       await request(app)
@@ -570,8 +580,21 @@ describe('Recurring Task Behavior', () => {
       expect(newInstance).toBeDefined();
       const newDeadline = new Date(newInstance.deadline);
       // Should be approximately 1 month after original deadline
-      expect(newDeadline.getFullYear()).toBeGreaterThanOrEqual(deadline.getFullYear());
-      expect(newDeadline.getMonth()).toBeGreaterThanOrEqual(deadline.getMonth());
+      // When adding 1 month to December (month 11), we get January (month 0) of next year
+      // So we need to account for year wraparound
+      const expectedDeadline = new Date(deadline);
+      expectedDeadline.setMonth(expectedDeadline.getMonth() + 1);
+      
+      // Check that the new deadline is approximately 1 month after the original
+      // Allow for small differences in month length (within 5 days)
+      const diff = Math.abs(newDeadline.getTime() - expectedDeadline.getTime());
+      expect(diff).toBeLessThan(5 * 24 * 60 * 60 * 1000);
+      
+      // Verify year and month are correct (accounting for wraparound)
+      const expectedYear = deadline.getMonth() === 11 ? deadline.getFullYear() + 1 : deadline.getFullYear();
+      const expectedMonth = deadline.getMonth() === 11 ? 0 : deadline.getMonth() + 1;
+      expect(newDeadline.getFullYear()).toBe(expectedYear);
+      expect(newDeadline.getMonth()).toBe(expectedMonth);
     });
   });
   
