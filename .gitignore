@@ -6,5 +6,4 @@ node_modules/.package-lock.json
 tests/firebase-debug.log
 tests/firestore-debug.log
 tests/package-lock.json
-tests/package-lock.json
 tests/package.json
