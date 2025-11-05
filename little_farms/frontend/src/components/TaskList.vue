@@ -458,15 +458,17 @@
 
         <!-- Show empty-state when no results -->
         <template v-else>
-          <div class="flex items-center justify-center h-48">
-            <div class="text-center text-gray-500">
-              <div class="text-lg font-medium">
-                {{ indvTask ? 'No subtasks found' : 'No tasks found' }}
-              </div>
-              <div class="mt-2 text-sm">
-                Try adjusting filters or create a {{ indvTask ? 'subtask' : 'task' }}.
-              </div>
-            </div>
+          <div v-if="visibleTasks.length === 0" class="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <Inbox class="w-16 h-16 text-gray-300 mb-4" />
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">
+              {{ indvTask ? 'No Subtasks' : 'No Tasks' }}
+            </h3>
+            <p class="text-sm text-gray-500 mb-6 max-w-md">
+              {{ indvTask 
+                ? 'There are no subtasks yet. Click the "New Subtask" button to create one.' 
+                : 'There are no tasks to display. Click the "New Task" button to get started.' 
+              }}
+            </p>
           </div>
         </template>
       </div>
@@ -477,7 +479,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, ChevronDown, Check } from 'lucide-vue-next'
+import { Plus, ChevronDown, Check, Inbox } from 'lucide-vue-next'
 import Slider from '@vueform/slider'
 import '@vueform/slider/themes/default.css'
 
