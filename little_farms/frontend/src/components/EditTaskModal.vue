@@ -828,7 +828,6 @@ const saveTaskUpdate = async () => {
       return;
     }
     const token = await user.getIdToken();
-
     const updateData = {
       id: props.task.id,
       title: formData.title.trim(),
@@ -841,6 +840,8 @@ const saveTaskUpdate = async () => {
       tags: Array.isArray(formData.tags) ? formData.tags : [],
       userId: user.uid
     };
+
+    console.log(updateData);
 
     const endpoint = props.isSubtask
       ? `/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`

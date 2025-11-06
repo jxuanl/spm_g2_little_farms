@@ -623,13 +623,13 @@ export async function updateTask(taskId, updates) {
     if (typeof updates.priority !== 'undefined') updateData.priority = updates.priority
     if (typeof updates.status !== 'undefined' && updates.status !== null) {
       // Normalize status: map 'done' to 'Done' for consistency
-      const statusMap = {
-        'todo': 'To Do',
-        'in-progress': 'In Progress',
-        'review': 'In Review',
-        'done': 'Done'
-      }
-      updateData.status = statusMap[updates.status] || updates.status
+      // const statusMap = {
+      //   'todo': 'To Do',
+      //   'in-progress': 'In Progress',
+      //   'review': 'In Review',
+      //   'done': 'Done'
+      // }
+      updateData.status = updates.status
     }
     if (Array.isArray(updates.tags)) updateData.tags = updates.tags
 
