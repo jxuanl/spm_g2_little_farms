@@ -597,8 +597,22 @@ export async function updateTask(taskId, updates) {
         }
       }
 
-      // Managers are allowed to edit — no restriction here
+      if (role === 'manager') {
+        // Managers can edit if they are either the project owner OR the task creator
+        const isTaskCreator = existingTask.taskCreatedBy?.path === userRef.path
+        
+        if (!isTaskCreator) {
+          // Not the task creator, check if they own the project
+          const projectOwnerId = await getProjectOwnerId(existingTask.projectId)
+          if (!projectOwnerId || projectOwnerId !== updates.userId) {
+            throw new Error('Access denied: only the project owner or task creator can edit this task')
+          }
+        }
+        // If isTaskCreator is true, they can edit (no need to check project ownership)
+      }  
+    
     } else {
+      throw new Error('userId is required for task updates')
     }
 
     const updateData = {}
