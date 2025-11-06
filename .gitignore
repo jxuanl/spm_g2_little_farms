@@ -1,9 +1,16 @@
 node_modules
 little_farms/package-lock.json
-node_modules
-.DS_Store
-node_modules/.package-lock.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+.envnode_modules/.package-lock.json
 tests/firebase-debug.log
 tests/firestore-debug.log
-tests/package-lock.json
 tests/package.json
+tests/package-lock.json
+.env
+package-lock.json

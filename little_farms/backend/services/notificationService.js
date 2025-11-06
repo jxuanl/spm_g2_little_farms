@@ -29,31 +29,43 @@ function formatValue(val) {
 }
 
 function formatFirestoreTimestamp(timestamp) {
-  const date = timestamp.toDate
-    ? timestamp.toDate()
-    : new Date(timestamp._seconds * 1000 + timestamp._nanoseconds / 1e6);
+  let date;
+  // numeric ms since epoch
+  if (typeof timestamp === 'number') {
+    date = new Date(timestamp);
+  } else if (timestamp instanceof Date) {
+    date = timestamp;
+  } else if (typeof timestamp.toDate === 'function') {
+    date = timestamp.toDate();
+  } else if (timestamp._seconds !== undefined) {
+    date = new Date(timestamp._seconds * 1000 + (timestamp._nanoseconds || 0) / 1e6);
+  } else {
+    // fallback try
+    date = new Date(timestamp);
+  }
   return new Intl.DateTimeFormat('en-SG', {
     dateStyle: 'medium',
     timeStyle: 'short',
     timeZone: 'Asia/Singapore'
   }).format(date);
-}
+ }
 
 // create a notification doc for a user
-async function createNotificationForUser({ userId, title, body, taskId = null, metadata = {} }) {
+async function createNotificationForUser({ userId, title, body, taskId = null, url = null, metadata = {} }) {
   try {
     const notif = {
       userId,
       title,
       body,
       taskId,
+      url,
       metadata,
       status: 'unread',
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     }
     await db.collection('Notifications').add(notif)
     // try to push realtime if socket connected (best-effort)
-    try { sendToUser({ type: 'notification', userId, title, body, taskId, metadata }) } catch (e) { /* ignore */ }
+    try { sendToUser({ type: 'notification', userId, title, body, taskId, url, metadata }) } catch (e) { /* ignore */ }
   } catch (err) {
     console.error('Failed to create notification doc:', err)
   }
@@ -236,4 +248,70 @@ export async function sendDailyDigest(userId, detailedTasks) {
 
   await sendEmail(emailMsg);
   return { message: 'Daily digest sent', count: tasks.length };
+}
+
+export async function handleNewCommentNotification({ taskId, subtaskId, taskName, commentText, commenterName, personsIdInvolved, timestamp }) {
+  const taskDoc = await db.collection('Tasks').doc(taskId).get();
+  if (!taskDoc.exists) throw new Error("Task not found");
+  const taskData = taskDoc.data();
+  taskName = taskData.title || 'Untitled Task';
+  const commentTime = formatFirestoreTimestamp(timestamp);
+
+  // build the frontend link (subtaskId optional)
+  const frontendBase = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
+  const url = subtaskId ? `${frontendBase}/all-tasks/${taskId}/${subtaskId}` : `${frontendBase}/all-tasks/${taskId}`;
+
+  const body = `${commenterName} commented on task "${taskName}" at ${commentTime}:\n\n"${commentText}"\n\n`;
+
+  const targets = Array.isArray(personsIdInvolved) ? personsIdInvolved : [];
+  if (targets.length === 0) {
+    return { message: 'No recipients provided' };
+  }
+
+  const results = [];
+  for (const userId of targets) {
+    try {
+      const userDoc = await db.collection('Users').doc(userId).get();
+      if (!userDoc.exists) {
+        results.push({ userId, error: 'User not found' });
+        continue;
+      }
+      const userData = userDoc.data();
+      // canonical channel var; fallbacks if schema differs
+      const channel = userData.channel || userData.reminderPreference || 'in-app';
+
+      const title = `New Comment on Task: ${taskName}`;
+      if (channel === 'in-app') {
+        await createNotificationForUser({
+          userId,
+          title,
+          body,
+          taskId,
+          url,
+          metadata: {}
+        });
+        results.push({ userId, channel: 'in-app', ok: true });
+      } else {
+        // send email (use user's email if present)
+        const toEmail = userData.email || (userData.user && userData.user.email) || null;
+        if (!toEmail) {
+          results.push({ userId, error: 'No email for user' });
+          continue;
+        }
+        const emailMsg = {
+          to: toEmail,
+          from: senderEmail,
+          subject: title,
+          text: body + `\n\nView: ${url}`
+        };
+        await sendEmail(emailMsg);
+        results.push({ userId, channel: 'email', ok: true });
+      }
+    } catch (e) {
+      console.error(`Failed to notify ${userId}:`, e);
+      results.push({ userId, error: e?.message || String(e) });
+    }
+  }
+
+  return { message: 'Notifications processed', results };
 }
