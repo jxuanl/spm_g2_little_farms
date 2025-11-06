@@ -62,6 +62,9 @@ async function getTasksForUser(userId, opts = {}) {
     const { assignedUserIds = [] } = opts
     const userRef = db.collection('Users').doc(userId)
 
+    const userDoc = await userRef.get()
+    const role = (userDoc.exists ? (userDoc.data()?.role || 'staff') : 'staff').toLowerCase()
+
     // ==== Build project color/title maps ====
     const projectSnap = await db.collection('Projects').get()
     const projectColors = {}
@@ -78,16 +81,32 @@ async function getTasksForUser(userId, opts = {}) {
       .where('assignedTo', 'array-contains', userRef)
       .get()
 
-    // Collect unique, non-null project DocumentReferences
-    const involvedProjectRefs = Array.from(
-      new Set(
-        involvementSnap.docs
-          .map(d => d.data()?.projectId)
-          .filter(ref => ref && typeof ref.get === 'function')
-      )
-    )
+    // ==== 1b) Projects the user is involved in (CREATED at least one task) ====
+    const createdInvolvementSnap = await db
+      .collection('Tasks')
+      .where('taskCreatedBy', '==', userRef)
+      .get()
 
-    // ==== 2) Fetch ALL tasks from those projects (any assignee) ====
+    // Base: projects from assignment or creation
+    let involvedProjectRefs = Array.from(new Set([
+      ...involvementSnap.docs.map(d => d.data()?.projectId),
+      ...createdInvolvementSnap.docs.map(d => d.data()?.projectId),
+    ].filter(ref => ref && typeof ref.get === 'function')))
+
+    // ==== 1c) If MANAGER, include all projects they own ====
+    if (role === 'manager') {
+      const ownedProjectsSnap = await db
+        .collection('Projects')
+        .where('owner', '==', userRef)
+        .get()
+      const ownedRefs = ownedProjectsSnap.empty ? [] : ownedProjectsSnap.docs.map(d => d.ref)
+      if (ownedRefs.length) {
+        const asSet = new Set(involvedProjectRefs.map(r => r.path))
+        ownedRefs.forEach(r => { if (!asSet.has(r.path)) involvedProjectRefs.push(r) })
+      }
+    }
+
+    // ==== 2) Fetch ALL tasks from those projects (any assignee/creator) ====
     // Firestore 'in' supports up to 10 values; batch if necessary.
     const taskDocs = []
     if (involvedProjectRefs.length) {
