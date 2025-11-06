@@ -2,6 +2,44 @@ import { auth, db } from '../adminFirebase.js';
 import admin from "../adminFirebase.js";
 
 class UserService {
+  constructor() {
+    // In-memory cache for user data
+    this.userCache = new Map();
+    this.allUsersCache = null;
+    this.allUsersCacheTimestamp = 0;
+    
+    // Cache configuration
+    this.USER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes for individual users
+    this.ALL_USERS_CACHE_TTL = 2 * 60 * 1000; // 2 minutes for all users list
+    
+    // Cache statistics for monitoring
+    this.cacheStats = {
+      hits: 0,
+      misses: 0,
+      invalidations: 0
+    };
+  }
+
+  /**
+   * Get cache statistics (for monitoring stale data concerns)
+   */
+  getCacheStats() {
+    return {
+      ...this.cacheStats,
+      cacheSize: this.userCache.size,
+      hitRate: this.cacheStats.hits + this.cacheStats.misses > 0
+        ? (this.cacheStats.hits / (this.cacheStats.hits + this.cacheStats.misses) * 100).toFixed(2) + '%'
+        : '0%'
+    };
+  }
+
+  /**
+   * Reset cache statistics
+   */
+  resetCacheStats() {
+    this.cacheStats = { hits: 0, misses: 0, invalidations: 0 };
+  }
+
   /**
    * Sign in user with email and password
    * Backend validates and returns custom token
@@ -122,10 +160,22 @@ class UserService {
   }
 
   /**
-   * Get user by UID
+   * Get user by UID (with caching)
    */
   async getUserById(uid) {
     try {
+      // Check cache first
+      const cached = this.userCache.get(uid);
+      if (cached && Date.now() - cached.timestamp < this.USER_CACHE_TTL) {
+        this.cacheStats.hits++;
+        console.log(`[Cache HIT] User ${uid}`);
+        return cached.data;
+      }
+
+      // Cache miss - fetch from database
+      this.cacheStats.misses++;
+      console.log(`[Cache MISS] User ${uid} - fetching from DB`);
+
       const userRecord = await auth.getUser(uid);
       const userDocRef = db.collection('Users').doc(uid);
       const userDoc = await userDocRef.get();
@@ -136,7 +186,7 @@ class UserService {
 
       const userData = userDoc.data();
 
-      return {
+      const result = {
         success: true,
         user: {
           uid: userRecord.uid,
@@ -147,9 +197,19 @@ class UserService {
           emailVerified: userRecord.emailVerified,
           lastLogin: userData.lastLogin,
           createdAt: userData.createdAt,
-          reminderPreference: userData.reminderPreference || 'email'
+          reminderPreference: userData.reminderPreference || 'email',
+          // Add version for optimistic locking (optional)
+          _cacheVersion: Date.now()
         }
       };
+
+      // Cache the result
+      this.userCache.set(uid, {
+        data: result,
+        timestamp: Date.now()
+      });
+
+      return result;
     } catch (error) {
       console.error('Get user error:', error);
       throw error;
@@ -157,10 +217,21 @@ class UserService {
   }
 
   /**
-   * Get all users
+   * Get all users (with caching)
    */
   async getAllUsers() {
     try {
+      // Check cache first
+      if (this.allUsersCache && Date.now() - this.allUsersCacheTimestamp < this.ALL_USERS_CACHE_TTL) {
+        this.cacheStats.hits++;
+        console.log('[Cache HIT] All users list');
+        return this.allUsersCache;
+      }
+
+      // Cache miss - fetch from database
+      this.cacheStats.misses++;
+      console.log('[Cache MISS] All users list - fetching from DB');
+
       const usersSnapshot = await db.collection('Users').get();
       const users = [];
 
@@ -172,18 +243,120 @@ class UserService {
         });
       });
 
-      // console.log('getAllUsers result:', users);
-
-      return {
+      const result = {
         success: true,
         data: users,
         users: users, // Also include this for compatibility
         count: users.length
       };
+
+      // Cache the result
+      this.allUsersCache = result;
+      this.allUsersCacheTimestamp = Date.now();
+
+      return result;
     } catch (error) {
       console.error('Get all users error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Batch get users by IDs (optimized for enrichment)
+   */
+  async getUsersByIds(userIds) {
+    try {
+      if (!userIds || userIds.length === 0) {
+        return { success: true, users: [] };
+      }
+
+      const users = [];
+      const uncachedIds = [];
+
+      // Check cache for each user
+      for (const uid of userIds) {
+        const cached = this.userCache.get(uid);
+        if (cached && Date.now() - cached.timestamp < this.USER_CACHE_TTL) {
+          users.push(cached.data.user);
+        } else {
+          uncachedIds.push(uid);
+        }
+      }
+
+      // Batch fetch uncached users
+      if (uncachedIds.length > 0) {
+        // Firestore 'in' query supports max 10 items, so chunk if needed
+        const chunks = [];
+        for (let i = 0; i < uncachedIds.length; i += 10) {
+          chunks.push(uncachedIds.slice(i, i + 10));
+        }
+
+        for (const chunk of chunks) {
+          const usersSnapshot = await db.collection('Users')
+            .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
+            .get();
+
+          usersSnapshot.forEach(doc => {
+            const userData = doc.data();
+            const user = {
+              uid: doc.id,
+              email: userData.email || '',
+              name: userData.name || 'User',
+              role: userData.role || 'staff',
+              department: userData.department || 'General',
+              position: userData.position || 'Staff',
+              phoneNumber: userData.phoneNumber || '',
+              imageUrl: userData.imageUrl || ''
+            };
+            
+            users.push(user);
+
+            // Cache individual user
+            this.userCache.set(doc.id, {
+              data: { success: true, user },
+              timestamp: Date.now()
+            });
+          });
+        }
+      }
+
+      return { success: true, users };
+    } catch (error) {
+      console.error('Get users by IDs error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Invalidate user cache (call after user updates)
+   */
+  invalidateUserCache(uid) {
+    this.cacheStats.invalidations++;
+    
+    if (uid) {
+      const existed = this.userCache.has(uid);
+      this.userCache.delete(uid);
+      if (existed) {
+        console.log(`[Cache INVALIDATE] User ${uid}`);
+      }
+    } else {
+      // Invalidate all caches
+      const userCount = this.userCache.size;
+      this.userCache.clear();
+      this.allUsersCache = null;
+      this.allUsersCacheTimestamp = 0;
+      console.log(`[Cache INVALIDATE] Cleared all user caches (${userCount} users + all users list)`);
+    }
+  }
+
+  /**
+   * Force refresh of user data (bypass cache)
+   * Use when you need absolutely current data
+   */
+  async forceRefreshUser(uid) {
+    console.log(`[Cache FORCE REFRESH] User ${uid}`);
+    this.invalidateUserCache(uid);
+    return this.getUserById(uid);
   }
 
   // /**
@@ -208,6 +381,12 @@ class UserService {
       };
 
       await db.collection('Users').doc(uid).update(firestoreUpdate);
+
+      // Invalidate cache for this user
+      this.invalidateUserCache(uid);
+      // Also invalidate all users cache since it contains this user
+      this.allUsersCache = null;
+      this.allUsersCacheTimestamp = 0;
 
       return {
         success: true,
