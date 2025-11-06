@@ -271,25 +271,31 @@
         <!-- Recurring Task Section -->
         <div class="space-y-3 border border-gray-300 rounded-md p-4 bg-gray-50">
           <div class="flex items-center justify-between">
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              Recurring Task
-            </label>
-            <button
-              type="button"
-              @click="formData.recurring = !formData.recurring"
-              :class="[
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                formData.recurring ? 'bg-primary' : 'bg-gray-300'
-              ]"
-            >
-              <span
-                :class="[
-                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                  formData.recurring ? 'translate-x-6' : 'translate-x-1'
-                ]"
-              />
-            </button>
-          </div>
+              <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Recurring Task
+              </label>
+              <button type="button" @click="formData.recurring = !formData.recurring" :class="[
+                'relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary p-1',
+                formData.recurring ? 'bg-blue-500' : 'bg-gray-300'
+              ]">
+                <span :class="[
+                  'inline-flex h-6 w-6 transform rounded-full bg-white transition-transform shadow-sm items-center justify-center',
+                  formData.recurring ? 'translate-x-6' : 'translate-x-0'
+                ]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"
+                    :class="formData.recurring ? 'text-blue-500' : 'text-gray-600'">
+                    <!-- Calendar with repeating arrows -->
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                    <path v-if="formData.recurring" d="m8 14 2 2 4-4" />
+                    <path v-if="!formData.recurring" d="M8 14h8" />
+                  </svg>
+                </span>
+              </button>
+            </div>
 
           <div v-if="formData.recurring" class="space-y-3 pt-2">
             <div class="grid grid-cols-2 gap-4">
@@ -1018,6 +1024,9 @@ watch(() => props.parentProject, (newParentProject) => {
 /* Ensure red error text always shows */
 .text-red-500 {
   color: #ef4444 !important;
+}
+.bg-gray-300 {
+  background-color: #d1d5db; /* Standard gray-300 */
 }
 
 /* Red error borders */
