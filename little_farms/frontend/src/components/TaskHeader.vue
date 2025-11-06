@@ -24,7 +24,12 @@
 
         <div
           v-if="showNotifications"
-          class="absolute right-full mr-2 bottom-auto top-full w-72 rounded-md border bg-popover text-popover-foreground shadow-md z-50 max-h-64 overflow-y-auto"
+          :class="[
+            'absolute right-full mr-2 bottom-auto top-full w-72 rounded-md border bg-popover text-popover-foreground shadow-md z-50'
+          ]"
+          :style="notifications.length > 3
+            ? { maxHeight: '12rem', overflowY: 'auto' }
+            : { maxHeight: 'none', overflowY: 'visible' }"
         >
           <div class="p-2">
             <div 
@@ -41,6 +46,7 @@
                 'text-sm p-2 rounded-md cursor-pointer transition-colors border mb-1', 
                 notif.status === 'unread' ? 'bg-red-50 border-red-300' : 'bg-white border-gray-200' 
               ]"
+              @click="openNotification(notif)"
             >
               <div class="mb-1">
                 <div class="text-sm font-medium text-gray-900">
@@ -49,10 +55,17 @@
                 <div class="whitespace-pre-wrap break-words text-sm text-gray-700 mt-1">
                   {{ notif.content || notif.body }}
                 </div>
+                <div v-if="notif.url" class="mt-2">
+                  <a
+                    href="#"
+                    @click.stop.prevent="openNotification(notif)"
+                    class="text-xs text-blue-600 hover:underline"
+                    >View task</a>
+                </div>
               </div>
-               <div class="text-xs text-muted-foreground mt-1">
-                 {{ formatDate(notif.createdAt) }}
-               </div>
+              <div class="text-xs text-muted-foreground mt-1">
+                {{ formatDate(notif.createdAt) }}
+              </div>
               <button
                 v-if="notif.status === 'unread'"
                 class="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 underline"
@@ -92,6 +105,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { getAuth } from 'firebase/auth';
+import { useRouter } from 'vue-router';
 import { Bell, MoreVertical } from 'lucide-vue-next';
 import ws from '../../webSocket';
 
@@ -179,6 +193,44 @@ const acknowledgeNotification = async (notifId) => {
     // console.log(`✅ Notification ${notifId} marked as read`);
   } catch (err) {
     console.error('❌ Failed to acknowledge notification:', err);
+  }
+};
+
+const router = useRouter();
+
+// new helper: open notification (acknowledge then navigate)
+const openNotification = async (notif) => {
+  try {
+    // mark as read if unread
+    if (notif.status === 'unread') {
+      await acknowledgeNotification(notif.id);
+      // local state update
+      const n = notifications.value.find(n => n.id === notif.id);
+      if (n) n.status = 'read';
+    }
+  } catch (err) {
+    console.error('Failed to mark notification read before navigation:', err);
+  }
+
+  if (!notif.url) {
+    // no url to navigate to
+    return;
+  }
+
+  // Prefer client-side router navigation if same-origin and path-only
+  try {
+    const urlObj = new URL(notif.url, window.location.origin);
+    const originMatches = urlObj.origin === window.location.origin;
+    if (originMatches) {
+      // use router push with pathname (preserve query/hash)
+      router.push({ path: urlObj.pathname + urlObj.search + urlObj.hash });
+    } else {
+      // cross-origin or absolute different host — full navigation
+      window.location.href = notif.url;
+    }
+  } catch (e) {
+    // if URL parsing fails, fallback to full navigation
+    window.location.href = notif.url;
   }
 };
 

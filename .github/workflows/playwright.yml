@@ -1,0 +1,44 @@
+name: Playwright E2E
+
+# Run on PRs targeting main/master, and on pushes to main/master only when
+# relevant frontend/e2e files change. Also allow manual dispatch.
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'tests/e2e/**'
+      - 'little_farms/frontend/**'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'tests/e2e/**'
+      - 'little_farms/frontend/**'
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install e2e deps
+        working-directory: ./tests/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run playwright
+        working-directory: ./tests/e2e
+        run: npx playwright test
+
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: ./tests/e2e/playwright-report

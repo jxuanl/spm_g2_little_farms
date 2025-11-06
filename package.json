@@ -8,7 +8,12 @@
     "frappe-gantt": "^1.0.4",
     "json2csv": "^6.0.0-alpha.2",
     "ws": "^8.18.3"
-  }
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.10.0"
+  },
+  "scripts": {}
 }
 
 

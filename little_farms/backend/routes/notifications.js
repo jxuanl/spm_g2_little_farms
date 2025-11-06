@@ -5,7 +5,8 @@ import {
   getNotifications,
   acknowledgeNotification,
   handleManagerTaskUpdate,
-  sendDailyDigest
+  sendDailyDigest,
+  handleNewCommentNotification
 } from '../services/notificationService.js';
 import {getTasksforDailyDigest} from '../services/reportDataService.js';
 
@@ -95,7 +96,6 @@ router.post('/daily-digest', async (req, res) => {
 
 // POST /api/notifications/update/comment -> send to this, and wait for response
 router.post('/update/comment', async (req, res) => {
-  
   /*
   Expected body in req.body:
   {
@@ -104,10 +104,17 @@ router.post('/update/comment', async (req, res) => {
     "taskName": "",
     "commentText": "",
     "commenterName": "",
-    "personsIdInvolved": []
+    "personsIdInvolved": [],
     "timestamp": Date.now()
   }
   */
-})
+  try {
+    const result = await handleNewCommentNotification(req.body);
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('Error in /update/comment:', err);
+    return res.status(500).json({ error: err?.message || 'Internal server error' });
+  }
+});
 
 export default router;
