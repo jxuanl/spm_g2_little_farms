@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-8 border-t pt-6">
+
     <h3 class="text-xl font-semibold mb-6 text-foreground">Comments</h3>
     
     <!-- Add Comment Form -->
@@ -336,7 +336,7 @@
         </div>
       </div>
     </div>
-  </div>
+
 </template>
 
 <script setup>

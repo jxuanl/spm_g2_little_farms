@@ -35,6 +35,7 @@
               {{ indvTask ? 'Subtasks' : 'Tasks' }}
             </h3>
             <button
+              v-if="canCreateTask"
               class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
               @click="$emit('createTask')">
               <Plus class="w-4 h-4 mr-2" />
@@ -470,6 +471,22 @@ const router = useRouter()
 // keep a local boot flag so first paint shows "Loading tasks..." until initial props processed
 const localBootLoading = ref(true)
 const showLoading = computed(() => props.loading || localBootLoading.value)
+
+/* ---------- User role ---------- */
+const currentUserRole = computed(() => {
+  try {
+    const userSession = sessionStorage.getItem('userSession')
+    if (userSession) {
+      const user = JSON.parse(userSession)
+      return user.role || ''
+    }
+  } catch (error) {
+    console.error('Error getting user role from session:', error)
+  }
+  return ''
+})
+
+const canCreateTask = computed(() => currentUserRole.value !== 'HR')
 
 /* ---------- UI state ---------- */
 const dropdownStates = ref({
