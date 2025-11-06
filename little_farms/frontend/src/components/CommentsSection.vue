@@ -1,161 +1,229 @@
 <template>
-  <div class="mt-8 border-t pt-6">
-    <h3 class="text-xl font-semibold mb-4">Comments</h3>
+
+    <h3 class="text-xl font-semibold mb-6 text-foreground">Comments</h3>
     
     <!-- Add Comment Form -->
-    <div class="mb-6 p-4 bg-card border border-border rounded-lg shadow-sm">
-      <div class="mb-3">
+    <div class="mb-12 p-6 bg-card border border-border rounded-xl shadow-sm">
+      <div class="mb-4">
         <textarea
           v-model="newCommentContent"
           placeholder="Add a comment..."
-          class="w-full p-3 border border-border rounded-md resize-none bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          class="w-full p-4 border border-border rounded-lg resize-none bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all duration-200"
           rows="3"
           :maxlength="2000"
           @keydown.ctrl.enter="handleAddComment"
         ></textarea>
       </div>
-      <div class="flex flex-col gap-3">
-        <!-- Selected mentions chips -->
-        <div v-if="selectedMentions.length" class="flex flex-wrap gap-2">
-          <span
-            v-for="m in selectedMentions"
-            :key="m.id"
-            class="inline-flex items-center gap-1 px-2.5 py-1 text-sm rounded-full bg-primary/10 text-primary border border-primary/20"
-          >
-            @{{ m.name || m.email || m.id }}
-            <button class="ml-1 text-primary hover:text-primary/80 transition-colors" @click="removeMention(m.id)">×</button>
-          </span>
-        </div>
-        <!-- Selected files list -->
-        <div v-if="selectedFiles.length" class="space-y-2">
-          <div
-            v-for="(f, idx) in selectedFiles"
-            :key="f.id"
-            class="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2.5 shadow-sm"
-          >
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="text-foreground truncate" :title="f.file.name">📎 {{ f.file.name }}</span>
-              <span class="text-xs text-muted-foreground">({{ formatSize(f.file.size) }})</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div v-if="f.progress != null" class="w-32">
-                <div class="h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <div class="h-full bg-primary rounded-full transition-all" :style="{ width: f.progress + '%' }"></div>
-                </div>
-              </div>
-              <button class="text-sm text-destructive hover:text-destructive/80 font-medium transition-colors" @click="removeFile(idx)">Remove</button>
-            </div>
+      
+      <!-- Selected mentions chips -->
+      <div v-if="selectedMentions.length" class="mb-4 flex flex-wrap gap-2">
+        <div
+          v-for="m in selectedMentions"
+          :key="m.id"
+          class="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-full bg-primary/10 text-primary border border-primary/20"
+        >
+          <div class="w-5 h-5 bg-primary/20 rounded-full flex items-center justify-center">
+            <span class="text-xs font-medium">@</span>
           </div>
-        </div>
-
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-3 flex-wrap">
-            <span class="text-sm text-muted-foreground">
-              {{ newCommentContent.length }}/2000 characters
-            </span>
-            <div class="relative">
-              <button
-                type="button"
-                class="inline-flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-md border border-border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                @click="toggleMentionDropdown"
-              >
-                <span class="font-mono text-lg leading-none">@</span>
-                Mention
-              </button>
-              <!-- Mentions dropdown -->
-              <div
-                v-if="showMentionDropdown"
-                class="absolute z-50 left-0 mt-2 w-72 max-h-64 overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
-              >
-                <div class="p-2 border-b border-border bg-muted/50 sticky top-0 backdrop-blur-sm">
-                  <input
-                    v-model="mentionQuery"
-                    type="text"
-                    placeholder="Search users..."
-                    class="w-full px-3 py-1.5 text-sm border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-shadow"
-                  />
-                </div>
-                <div class="max-h-52 overflow-y-auto">
-                  <div v-if="loadingUsers" class="p-3 text-sm text-muted-foreground">Loading users…</div>
-                  <div v-else>
-                    <button
-                      v-for="u in filteredUsers"
-                      :key="u.id"
-                      class="w-full text-left px-3 py-2.5 text-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between transition-colors"
-                      @click="toggleMention(u)"
-                    >
-                      <span class="truncate font-medium">{{ u.name || u.email || u.id }}</span>
-                      <span v-if="selectedMentions.some(m => m.id === u.id)" class="text-primary font-semibold">✓</span>
-                    </button>
-                    <div v-if="!filteredUsers.length" class="p-3 text-sm text-muted-foreground text-center">No users found</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-md border border-border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-              @click="triggerFilePicker"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 6.75v8.25a4.5 4.5 0 1 1-9 0V6.75a3 3 0 1 1 6 0v7.5a1.5 1.5 0 0 1-3 0V7.5h1.5v6.75a.75.75 0 0 0 1.5 0v-7.5a4.5 4.5 0 1 0-9 0v8.25a6 6 0 1 0 12 0V6.75h-1.5z"/></svg>
-              Attach files
-            </button>
-            <input ref="fileInputRef" type="file" class="hidden" multiple @change="onFilesPicked" :accept="acceptedTypes" />
-            <span class="text-xs text-muted-foreground">Max 3 files, ≤ 500KB each</span>
-          </div>
-          <button
-            @click="handleAddComment"
-            :disabled="!newCommentContent.trim() || isSubmitting || selectedFiles.some(f => f.uploading)"
-            class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          <span>{{ m.name || m.email || m.id }}</span>
+          <button 
+            class="ml-1 w-4 h-4 flex items-center justify-center text-primary hover:text-primary/80 transition-colors rounded-full hover:bg-primary/20"
+            @click="removeMention(m.id)"
           >
-            {{ isSubmitting ? 'Posting...' : 'Post' }}
+            ×
           </button>
         </div>
+      </div>
+      
+      <!-- Selected files list -->
+      <div v-if="selectedFiles.length" class="mb-4 space-y-2">
+        <div
+          v-for="(f, idx) in selectedFiles"
+          :key="f.id"
+          class="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3"
+        >
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            <div class="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Paperclip class="w-4 h-4 text-primary" />
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-foreground truncate">{{ f.file.name }}</div>
+              <div class="text-xs text-muted-foreground">{{ formatSize(f.file.size) }}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div v-if="f.progress != null" class="w-24">
+              <div class="h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div 
+                  class="h-full bg-primary rounded-full transition-all duration-300" 
+                  :style="{ width: f.progress + '%' }"
+                ></div>
+              </div>
+            </div>
+            <button 
+              class="text-sm text-destructive hover:text-destructive/80 font-medium transition-colors px-3 py-1 rounded-md hover:bg-destructive/5"
+              @click="removeFile(idx)"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- First row: Character count, Mention button, Attach files button -->
+      <div class="flex items-center gap-3 flex-wrap mb-4">
+        <span class="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-md">
+          {{ newCommentContent.length }}/2000 characters
+        </span>
+        
+        <div class="relative">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
+            @click="toggleMentionDropdown"
+          >
+            <div class="w-5 h-5 bg-primary/10 rounded flex items-center justify-center">
+              <span class="text-primary font-semibold text-sm">@</span>
+            </div>
+            Mention
+          </button>
+          
+          <!-- Mentions dropdown -->
+          <div
+            v-if="showMentionDropdown"
+            class="absolute z-50 left-0 mt-2 w-80 max-h-64 overflow-hidden rounded-xl border border-border bg-popover shadow-lg"
+          >
+            <div class="p-3 border-b border-border bg-muted/30">
+              <input
+                v-model="mentionQuery"
+                type="text"
+                placeholder="Search users..."
+                class="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all"
+              />
+            </div>
+            <div class="max-h-48 overflow-y-auto">
+              <div v-if="loadingUsers" class="p-4 text-sm text-muted-foreground text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <div class="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                  Loading users...
+                </div>
+              </div>
+              <div v-else>
+                <button
+                  v-for="u in filteredUsers"
+                  :key="u.id"
+                  class="w-full text-left px-6 py-1 text-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between transition-colors border-b border-border last:border-b-0"
+                  @click="toggleMention(u)"
+                >
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <span class="text-xs font-medium text-primary">
+                        {{ (u.name || u.email || 'U').charAt(0).toUpperCase() }}
+                      </span>
+                    </div>
+                    <div class="text-left">
+                      <div class="font-medium text-foreground">{{ u.name || u.email || u.id }}</div>
+                      <div v-if="u.email" class="text-xs text-muted-foreground">{{ u.email }}</div>
+                    </div>
+                  </div>
+                  <div 
+                    v-if="selectedMentions.some(m => m.id === u.id)" 
+                    class="w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center"
+                  >
+                    <span class="text-xs">✓</span>
+                  </div>
+                </button>
+                <div v-if="!filteredUsers.length" class="p-4 text-sm text-muted-foreground text-center">
+                  No users found
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
+          @click="triggerFilePicker"
+        >
+          <Paperclip class="w-4 h-4 text-primary" />
+          Attach files
+        </button>
+        <input ref="fileInputRef" type="file" class="hidden" multiple @change="onFilesPicked" :accept="acceptedTypes" />
+        
+        <span class="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-md">
+          Max 3 files, ≤ 500KB each
+        </span>
+      </div>
+
+      <!-- Second row: Post Comment button -->
+      <div class="flex justify-end">
+        <button
+          @click="handleAddComment"
+          :disabled="!newCommentContent.trim() || isSubmitting || selectedFiles.some(f => f.uploading)"
+          class="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md flex items-center gap-2"
+        >
+          <div v-if="isSubmitting" class="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+          {{ isSubmitting ? 'Posting...' : 'Post Comment' }}
+        </button>
       </div>
     </div>
 
     <!-- Comments List -->
-    <div v-if="comments.length === 0" class="text-muted-foreground text-center py-8">
-      No comments yet. Be the first to add one!
+    <div v-if="comments.length === 0" class="text-center py-12 border-2 border-dashed border-border rounded-xl bg-muted/20">
+      <div class="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+        <span class="text-2xl">💬</span>
+      </div>
+      <p class="text-muted-foreground font-medium">No comments yet</p>
+      <p class="text-sm text-muted-foreground mt-1">Be the first to add a comment</p>
     </div>
     
-    <div v-else class="space-y-3">
+    <div v-else class="space-y-4">
       <!-- Comments Scroller Container -->
       <div class="relative">
         <!-- Comments Container with fixed height and scroll -->
         <div 
-          class="overflow-y-auto transition-all duration-300"
+          class="overflow-y-auto transition-all duration-300 scrollbar-thin"
           :class="{
             'max-h-96': comments.length > 4,
             'max-h-auto': comments.length <= 4
           }"
           ref="commentsContainer"
         >
-          <div class="space-y-3 pb-1">
+          <div class="space-y-4 pb-1">
             <div
               v-for="comment in visibleComments"
               :key="comment.id"
-              class="p-4 border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow"
+              class="group p-6 border border-border rounded-xl bg-card hover:shadow-sm transition-all duration-200"
             >
-              <div class="flex justify-between items-start mb-3">
-                <div class="flex items-center space-x-2">
-                  <span class="font-semibold text-foreground">{{ comment.authorName || 'Unknown User' }}</span>
-                  <span class="text-sm text-muted-foreground">•</span>
-                  <span class="text-sm text-muted-foreground">{{ formatDate(comment.createdDate) }}</span>
-                  <span v-if="comment.modifiedDate && comment.modifiedDate !== comment.createdDate" class="text-xs text-muted-foreground italic">
-                    (edited)
-                  </span>
+              <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <!-- <span class="text-sm font-medium text-primary">
+                      {{ (comment.authorName || 'U').charAt(0).toUpperCase() }}
+                    </span> -->
+                  </div>
+                  <div>
+                    <div class="font-semibold text-foreground">{{ comment.authorName || 'Unknown User' }}</div>
+                    <div class="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <span>{{ formatDate(comment.createdDate) }}</span>
+                      <span v-if="comment.modifiedDate && comment.modifiedDate !== comment.createdDate" class="text-xs text-muted-foreground italic">
+                        (edited)
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div v-if="canEditComment(comment)" class="flex space-x-3">
+                
+                <div v-if="canEditComment(comment)" class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   <button
                     @click="startEditComment(comment)"
-                    class="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                    class="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors duration-200"
                   >
                     Edit
                   </button>
                   <button
                     @click="handleDeleteComment(comment.id)"
-                    class="text-sm text-destructive hover:text-destructive/80 font-medium transition-colors"
+                    class="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors duration-200"
                     :disabled="isDeleting === comment.id"
                   >
                     {{ isDeleting === comment.id ? 'Deleting...' : 'Delete' }}
@@ -164,52 +232,75 @@
               </div>
               
               <!-- Comment Content -->
-              <div v-if="editingCommentId !== comment.id" class="whitespace-pre-wrap text-foreground leading-relaxed">
-                {{ comment.content }}
+              <div v-if="editingCommentId !== comment.id" class="space-y-4">
+                <div class="whitespace-pre-wrap text-foreground leading-relaxed">
+                  {{ comment.content }}
+                </div>
+                
                 <!-- Mentioned users display -->
-                <div v-if="comment.mentions && comment.mentions.length" class="mt-3 flex flex-wrap gap-2">
-                  <span
+                <div v-if="comment.mentions && comment.mentions.length" class="flex flex-wrap gap-2">
+                  <div
                     v-for="u in comment.mentions"
                     :key="u.id"
-                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20"
+                    class="inline-flex items-center gap-5 px-3 py-5 text-sm rounded-full bg-primary/10 text-primary border border-primary/20"
                   >
-                    @{{ u.name || u.email || u.id }}
-                  </span>
+                    <div class="w-4 h-4 bg-primary/20 rounded-full flex items-center justify-center">
+                      <span class="text-xs font-medium">@</span>
+                    </div>
+                    {{ u.name || u.email || u.id }}
+                  </div>
                 </div>
-                <div v-if="comment.attachments && comment.attachments.length" class="mt-3 space-y-1.5">
-                  <div v-for="att in comment.attachments" :key="att.url" class="text-sm">
-                    <a class="text-primary hover:text-primary/80 hover:underline break-all font-medium transition-colors inline-flex items-center gap-1" :href="att.url" target="_blank" rel="noopener">
-                      📎 {{ att.name || 'attachment' }}
-                    </a>
-                    <span v-if="att.size" class="text-muted-foreground text-xs ml-1">({{ formatSize(att.size) }})</span>
+                
+                <!-- Attachments -->
+                <div v-if="comment.attachments && comment.attachments.length" class="space-y-2">
+                  <div 
+                    v-for="att in comment.attachments" 
+                    :key="att.url" 
+                    class="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-border"
+                  >
+                    <div class="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <Paperclip class="w-4 h-4 text-primary" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <a 
+                        class="text-sm font-medium text-primary hover:text-primary/80 hover:underline truncate block" 
+                        :href="att.url" 
+                        target="_blank" 
+                        rel="noopener"
+                      >
+                        {{ att.name || 'attachment' }}
+                      </a>
+                      <span v-if="att.size" class="text-xs text-muted-foreground">({{ formatSize(att.size) }})</span>
+                    </div>
                   </div>
                 </div>
               </div>
               
               <!-- Edit Form -->
-              <div v-else class="space-y-3">
+              <div v-else class="space-y-4">
                 <textarea
                   v-model="editContent"
-                  class="w-full p-3 border border-border rounded-md resize-none bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+                  class="w-full p-4 border border-border rounded-lg resize-none bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent transition-all duration-200"
                   rows="3"
                   :maxlength="2000"
                 ></textarea>
                 <div class="flex justify-between items-center">
-                  <span class="text-sm text-muted-foreground">
+                  <span class="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-md">
                     {{ editContent.length }}/2000 characters
                   </span>
-                  <div class="flex gap-2">
+                  <div class="flex gap-3">
                     <button
                       @click="cancelEdit"
-                      class="px-3 py-1.5 text-sm font-medium border border-border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                      class="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
                     >
                       Cancel
                     </button>
                     <button
                       @click="handleUpdateComment(comment.id)"
                       :disabled="!editContent.trim() || isUpdating"
-                      class="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      class="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-2"
                     >
+                      <div v-if="isUpdating" class="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
                       {{ isUpdating ? 'Saving...' : 'Save' }}
                     </button>
                   </div>
@@ -220,32 +311,32 @@
         </div>
 
         <!-- Scroll indicators -->
-        <div v-if="comments.length > 4" class="flex justify-center items-center mt-3 space-x-2">
+        <div v-if="comments.length > 4" class="flex justify-center items-center mt-4 space-x-3">
           <button
             @click="scrollComments('up')"
             :disabled="!canScrollUp"
-            class="p-2 rounded-full border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="p-3 rounded-lg border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/>
             </svg>
           </button>
-          <span class="text-sm text-muted-foreground">
+          <span class="text-sm text-muted-foreground font-medium">
             {{ currentStartIndex + 1 }}-{{ Math.min(currentStartIndex + 4, comments.length) }} of {{ comments.length }}
           </span>
           <button
             @click="scrollComments('down')"
             :disabled="!canScrollDown"
-            class="p-2 rounded-full border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="p-3 rounded-lg border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
             </svg>
           </button>
         </div>
       </div>
     </div>
-  </div>
+
 </template>
 
 <script setup>
@@ -253,6 +344,7 @@ import { ref, onMounted, computed, nextTick } from 'vue';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, storage } from '../../firebase';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { Paperclip } from 'lucide-vue-next'; // Import Lucide Paperclip icon
 
 const props = defineProps({
   taskId: { type: String, required: true },
@@ -270,17 +362,14 @@ const editContent = ref('');
 const isSubmitting = ref(false);
 const isUpdating = ref(false);
 const isDeleting = ref(null);
-const selectedFiles = ref([]); // [{ id, file, progress, uploading }]
+const selectedFiles = ref([]);
 const fileInputRef = ref(null);
 const acceptedTypes = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt';
-// Mentions state
 const showMentionDropdown = ref(false);
 const mentionQuery = ref('');
-const allUsers = ref([]); // [{id, name, email}]
+const allUsers = ref([]);
 const loadingUsers = ref(false);
-const selectedMentions = ref([]); // [{id, name, email}]
-
-// Scrolling state
+const selectedMentions = ref([]);
 const currentStartIndex = ref(0);
 const commentsContainer = ref(null);
 const commentsPerView = 4;
@@ -310,12 +399,10 @@ const fetchComments = async () => {
       ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/comments`
       : `http://localhost:3001/api/tasks/${props.taskId}/comments`;
     
-    // console.log('Fetching comments from:', endpoint);
     const response = await fetch(endpoint);
     
     if (response.ok) {
       const commentsData = await response.json();
-      // console.log('Received comments data:', commentsData.length, 'comments');
       
       // Enrich comments with author names and mentioned user names (with a simple cache)
       const userCache = new Map();
@@ -366,7 +453,6 @@ const fetchComments = async () => {
         })
       );
       
-      // console.log('Enriched comments:', enrichedComments.length, 'comments');
       comments.value = enrichedComments;
       
       // Reset scroll position when comments are loaded
@@ -378,7 +464,6 @@ const fetchComments = async () => {
     }
   } catch (error) {
     console.error('Error fetching comments:', error);
-    // Don't throw - allow the UI to continue functioning
   }
 };
 
@@ -404,7 +489,6 @@ const scrollComments = (direction) => {
 // Send notification after comment is posted
 const sendCommentNotification = async (commentText, commenterName, mentionedUserIds) => {
   try {
-    // Build personsInvolved array (mentioned users)
     const personsInvolved = mentionedUserIds || [];
     
     await fetch('http://localhost:3001/api/notifications/update/comment', {
@@ -424,7 +508,6 @@ const sendCommentNotification = async (commentText, commenterName, mentionedUser
     });
   } catch (error) {
     console.error('Error sending comment notification:', error);
-    // Don't block the comment posting if notification fails
   }
 };
 
@@ -440,7 +523,6 @@ const handleAddComment = async () => {
   
   isSubmitting.value = true;
   try {
-    // Upload selected files to Firebase Storage and collect metadata
     const attachments = await uploadAllSelectedFiles();
     const endpoint = props.subtaskId
       ? `http://localhost:3001/api/tasks/${props.taskId}/subtasks/${props.subtaskId}/comments`
@@ -455,19 +537,17 @@ const handleAddComment = async () => {
       },
       body: JSON.stringify({
         content: newCommentContent.value.trim(),
-        authorId: currentUser.uid, // Use session user ID
+        authorId: currentUser.uid,
         attachments,
         mentionedUsers: mentionedUserIds
       })
     });
     
     if (response.ok) {
-      // Clear form immediately after successful post
       newCommentContent.value = '';
       selectedFiles.value = [];
       selectedMentions.value = [];
       
-      // Send notification (don't await - run in background)
       const commenterName = currentUser.displayName || currentUser.email || 'Unknown User';
       sendCommentNotification(
         newCommentContent.value.trim(),
@@ -475,7 +555,6 @@ const handleAddComment = async () => {
         mentionedUserIds
       ).catch(err => console.error('Notification failed:', err));
       
-      // Refresh comments
       await fetchComments();
       emit('commentsUpdated');
     } else {
@@ -525,7 +604,7 @@ const handleUpdateComment = async (commentId) => {
       },
       body: JSON.stringify({
         content: editContent.value.trim(),
-        userId: currentUser.uid // Send user ID for authorization
+        userId: currentUser.uid
       })
     });
     
@@ -567,7 +646,7 @@ const handleDeleteComment = async (commentId) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        userId: currentUser.uid // Send user ID for authorization
+        userId: currentUser.uid
       })
     });
     
@@ -609,7 +688,6 @@ const getCurrentUser = () => {
 
 onMounted(() => {
   fetchComments();
-  // Preload users for mentions (best effort)
   loadUsers();
 });
 
@@ -652,7 +730,6 @@ async function uploadAllSelectedFiles() {
   const currentUser = getCurrentUser();
   const uploads = selectedFiles.value.map(entry => uploadSingleFile(entry, currentUser?.uid));
   const results = await Promise.all(uploads);
-  // Filter out failed uploads
   return results.filter(r => !!r);
 }
 
@@ -721,7 +798,7 @@ async function loadUsers() {
     const data = await res.json().catch(() => ([]));
     const arr = Array.isArray(data) ? data : (data.users || data.data || data.results || []);
     allUsers.value = (arr || []).map(u => ({
-      id: u.uid || u.id || u.userId || u._id || u.email, // best-effort id
+      id: u.uid || u.id || u.userId || u._id || u.email,
       name: u.name || u.displayName || '',
       email: u.email || ''
     })).filter(u => u.id);
@@ -756,3 +833,22 @@ function removeMention(id) {
   selectedMentions.value = selectedMentions.value.filter(m => m.id !== id);
 }
 </script>
+
+<style scoped>
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
+</style>

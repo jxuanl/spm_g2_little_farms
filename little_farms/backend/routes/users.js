@@ -374,6 +374,47 @@ router.get('/:uid', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/users/cache/stats
+ * Get cache statistics (for monitoring)
+ */
+router.get('/cache/stats', async (req, res) => {
+  try {
+    const stats = AuthService.getCacheStats();
+    res.status(200).json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch cache stats',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * POST /api/users/cache/invalidate
+ * Manually invalidate cache (for development/debugging)
+ */
+router.post('/cache/invalidate', async (req, res) => {
+  try {
+    const { uid } = req.body;
+    AuthService.invalidateUserCache(uid); // uid can be undefined to clear all
+    res.status(200).json({
+      success: true,
+      message: uid ? `Cache invalidated for user ${uid}` : 'All user caches cleared'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to invalidate cache',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
  * DELETE /api/auth/users/:uid
  * Delete user (protected route - admin only)
  */
