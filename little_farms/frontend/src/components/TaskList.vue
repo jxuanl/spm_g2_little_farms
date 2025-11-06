@@ -47,13 +47,14 @@
         <div ref="filtersContainer" class="w-full mb-6">
           <!-- Filter chips row -->
           <div class="flex flex-wrap gap-3 bg-[#f8f9fa] p-4 rounded-lg items-center w-full">
-            
+
             <!-- Project Filter -->
             <div v-if="!hideProjectFilter" class="relative flex-shrink-0" @click.stop>
               <button @click="toggleDropdown('project')"
                 class="flex h-9 w-full min-w-[160px] max-w-[240px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
                 <span class="truncate">
-                  {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.length === 1 ? selectedProjects[0]
+                  {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.length === 1 ?
+                    selectedProjects[0]
                     : `${selectedProjects.length} Projects` }}
                 </span>
                 <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
@@ -93,7 +94,8 @@
               <button @click="toggleDropdown('creator')"
                 class="flex h-9 w-full min-w-[160px] max-w-[240px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
                 <span class="truncate">
-                  {{ selectedCreators.length === 0 ? 'All Creators' : selectedCreators.length === 1 ? selectedCreators[0]
+                  {{ selectedCreators.length === 0 ? 'All Creators' : selectedCreators.length === 1 ?
+                    selectedCreators[0]
                     : `${selectedCreators.length} Creators` }}
                 </span>
                 <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
@@ -244,12 +246,13 @@
                     class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
                 </div>
                 <div class="p-2 max-h-48 overflow-y-auto">
-                  <button v-for="tag in tagOptions" :key="tag" type="button" @click="toggleSelection('tags', tag)" :class="[
-                    'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                    selectedTags.includes(tag)
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent hover:text-accent-foreground'
-                  ]">
+                  <button v-for="tag in tagOptions" :key="tag" type="button" @click="toggleSelection('tags', tag)"
+                    :class="[
+                      'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+                      selectedTags.includes(tag)
+                        ? 'bg-accent text-accent-foreground'
+                        : 'hover:bg-accent hover:text-accent-foreground'
+                    ]">
                     <span>{{ tag }}</span>
                     <Check v-if="selectedTags.includes(tag)" class="h-4 w-4" />
                   </button>
@@ -276,7 +279,7 @@
                   </span>
                   <Slider v-model="selectedPriority" :min="1" :max="10" :step="1" :dot-size="14" :height="4"
                     :tooltips="false" :process-style="{ backgroundColor: '#0d6efd' }"
-                    :tooltip-style="{ backgroundColor: '#0d6efd', borderColor: '#0d6efd' }" 
+                    :tooltip-style="{ backgroundColor: '#0d6efd', borderColor: '#0d6efd' }"
                     class="flex-1 min-w-[100px]" />
                 </div>
               </div>
@@ -303,12 +306,15 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="task in visibleTasks" :key="task.id" 
-                      :class="['border-b border-border transition-colors hover:bg-muted/30', 
-                              { 'bg-destructive/5': isTaskOverdue(task) }]"
-                      @click="goToTaskDetail(task.id)"
-                      class="cursor-pointer">
-                    
+                  <tr v-for="task in visibleTasks" :key="task.id" :class="['border-b border-border transition-colors hover:bg-muted/30',
+                    {
+                      'bg-destructive/5': isTaskOverdue(task),
+                      'overdue-row': isTaskOverdue(task),
+                      'new-instance-row': task.isNewInstance
+                    }]" @click="goToTaskDetail(task.id)"
+                    v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum, task.isNewInstance, task.recurring]"
+                    class="cursor-pointer">
+
                     <!-- Task Name -->
                     <td class="p-4">
                       <div class="flex items-center gap-2">
@@ -316,21 +322,32 @@
                         <span v-if="task.showId" class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                           #{{ task.id.slice(-4) }}
                         </span>
-                        <span v-if="task.recurring" class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                        <span v-if="task.recurring"
+                          class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
                           <RotateCcw class="w-3 h-3" />
                           Recurring
+                        </span>
+                        <span v-if="task.isNewInstance"
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse"
+                          title="New instance of recurring task">
+                          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clip-rule="evenodd" />
+                          </svg>
+                          New Instance
                         </span>
                       </div>
                       <p v-if="task.description" class="text-sm text-muted-foreground mt-1 line-clamp-1">
                         {{ task.description }}
                       </p>
                     </td>
-                    
+
                     <!-- Project -->
                     <td class="p-4">
                       <span class="text-sm text-foreground">{{ task.projectTitle || 'No project' }}</span>
                     </td>
-                    
+
                     <!-- Creator -->
                     <td class="p-4">
                       <div class="flex items-center gap-2">
@@ -342,17 +359,17 @@
                         <span class="text-sm">{{ task.creatorName || 'No creator' }}</span>
                       </div>
                     </td>
-                    
+
                     <!-- Assignees -->
                     <td class="p-4">
                       <div class="flex flex-wrap gap-1">
-                        <span v-for="assignee in task.assigneeNames.slice(0, 2)" :key="assignee" 
-                              class="inline-flex items-center gap-1 text-xs bg-muted text-foreground px-2 py-1 rounded-full">
+                        <span v-for="assignee in task.assigneeNames.slice(0, 2)" :key="assignee"
+                          class="inline-flex items-center gap-1 text-xs bg-muted text-foreground px-2 py-1 rounded-full">
                           <div class="w-2 h-2 rounded-full bg-primary"></div>
                           {{ assignee }}
                         </span>
-                        <span v-if="task.assigneeNames.length > 2" 
-                              class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                        <span v-if="task.assigneeNames.length > 2"
+                          class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
                           +{{ task.assigneeNames.length - 2 }}
                         </span>
                         <span v-if="!task.assigneeNames.length" class="text-xs text-muted-foreground">
@@ -360,7 +377,7 @@
                         </span>
                       </div>
                     </td>
-                    
+
                     <!-- Due Date -->
                     <td class="p-4">
                       <div :class="['text-sm font-medium', getDateClasses(task)]">
@@ -373,38 +390,38 @@
                         </div>
                       </div>
                     </td>
-                    
+
                     <!-- Status -->
                     <td class="p-6">
-                      <span :class="['inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium', 
-                                  statusConfig[task.status]?.color || 'bg-gray-100 text-gray-700']">
+                      <span :class="['inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium',
+                        statusConfig[task.status]?.color || 'bg-gray-100 text-gray-700']">
                         <div class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></div>
                         {{ task.statusLabel }}
                       </span>
                     </td>
-                    
+
                     <!-- Priority -->
                     <td class="p-5">
                       <div class="flex items-center gap-2">
                         <div class="w-full max-w-[80px] bg-muted rounded-full h-2">
-                          <div :class="['h-2 rounded-full', getPriorityColor(task.priorityNum)]" 
-                              :style="{ width: `${(task.priorityNum / 10) * 100}%` }"></div>
+                          <div :class="['h-2 rounded-full', getPriorityColor(task.priorityNum)]"
+                            :style="{ width: `${(task.priorityNum / 10) * 100}%` }"></div>
                         </div>
                         <span class="text-sm font-medium text-muted-foreground min-w-[20px]">
                           {{ task.priorityNum }}
                         </span>
                       </div>
                     </td>
-                    
+
                     <!-- Tags -->
                     <td class="p-4">
                       <div class="flex flex-wrap gap-1">
-                        <span v-for="tag in task.tags?.slice(0, 2)" :key="tag" 
-                              class="inline-flex items-center text-xs bg-muted text-foreground px-2 py-1 rounded-md">
+                        <span v-for="tag in task.tags?.slice(0, 2)" :key="tag"
+                          class="inline-flex items-center text-xs bg-muted text-foreground px-2 py-1 rounded-md">
                           {{ tag }}
                         </span>
-                        <span v-if="task.tags?.length > 2" 
-                              class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                        <span v-if="task.tags?.length > 2"
+                          class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
                           +{{ task.tags.length - 2 }}
                         </span>
                         <span v-if="!task.tags?.length" class="text-xs text-muted-foreground">
@@ -417,11 +434,11 @@
               </table>
             </div>
           </div>
-          
+
           <!-- Load more button for large datasets -->
           <div v-if="filteredTasks.length > renderCap" class="p-4 border-t border-border bg-muted/20">
             <button @click="renderCap += 50"
-                    class="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
+              class="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
               Load more tasks ({{ filteredTasks.length - renderCap }} remaining)
             </button>
           </div>
@@ -429,15 +446,16 @@
 
         <!-- Show empty-state when no results -->
         <template v-else>
-          <div v-if="visibleTasks.length === 0" class="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <div v-if="visibleTasks.length === 0"
+            class="flex flex-col items-center justify-center py-16 px-6 text-center">
             <Inbox class="w-16 h-16 text-gray-300 mb-4" />
             <h3 class="text-lg font-semibold text-gray-700 mb-2">
               {{ indvTask ? 'No Subtasks' : 'No Tasks' }}
             </h3>
             <p class="text-sm text-gray-500 mb-6 max-w-md">
-              {{ indvTask 
-                ? 'There are no subtasks yet. Click the "New Subtask" button to create one.' 
-                : 'There are no tasks to display. Click the "New Task" button to get started.' 
+              {{ indvTask
+                ? 'There are no subtasks yet. Click the "New Subtask" button to create one.'
+                : 'There are no tasks to display. Click the "New Task" button to get started.'
               }}
             </p>
           </div>
@@ -450,7 +468,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, ChevronDown, Check, Inbox, RotateCcw  } from 'lucide-vue-next'
+import { Plus, ChevronDown, Check, Inbox, RotateCcw } from 'lucide-vue-next'
 import Slider from '@vueform/slider'
 import '@vueform/slider/themes/default.css'
 
@@ -547,7 +565,7 @@ const getInitials = (name) => {
 const getPriorityColor = (priority) => {
   if (priority <= 3) return 'bg-green-500'
   if (priority <= 6) return 'bg-yellow-500'
-  return 'bg-red-500'
+  return 'bg-destructive'
 }
 
 const toJsDate = (value) => {
@@ -789,6 +807,16 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
 </script>
 
 <style scoped>
+.overdue-row {
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+
+/* soft green tint for new instance rows */
+.new-instance-row {
+  background-color: color-mix(in oklab, #10b981 8%, transparent);
+  border-left: 3px solid #10b981;
+}
+
 .border-gray-300 {
   border-color: #d1d5db !important;
   border-width: 1px !important;
@@ -922,6 +950,7 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
   background-color: color-mix(in oklab, #10b981 8%, transparent);
   border-left: 3px solid #10b981;
 }
+
 /* Enhanced styles for the sleek design */
 :deep(.slider) {
   --slider-connect-bg: var(--primary);

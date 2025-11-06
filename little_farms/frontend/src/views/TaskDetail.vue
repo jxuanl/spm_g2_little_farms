@@ -1,11 +1,8 @@
 <template>
   <div class="h-screen bg-background flex">
-    <TaskSidebar 
-      :activeProject="activeProject" 
-      @projectChange="setActiveProject"
-      @createTask="() => setIsCreateModalOpen(true)" 
-    />
-    
+    <TaskSidebar :activeProject="activeProject" @projectChange="setActiveProject"
+      @createTask="() => setIsCreateModalOpen(true)" />
+
     <!-- Loading State -->
     <div v-if="isLoading" class="flex-1 flex flex-col items-center justify-center">
       <div class="loading-spinner"></div>
@@ -15,13 +12,12 @@
     <!-- Main Content -->
     <div v-else-if="task" class="flex-1 overflow-auto">
       <div class="max-w-7xl mx-auto p-6 my-8">
-        
+
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">
-          <button 
+          <button
             @click="router.push(isSubtaskView ? { name: 'TaskDetail', params: { id: taskId } } : { name: 'AllTasks' })"
-            class="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
-          >
+            class="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
@@ -29,31 +25,26 @@
               {{ isSubtaskView ? 'Back to Parent Task' : 'Back to Task List' }}
             </span>
           </button>
-          
+
           <div class="flex items-center gap-3 bg-blue-50 rounded-lg px-4 py-2">
-            <button
-              @click="canEdit && openEditModal()"
-              :disabled="!canEdit"
-              :class="[
-                'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                canEdit
-                  ? 'text-primary bg-blue-100 hover:bg-blue-200'
-                  : 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-60'
-              ]"
-            >
+            <button @click="canEdit && openEditModal()" :disabled="!canEdit" :class="[
+              'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+              canEdit
+                ? 'text-primary bg-blue-100 hover:bg-blue-200'
+                : 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-60'
+            ]">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
               {{ isSubtaskView ? 'Edit Subtask' : 'Edit Task' }}
             </button>
 
-            <button
-              v-if="canDelete"
-              @click="handleDelete"
-              class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-destructive hover:bg-destructive/90 rounded-lg transition-colors"
-            >
+            <button v-if="canDelete" @click="handleDelete"
+              class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-destructive hover:bg-destructive/90 rounded-lg transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
               {{ isSubtaskView ? 'Delete Subtask' : 'Delete Task' }}
             </button>
@@ -64,23 +55,16 @@
         <div class="bg-card rounded-xl border border-border p-6 mb-6 shadow-sm">
           <div class="flex items-center justify-between mb-4">
             <h1 class="text-2xl font-semibold text-foreground">{{ task.title }}</h1>
-            <button 
-              @click="isTaskDetailsCollapsed = !isTaskDetailsCollapsed"
-              class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button @click="isTaskDetailsCollapsed = !isTaskDetailsCollapsed"
+              class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <span>{{ isTaskDetailsCollapsed ? 'Show Details' : 'Hide Details' }}</span>
-              <svg 
-                class="w-4 h-4 transition-transform duration-200" 
-                :class="{ 'rotate-180': !isTaskDetailsCollapsed }"
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
+              <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': !isTaskDetailsCollapsed }"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
           </div>
-          
+
           <p class="text-muted-foreground mb-6">{{ task.description || 'No description' }}</p>
 
           <!-- Collapsible Task Details -->
@@ -94,40 +78,36 @@
               <div>
                 <div class="text-xs font-medium text-muted-foreground mb-1">Priority</div>
                 <div class="flex items-center gap-1">
-                  <span 
-                    :class="[
-                      'w-2 h-2 rounded-full',
-                      task.priority <= 3 ? 'bg-green-500' : task.priority <= 6 ? 'bg-yellow-500' : 'bg-orange-500'
-                    ]"
-                  ></span>
-                  <span 
-                    :class="[
-                      'text-sm font-semibold',
-                      task.priority <= 3 ? 'text-green-600' : task.priority <= 6 ? 'text-yellow-600' : 'text-orange-600'
-                    ]"
-                  >
+                  <span :class="[
+                    'w-2 h-2 rounded-full',
+                    task.priority <= 3 ? 'bg-green-500' : task.priority <= 6 ? 'bg-yellow-500' : 'bg-orange-500'
+                  ]"></span>
+                  <span :class="[
+                    'text-sm font-semibold',
+                    task.priority <= 3 ? 'text-green-600' : task.priority <= 6 ? 'text-yellow-600' : 'text-orange-600'
+                  ]">
                     {{ task.priority }}
                   </span>
                 </div>
               </div>
               <div>
                 <div class="text-xs font-medium text-muted-foreground mb-1">Status</div>
-                <span 
-                  :class="[
-                    'inline-flex px-2 py-1 text-xs font-medium rounded-md',
-                    task.status === 'Done' ? 'bg-green-100 text-green-700' :
-                    task.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-                    'bg-gray-100 text-gray-700'
-                  ]"
-                >
-                  {{ task.status }}
+                <span :class="[
+                  'inline-flex px-2 py-1 text-xs font-medium rounded-md',
+                  task.status === 'done' ? 'bg-green-100 text-green-700' :
+                    task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
+                      task.status === 'review' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                ]">
+                  {{ getStatusLabel(task.status) }}
                 </span>
               </div>
               <div>
                 <div class="text-xs font-medium text-muted-foreground mb-1">Deadline</div>
                 <div class="text-sm font-medium text-foreground flex items-center gap-1">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   {{ task.deadline ? formatDate(task.deadline) : 'No due date' }}
                 </div>
@@ -137,11 +117,13 @@
             <div class="grid grid-cols-4 gap-6 mb-6">
               <div>
                 <div class="text-xs font-medium text-muted-foreground mb-1">Created Date</div>
-                <div class="text-sm text-foreground">{{ task.createdDate ? formatDate(task.createdDate) : 'Unknown' }}</div>
+                <div class="text-sm text-foreground">{{ task.createdDate ? formatDate(task.createdDate) : 'Unknown' }}
+                </div>
               </div>
               <div>
                 <div class="text-xs font-medium text-muted-foreground mb-1">Modified Date</div>
-                <div class="text-sm text-foreground">{{ task.modifiedDate ? formatDate(task.modifiedDate) : 'Unknown' }}</div>
+                <div class="text-sm text-foreground">{{ task.modifiedDate ? formatDate(task.modifiedDate) : 'Unknown' }}
+                </div>
               </div>
               <div>
                 <div class="text-xs font-medium text-muted-foreground mb-1">Overdue</div>
@@ -166,7 +148,8 @@
               <div>
                 <div class="text-xs font-medium text-muted-foreground mb-1">Creator</div>
                 <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
+                  <div
+                    class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
                     {{ creatorName ? creatorName[0].toUpperCase() : 'U' }}
                   </div>
                   <span class="text-sm font-medium text-foreground">{{ creatorName || 'No creator' }}</span>
@@ -176,11 +159,8 @@
                 <div class="text-xs font-medium text-muted-foreground mb-1">Assignees</div>
                 <div class="flex items-center gap-2">
                   <template v-if="assigneeNames.length">
-                    <div 
-                      v-for="(assignee, idx) in assigneeNames.slice(0, 3)" 
-                      :key="idx"
-                      class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-medium"
-                    >
+                    <div v-for="(assignee, idx) in assigneeNames.slice(0, 3)" :key="idx"
+                      class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-medium">
                       {{ assignee[0].toUpperCase() }}
                     </div>
                     <span class="text-sm font-medium text-foreground">{{ assigneeNames.join(', ') }}</span>
@@ -197,18 +177,21 @@
               <div class="text-xs font-medium text-muted-foreground mb-2">Recurring</div>
               <div class="flex items-center gap-2 text-sm">
                 <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 <span class="text-blue-600 font-semibold">
                   Yes - Every {{ task.recurrenceValue }} {{ task.recurrenceInterval }}
                 </span>
               </div>
-              
-              <div v-if="task.isCurrentInstance && !task.isNewInstance" class="mt-2 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+
+              <div v-if="task.isCurrentInstance && !task.isNewInstance"
+                class="mt-2 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                 This is the current instance. A new task will be created when marked as complete.
               </div>
-              
-              <div v-if="task.isNewInstance" class="mt-2 flex items-center gap-2 text-sm font-semibold text-green-800 bg-green-50 border-2 border-green-300 rounded-lg px-3 py-2">
+
+              <div v-if="task.isNewInstance"
+                class="mt-2 flex items-center gap-2 text-sm font-semibold text-green-800 bg-green-50 border-2 border-green-300 rounded-lg px-3 py-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
@@ -240,49 +223,27 @@
             </div>
 
             <!-- Subtasks List -->
-            <TaskList 
-              :tasks="subtasks" 
-              :indvTask="true"
-              :parentTaskId="taskId"
-              :hideProjectFilter="true"
-              @createTask="() => isCreateModalOpen = true"
-              @taskClick="handleSubtaskClick"
-            />
+            <TaskList :tasks="subtasks" :indvTask="true" :parentTaskId="taskId" :hideProjectFilter="true"
+              @createTask="() => isCreateModalOpen = true" @taskClick="handleSubtaskClick" />
           </div>
 
           <!-- Comments Section - 3/12 width -->
           <div class="col-span-4 bg-card rounded-xl border border-border p-6 shadow-sm">
-            <CommentsSection 
-              v-if="task && currentUser"
-              :taskId="taskId"
-              :subtaskId="isSubtaskView ? subtaskId : null"
-              :currentUserId="currentUser.uid"
-              :taskName="task.title"
-              @commentsUpdated="handleCommentsUpdated"
-            />
+            <CommentsSection v-if="task && currentUser" :taskId="taskId" :subtaskId="isSubtaskView ? subtaskId : null"
+              :currentUserId="currentUser.uid" :taskName="task.title" @commentsUpdated="handleCommentsUpdated" />
           </div>
         </div>
       </div>
     </div>
 
     <!-- Modals -->
-    <EditTaskModal
-      :isOpen="isEditModalOpen"
-      :task="{ ...task, id: isSubtaskView ? subtaskId : taskId }"
-      :isSubtask="isSubtaskView"
-      :parentTaskId="isSubtaskView ? taskId : null"
-      @close="isEditModalOpen = false"
-      @updated="refreshTask"
-    />
+    <EditTaskModal :isOpen="isEditModalOpen" :task="{ ...task, id: isSubtaskView ? subtaskId : taskId }"
+      :isSubtask="isSubtaskView" :parentTaskId="isSubtaskView ? taskId : null" @close="isEditModalOpen = false"
+      @updated="refreshTask" />
 
-    <CreateTaskModal
-      v-if="!isSubtaskView"
-      :isOpen="isCreateModalOpen"
-      :parentTaskId="taskId"
+    <CreateTaskModal v-if="!isSubtaskView" :isOpen="isCreateModalOpen" :parentTaskId="taskId"
       :parentProject="{ id: task?.projectId?.id || task?.projectId, name: projectTitle }"
-      @close="() => isCreateModalOpen = false"
-      @taskCreated="handleSubtaskCreated"
-    />
+      @close="() => isCreateModalOpen = false" @taskCreated="handleSubtaskCreated" />
   </div>
 </template>
 
@@ -336,6 +297,16 @@ const extractProjectId = (proj) => {
     return parts[parts.length - 1] || null;
   }
   return null;
+};
+
+const getStatusLabel = (status) => {
+  const statusMap = {
+    'todo': 'To Do',
+    'in-progress': 'In Progress',
+    'review': 'In Review',
+    'done': 'Done'
+  };
+  return statusMap[status] || status;
 };
 
 const fetchTask = async () => {
@@ -546,12 +517,12 @@ const formatDate = (date) => {
 
 onMounted(() => {
   currentUser.value = getCurrentUser();
-  
+
   if (!currentUser.value) {
     console.warn('No user session found');
     return;
   }
-  
+
   fetchTask();
   fetchSubtasks();
 });
@@ -567,6 +538,13 @@ watch(
 </script>
 
 <style scoped>
+.bg-yellow-100 {
+  background-color: #fef9c3 !important;
+}
+
+.text-yellow-700 {
+  color: #a16207 !important;
+}
 .loading-spinner {
   width: 3rem;
   height: 3rem;
@@ -578,7 +556,12 @@ watch(
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
