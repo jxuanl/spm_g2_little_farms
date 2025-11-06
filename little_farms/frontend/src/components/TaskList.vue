@@ -46,241 +46,245 @@
         </div>
 
         <!-- === Filters === -->
-      <div ref="filtersContainer" class="flex flex-wrap items-center gap-4 mb-6">
-        <!-- Filter header
-        <div class="flex items-center gap-3 mb-3">
-          <h4 class="text-lg font-medium">Filters</h4>
-        </div> -->
-
-        <!-- Filter chips row -->
-        <div class="flex flex-wrap gap-2 bg-[#f8f9fa] p-3 rounded-lg items-center">
-          
-          <!-- Project Filter -->
-          <div v-if="!hideProjectFilter" class="relative" @click.stop>
-            <button @click="toggleDropdown('project')"
-              class="flex h-8 min-w-[180px] sm:min-w-[200px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-1 text-sm hover:bg-gray-50 transition-colors">
-              <span class="truncate">
-                {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.length === 1 ? selectedProjects[0]
-                  : `${selectedProjects.length} Projects` }}
-              </span>
-              <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-            </button>
-            <div v-if="dropdownStates.project"
-              class="absolute top-full left-0 mt-1 w-64 rounded-md border border-gray-300 shadow-lg bg-white z-50">
-              <div class="p-2 border-b border-gray-200">
-                <input v-model="searchQueries.project" type="text" placeholder="Search projects..."
-                  class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
-              </div>
-              <div class="p-2 max-h-48 overflow-y-auto">
-                <button v-for="project in projectOptions" :key="project" type="button"
-                  @click="toggleSelection('project', project)" :class="[
-                    'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                    selectedProjects.includes(project)
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent hover:text-accent-foreground'
-                  ]">
-                  <span>{{ project }}</span>
-                  <Check v-if="selectedProjects.includes(project)" class="h-4 w-4" />
-                </button>
-                <div v-if="projectOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
-                  No results found
-                </div>
-              </div>
-              <div class="border-t border-gray-200 p-2">
-                <button @click="clearFilter('project')"
-                  class="w-full text-sm text-blue-600 hover:underline text-center py-1">
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Creator Filter -->
-          <div class="relative" @click.stop>
-            <button @click="toggleDropdown('creator')"
-              class="flex h-8 min-w-[180px] sm:min-w-[200px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-1 text-sm hover:bg-gray-50 transition-colors">
-              <span class="truncate">
-                {{ selectedCreators.length === 0 ? 'All Creators' : selectedCreators.length === 1 ? selectedCreators[0]
-                  : `${selectedCreators.length} Creators` }}
-              </span>
-              <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-            </button>
-            <div v-if="dropdownStates.creator"
-              class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
-              <div class="p-2 border-b border-gray-200">
-                <input v-model="searchQueries.creator" type="text" placeholder="Search creators..."
-                  class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
-              </div>
-              <div class="p-2 max-h-48 overflow-y-auto">
-                <button v-for="creator in creatorOptions" :key="creator" type="button"
-                  @click="toggleSelection('creator', creator)" :class="[
-                    'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                    selectedCreators.includes(creator)
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent hover:text-accent-foreground'
-                  ]">
-                  <span>{{ creator }}</span>
-                  <Check v-if="selectedCreators.includes(creator)" class="h-4 w-4" />
-                </button>
-                <div v-if="creatorOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
-                  No results found
-                </div>
-              </div>
-              <div class="border-t border-gray-200 p-2">
-                <button @click="clearFilter('creator')"
-                  class="w-full text-sm text-blue-600 hover:underline text-center py-1">
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Assignee Filter -->
-          <div class="relative" @click.stop>
-            <button @click="toggleDropdown('assignee')"
-              class="flex h-8 min-w-[180px] sm:min-w-[200px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-1 text-sm hover:bg-gray-50 transition-colors">
-              <span class="truncate">
-                {{ selectedAssignees.length === 0 ? 'All Assignees' : selectedAssignees.length === 1 ?
-                  selectedAssignees[0] : `${selectedAssignees.length} Assignees` }}
-              </span>
-              <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-            </button>
-            <div v-if="dropdownStates.assignee"
-              class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
-              <div class="p-2 border-b border-gray-200">
-                <input v-model="searchQueries.assignee" type="text" placeholder="Search assignees..."
-                  class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
-              </div>
-              <div class="p-2 max-h-48 overflow-y-auto">
-                <button v-for="assignee in assigneeOptions" :key="assignee" type="button"
-                  @click="toggleSelection('assignee', assignee)" :class="[
-                    'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                    selectedAssignees.includes(assignee)
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent hover:text-accent-foreground'
-                  ]">
-                  <span>{{ assignee }}</span>
-                  <Check v-if="selectedAssignees.includes(assignee)" class="h-4 w-4" />
-                </button>
-                <div v-if="assigneeOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
-                  No results found
-                </div>
-              </div>
-              <div class="border-t border-gray-200 p-2">
-                <button @click="clearFilter('assignee')"
-                  class="w-full text-sm text-blue-600 hover:underline text-center py-1">
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Due Date Filter -->
-          <div class="relative" @click.stop>
-            <button @click="toggleDropdown('dueDate')"
-              class="flex h-8 min-w-[180px] sm:min-w-[200px] items-center justify-between whitespace-nowrap rounded-md border border-[dee2e6] bg-white px-3 py-1 text-sm hover:bg-gray-50 transition-colors">
-              <span class="truncate">{{ selectedDueDate }}</span>
-              <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-            </button>
-            <div v-if="dropdownStates.dueDate"
-              class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
-              <div class="p-2">
-                <button v-for="option in dueDateOptions" :key="option" type="button" @click="selectDueDate(option)"
-                  :class="[
-                    'w-full text-left px-2 py-1.5 text-sm rounded-sm',
-                    selectedDueDate === option
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent hover:text-accent-foreground'
-                  ]">
-                  {{ option }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Status Filter -->
-          <div class="relative" @click.stop>
-            <button @click="toggleDropdown('status')"
-              class="flex h-8 min-w-[180px] sm:min-w-[200px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-1 text-sm hover:bg-gray-50 transition-colors">
-              <span class="truncate">
-                {{ selectedStatuses.length === 0 ? 'All Statuses' : selectedStatuses.length === 1 ?
-                  statusConfig[selectedStatuses[0]].label : `${selectedStatuses.length} Statuses` }}
-              </span>
-              <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-            </button>
-            <div v-if="dropdownStates.status"
-              class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
-              <div class="p-2">
-                <button v-for="status in statusOptions" :key="status" type="button"
-                  @click="toggleSelection('status', status)" :class="[
-                    'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                    selectedStatuses.includes(status)
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent hover:text-accent-foreground'
-                  ]">
-                  <span>{{ statusConfig[status].label }}</span>
-                  <Check v-if="selectedStatuses.includes(status)" class="h-4 w-4" />
-                </button>
-              </div>
-              <div class="border-t border-gray-200 p-2">
-                <button @click="clearFilter('status')"
-                  class="w-full text-sm text-blue-600 hover:underline text-center py-1">
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tags Filter -->
-          <div class="relative" @click.stop>
-            <button @click="toggleDropdown('tags')"
-              class="flex h-8 min-w-[180px] sm:min-w-[200px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-1 text-sm hover:bg-gray-50 transition-colors">
-              <span class="truncate">
-                {{ selectedTags.length === 0
-                  ? 'All Tags'
-                  : selectedTags.length === 1
-                    ? selectedTags[0]
-                    : `${selectedTags.length} Tags` }}
-              </span>
-              <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
-            </button>
-            <div v-if="dropdownStates.tags"
-              class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
-              <div class="p-2 border-b border-gray-200">
-                <input v-model="searchQueries.tags" type="text" placeholder="Search tags..."
-                  class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
-              </div>
-              <div class="p-2 max-h-48 overflow-y-auto">
-                <button v-for="tag in tagOptions" :key="tag" type="button" @click="toggleSelection('tags', tag)" :class="[
-                  'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
-                  selectedTags.includes(tag)
-                    ? 'bg-accent text-accent-foreground'
-                    : 'hover:bg-accent hover:text-accent-foreground'
-                ]">
-                  <span>{{ tag }}</span>
-                  <Check v-if="selectedTags.includes(tag)" class="h-4 w-4" />
-                </button>
-                <div v-if="tagOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
-                  No results found
-                </div>
-              </div>
-              <div class="border-t border-gray-200 p-2">
-                <button @click="clearFilter('tags')"
-                  class="w-full text-sm text-blue-600 hover:underline text-center py-1">
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-          <!-- Priority Filter -->
-          <div class="flex items-center min-w-[220px]" @click.stop>
-            <span class="text-sm text-gray-600 mr-2">Priority: {{ selectedPriority[0] }} - {{ selectedPriority[1] }}</span>
-            <Slider v-model="selectedPriority" :min="1" :max="10" :step="1" :dot-size="14" :height="4"
-              :tooltips="false" :process-style="{ backgroundColor: '#0d6efd' }"
-              :tooltip-style="{ backgroundColor: '#0d6efd', borderColor: '#0d6efd' }" style="flex:1; min-width:120px;" />
+<div ref="filtersContainer" class="w-full mb-6">
+  <!-- Filter chips row -->
+  <div class="flex flex-wrap gap-3 bg-[#f8f9fa] p-4 rounded-lg items-center w-full">
+    
+    <!-- Project Filter -->
+    <div v-if="!hideProjectFilter" class="relative flex-shrink-0" @click.stop>
+      <button @click="toggleDropdown('project')"
+        class="flex h-9 w-full min-w-[160px] max-w-[240px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+        <span class="truncate">
+          {{ selectedProjects.length === 0 ? 'All Projects' : selectedProjects.length === 1 ? selectedProjects[0]
+            : `${selectedProjects.length} Projects` }}
+        </span>
+        <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+      </button>
+      <div v-if="dropdownStates.project"
+        class="absolute top-full left-0 mt-1 w-64 rounded-md border border-gray-300 shadow-lg bg-white z-50">
+        <div class="p-2 border-b border-gray-200">
+          <input v-model="searchQueries.project" type="text" placeholder="Search projects..."
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
+        </div>
+        <div class="p-2 max-h-48 overflow-y-auto">
+          <button v-for="project in projectOptions" :key="project" type="button"
+            @click="toggleSelection('project', project)" :class="[
+              'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+              selectedProjects.includes(project)
+                ? 'bg-accent text-accent-foreground'
+                : 'hover:bg-accent hover:text-accent-foreground'
+            ]">
+            <span>{{ project }}</span>
+            <Check v-if="selectedProjects.includes(project)" class="h-4 w-4" />
+          </button>
+          <div v-if="projectOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+            No results found
           </div>
         </div>
+        <div class="border-t border-gray-200 p-2">
+          <button @click="clearFilter('project')"
+            class="w-full text-sm text-blue-600 hover:underline text-center py-1">
+            Clear
+          </button>
+        </div>
       </div>
+    </div>
+
+    <!-- Creator Filter -->
+    <div class="relative flex-shrink-0" @click.stop>
+      <button @click="toggleDropdown('creator')"
+        class="flex h-9 w-full min-w-[160px] max-w-[240px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+        <span class="truncate">
+          {{ selectedCreators.length === 0 ? 'All Creators' : selectedCreators.length === 1 ? selectedCreators[0]
+            : `${selectedCreators.length} Creators` }}
+        </span>
+        <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+      </button>
+      <div v-if="dropdownStates.creator"
+        class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
+        <div class="p-2 border-b border-gray-200">
+          <input v-model="searchQueries.creator" type="text" placeholder="Search creators..."
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
+        </div>
+        <div class="p-2 max-h-48 overflow-y-auto">
+          <button v-for="creator in creatorOptions" :key="creator" type="button"
+            @click="toggleSelection('creator', creator)" :class="[
+              'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+              selectedCreators.includes(creator)
+                ? 'bg-accent text-accent-foreground'
+                : 'hover:bg-accent hover:text-accent-foreground'
+            ]">
+            <span>{{ creator }}</span>
+            <Check v-if="selectedCreators.includes(creator)" class="h-4 w-4" />
+          </button>
+          <div v-if="creatorOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+            No results found
+          </div>
+        </div>
+        <div class="border-t border-gray-200 p-2">
+          <button @click="clearFilter('creator')"
+            class="w-full text-sm text-blue-600 hover:underline text-center py-1">
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assignee Filter -->
+    <div class="relative flex-shrink-0" @click.stop>
+      <button @click="toggleDropdown('assignee')"
+        class="flex h-9 w-full min-w-[160px] max-w-[240px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+        <span class="truncate">
+          {{ selectedAssignees.length === 0 ? 'All Assignees' : selectedAssignees.length === 1 ?
+            selectedAssignees[0] : `${selectedAssignees.length} Assignees` }}
+        </span>
+        <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+      </button>
+      <div v-if="dropdownStates.assignee"
+        class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
+        <div class="p-2 border-b border-gray-200">
+          <input v-model="searchQueries.assignee" type="text" placeholder="Search assignees..."
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
+        </div>
+        <div class="p-2 max-h-48 overflow-y-auto">
+          <button v-for="assignee in assigneeOptions" :key="assignee" type="button"
+            @click="toggleSelection('assignee', assignee)" :class="[
+              'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+              selectedAssignees.includes(assignee)
+                ? 'bg-accent text-accent-foreground'
+                : 'hover:bg-accent hover:text-accent-foreground'
+            ]">
+            <span>{{ assignee }}</span>
+            <Check v-if="selectedAssignees.includes(assignee)" class="h-4 w-4" />
+          </button>
+          <div v-if="assigneeOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+            No results found
+          </div>
+        </div>
+        <div class="border-t border-gray-200 p-2">
+          <button @click="clearFilter('assignee')"
+            class="w-full text-sm text-blue-600 hover:underline text-center py-1">
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Due Date Filter -->
+    <div class="relative flex-shrink-0" @click.stop>
+      <button @click="toggleDropdown('dueDate')"
+        class="flex h-9 w-full min-w-[160px] max-w-[240px] items-center justify-between whitespace-nowrap rounded-md border border-[dee2e6] bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+        <span class="truncate">{{ selectedDueDate }}</span>
+        <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+      </button>
+      <div v-if="dropdownStates.dueDate"
+        class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
+        <div class="p-2">
+          <button v-for="option in dueDateOptions" :key="option" type="button" @click="selectDueDate(option)"
+            :class="[
+              'w-full text-left px-2 py-1.5 text-sm rounded-sm',
+              selectedDueDate === option
+                ? 'bg-accent text-accent-foreground'
+                : 'hover:bg-accent hover:text-accent-foreground'
+            ]">
+            {{ option }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="relative flex-shrink-0" @click.stop>
+      <button @click="toggleDropdown('status')"
+        class="flex h-9 w-full min-w-[160px] max-w-[240px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+        <span class="truncate">
+          {{ selectedStatuses.length === 0 ? 'All Statuses' : selectedStatuses.length === 1 ?
+            statusConfig[selectedStatuses[0]].label : `${selectedStatuses.length} Statuses` }}
+        </span>
+        <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+      </button>
+      <div v-if="dropdownStates.status"
+        class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
+        <div class="p-2">
+          <button v-for="status in statusOptions" :key="status" type="button"
+            @click="toggleSelection('status', status)" :class="[
+              'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+              selectedStatuses.includes(status)
+                ? 'bg-accent text-accent-foreground'
+                : 'hover:bg-accent hover:text-accent-foreground'
+            ]">
+            <span>{{ statusConfig[status].label }}</span>
+            <Check v-if="selectedStatuses.includes(status)" class="h-4 w-4" />
+          </button>
+        </div>
+        <div class="border-t border-gray-200 p-2">
+          <button @click="clearFilter('status')"
+            class="w-full text-sm text-blue-600 hover:underline text-center py-1">
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tags Filter -->
+    <div class="relative flex-shrink-0" @click.stop>
+      <button @click="toggleDropdown('tags')"
+        class="flex h-9 w-full min-w-[160px] max-w-[240px] items-center justify-between whitespace-nowrap rounded-md border border-[#dee2e6] bg-white px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+        <span class="truncate">
+          {{ selectedTags.length === 0
+            ? 'All Tags'
+            : selectedTags.length === 1
+              ? selectedTags[0]
+              : `${selectedTags.length} Tags` }}
+        </span>
+        <ChevronDown class="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+      </button>
+      <div v-if="dropdownStates.tags"
+        class="absolute top-full left-0 mt-1 z-50 w-64 rounded-md border border-gray-300 bg-white shadow-lg">
+        <div class="p-2 border-b border-gray-200">
+          <input v-model="searchQueries.tags" type="text" placeholder="Search tags..."
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white" @click.stop />
+        </div>
+        <div class="p-2 max-h-48 overflow-y-auto">
+          <button v-for="tag in tagOptions" :key="tag" type="button" @click="toggleSelection('tags', tag)" :class="[
+            'w-full text-left px-2 py-1.5 text-sm rounded-sm flex items-center justify-between',
+            selectedTags.includes(tag)
+              ? 'bg-accent text-accent-foreground'
+              : 'hover:bg-accent hover:text-accent-foreground'
+          ]">
+            <span>{{ tag }}</span>
+            <Check v-if="selectedTags.includes(tag)" class="h-4 w-4" />
+          </button>
+          <div v-if="tagOptions.length === 0" class="text-sm text-gray-500 text-center py-2">
+            No results found
+          </div>
+        </div>
+        <div class="border-t border-gray-200 p-2">
+          <button @click="clearFilter('tags')"
+            class="w-full text-sm text-blue-600 hover:underline text-center py-1">
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Priority Filter -->
+    <div class="flex items-center min-w-[200px] flex-1 max-w-[320px] flex-shrink-0" @click.stop>
+      <div class="flex items-center gap-3 w-full bg-white border border-[#dee2e6] rounded-md px-3 py-2 h-9">
+        <span class="text-sm text-gray-600 whitespace-nowrap flex-shrink-0">Priority:</span>
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+          <span class="text-sm font-medium text-gray-700 whitespace-nowrap flex-shrink-0">
+            {{ selectedPriority[0] }} - {{ selectedPriority[1] }}
+          </span>
+          <Slider v-model="selectedPriority" :min="1" :max="10" :step="1" :dot-size="14" :height="4"
+            :tooltips="false" :process-style="{ backgroundColor: '#0d6efd' }"
+            :tooltip-style="{ backgroundColor: '#0d6efd', borderColor: '#0d6efd' }" 
+            class="flex-1 min-w-[100px]" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
        <!-- Show table when there are results -->
         <template v-if="visibleTasks.length > 0">
