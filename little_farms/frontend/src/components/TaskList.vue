@@ -362,7 +362,7 @@
                     </td>
                     
                     <!-- Due Date -->
-                    <td class="p-3">
+                    <td class="p-4">
                       <div :class="['text-sm font-medium', getDateClasses(task)]">
                         {{ formatDate(task.deadline) }}
                         <div v-if="task.isDueSoon && !task.isOverdue" class="text-xs text-yellow-600 font-normal">
@@ -375,7 +375,7 @@
                     </td>
                     
                     <!-- Status -->
-                    <td class="p-5">
+                    <td class="p-6">
                       <span :class="['inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium', 
                                   statusConfig[task.status]?.color || 'bg-gray-100 text-gray-700']">
                         <div class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></div>
@@ -384,7 +384,7 @@
                     </td>
                     
                     <!-- Priority -->
-                    <td class="p-4">
+                    <td class="p-5">
                       <div class="flex items-center gap-2">
                         <div class="w-full max-w-[80px] bg-muted rounded-full h-2">
                           <div :class="['h-2 rounded-full', getPriorityColor(task.priorityNum)]" 
