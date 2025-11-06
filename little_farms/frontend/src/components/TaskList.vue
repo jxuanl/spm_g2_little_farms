@@ -786,6 +786,139 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
 </script>
 
 <style scoped>
+.border-gray-300 {
+  border-color: #d1d5db !important;
+  border-width: 1px !important;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.z-50 {
+  z-index: 9999 !important;
+}
+
+/* soft red tint for overdue rows using theme destructive color */
+.overdue-row {
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+
+/* soft green tint for new instance rows */
+.new-instance-row {
+  background-color: color-mix(in oklab, #10b981 8%, transparent);
+  border-left: 3px solid #10b981;
+}
+
+/* Override global button/input background-color: transparent for all filters */
+.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Ensure all dropdown menus have white background */
+.relative.top-full.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Ensure search inputs inside filter dropdowns have white background */
+.relative input[type="text"] {
+  background-color: #ffffff !important;
+}
+
+/* Filter improvements */
+.filter-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.filter-chip {
+  flex: 0 1 auto;
+  min-width: 140px;
+}
+
+/* Priority slider improvements */
+.priority-slider-container {
+  flex: 1 1 100%;
+  margin-bottom: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .priority-slider-container {
+    flex: 0 1 auto;
+    min-width: 200px;
+    margin-bottom: 0;
+  }
+
+  .filter-chip {
+    min-width: 160px;
+  }
+}
+
+/* Ensure proper z-index for dropdowns */
+.relative .absolute {
+  z-index: 9999 !important;
+}
+
+/* White backgrounds for all filter elements */
+.bg-white {
+  background-color: #ffffff !important;
+}
+
+.relative input[type="text"] {
+  background-color: #ffffff !important;
+}
+
+/* Better spacing for filter header */
+.filter-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Responsive filter grid */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .filter-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+/* Truncation for long text */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+
+@media (min-width: 640px) {
+  .truncate {
+    max-width: 120px;
+  }
+}
+
+/* Overdue and new instance row styles */
+.overdue-row {
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+
+.new-instance-row {
+  background-color: color-mix(in oklab, #10b981 8%, transparent);
+  border-left: 3px solid #10b981;
+}
 /* Enhanced styles for the sleek design */
 :deep(.slider) {
   --slider-connect-bg: var(--primary);
