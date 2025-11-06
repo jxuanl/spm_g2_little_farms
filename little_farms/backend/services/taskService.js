@@ -1,74 +1,287 @@
 import admin, { db } from "../adminFirebase.js";
+import UserService from "./userService.js";
 
 const TASK_COLLECTION = "Tasks";
 
+// Cache for projects (similar to user cache)
+const projectCache = new Map();
+const PROJECT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-// --- helper: enrich tasks with project/creator/assignee names ---
-async function enrichTaskData(task) {
-  let projectTitle = 'No project'
-  let creatorName = 'No creator'
-  let assigneeNames = []
-
-  // === Project title ===
-  if (task.projectId) {
-    try {
-      const projectRef = task.projectId
-      const projectSnap = await projectRef.get()
-      if (projectSnap.exists)
-        projectTitle = projectSnap.data().title || 'Untitled Project'
-    } catch (err) {
-    }
-  }
-
-  // === Creator name ===
-  if (task.taskCreatedBy) {
-    try {
-      const creatorRef = task.taskCreatedBy
-      const creatorSnap = await creatorRef.get()
-      if (creatorSnap.exists)
-        creatorName = creatorSnap.data().name || 'Unnamed Creator'
-    } catch (err) {
-    }
-  }
-
-  // === Assignee names ===
-  if (Array.isArray(task.assignedTo) && task.assignedTo.length > 0) {
-    try {
-      const names = []
-      for (const assignee of task.assignedTo) {
-        const userSnap = await assignee.get()
-        if (userSnap.exists) names.push(userSnap.data().name || 'Unnamed')
-      }
-      assigneeNames = names
-    } catch (err) {
-    }
-  }
-
-  // --- Normalize Firestore/Date fields to ISO strings ---
-  const normalizeDate = (v) => {
-    if (v?.toDate) return v.toDate().toISOString()
-    if (v?.seconds || v?._seconds)
-      return new Date((v.seconds ?? v._seconds) * 1000).toISOString()
-    if (v instanceof Date) return v.toISOString()
-    if (typeof v === 'string') return v
-    return null
-  }
-
-  const deadline = normalizeDate(task.deadline)
-  const createdDate = normalizeDate(task.createdDate)
-  const modifiedDate = normalizeDate(task.modifiedDate)
-
-  return {
-    ...task,
-    projectTitle,
-    creatorName,
-    assigneeNames,
-    deadline,
-    createdDate,
-    modifiedDate,
-    creatorId: task.taskCreatedBy?.id || task.taskCreatedBy?._path?.segments?.pop() || null,
+// --- Cache invalidation functions ---
+/**
+ * Invalidate project cache when project is updated/deleted
+ * Call this after any project modification
+ */
+export function invalidateProjectCache(projectId) {
+  if (projectId) {
+    projectCache.delete(projectId);
+    console.log(`[Cache] Invalidated project cache for: ${projectId}`);
+  } else {
+    // Clear all project cache
+    projectCache.clear();
+    console.log('[Cache] Cleared all project cache');
   }
 }
+
+/**
+ * Invalidate both user and project caches
+ * Use when major data changes occur
+ */
+export function invalidateAllCaches() {
+  projectCache.clear();
+  UserService.invalidateUserCache();
+  console.log('[Cache] Cleared all caches (projects + users)');
+}
+
+// --- helper: get cached project ---
+async function getCachedProject(projectRef) {
+  if (!projectRef) return null;
+  
+  try {
+    let projectId;
+    if (typeof projectRef === 'string') {
+      projectId = projectRef;
+    } else if (projectRef.path) {
+      const pathParts = projectRef.path.split('/');
+      projectId = pathParts[pathParts.length - 1];
+    } else if (projectRef.id) {
+      projectId = projectRef.id;
+    }
+
+    if (!projectId) return null;
+
+    // Check cache
+    const cached = projectCache.get(projectId);
+    if (cached && Date.now() - cached.timestamp < PROJECT_CACHE_TTL) {
+      return cached.data;
+    }
+
+    // Fetch from database
+    const projectDoc = await db.collection('Projects').doc(projectId).get();
+    if (!projectDoc.exists) return null;
+
+    const projectData = projectDoc.data();
+    const result = {
+      id: projectId,
+      title: projectData.title || 'Untitled Project'
+    };
+
+    // Cache it
+    projectCache.set(projectId, {
+      data: result,
+      timestamp: Date.now()
+    });
+
+    return result;
+  } catch (err) {
+    console.error('Error fetching project:', err);
+    return null;
+  }
+}
+
+// --- helper: extract user ID from reference ---
+function extractUserId(userRef) {
+  if (!userRef) return null;
+  if (typeof userRef === 'string') return userRef;
+  if (userRef.path) {
+    const pathParts = userRef.path.split('/');
+    return pathParts[pathParts.length - 1];
+  }
+  if (userRef._path && userRef._path.segments) {
+    return userRef._path.segments[userRef._path.segments.length - 1];
+  }
+  if (userRef.id) return userRef.id;
+  return null;
+}
+
+// --- OPTIMIZED helper: enrich tasks with project/creator/assignee names (BATCH VERSION) ---
+async function enrichTaskData(task) {
+  try {
+    // Collect all user IDs and project ID
+    const userIds = new Set();
+    
+    // Add creator ID
+    const creatorId = extractUserId(task.taskCreatedBy);
+    if (creatorId) userIds.add(creatorId);
+    
+    // Add assignee IDs
+    if (Array.isArray(task.assignedTo)) {
+      task.assignedTo.forEach(ref => {
+        const userId = extractUserId(ref);
+        if (userId) userIds.add(userId);
+      });
+    }
+
+    // Batch fetch all users in parallel with project
+    const [usersResult, projectData] = await Promise.all([
+      userIds.size > 0 ? UserService.getUsersByIds(Array.from(userIds)) : { success: true, users: [] },
+      getCachedProject(task.projectId)
+    ]);
+
+    // Create user lookup map
+    const userMap = new Map();
+    if (usersResult.success && usersResult.users) {
+      usersResult.users.forEach(user => {
+        userMap.set(user.uid || user.id, user);
+      });
+    }
+
+    // Get creator name
+    const creator = userMap.get(creatorId);
+    const creatorName = creator?.name || 'No creator';
+
+    // Get assignee names
+    const assigneeNames = [];
+    if (Array.isArray(task.assignedTo)) {
+      task.assignedTo.forEach(ref => {
+        const userId = extractUserId(ref);
+        const user = userMap.get(userId);
+        if (user) {
+          assigneeNames.push(user.name);
+        }
+      });
+    }
+
+    // Get project title
+    const projectTitle = projectData?.title || 'No project';
+
+    // --- Normalize Firestore/Date fields to ISO strings ---
+    const normalizeDate = (v) => {
+      if (v?.toDate) return v.toDate().toISOString()
+      if (v?.seconds || v?._seconds)
+        return new Date((v.seconds ?? v._seconds) * 1000).toISOString()
+      if (v instanceof Date) return v.toISOString()
+      if (typeof v === 'string') return v
+      return null
+    }
+
+    const deadline = normalizeDate(task.deadline)
+    const createdDate = normalizeDate(task.createdDate)
+    const modifiedDate = normalizeDate(task.modifiedDate)
+
+    return {
+      ...task,
+      projectTitle,
+      creatorName,
+      assigneeNames,
+      deadline,
+      createdDate,
+      modifiedDate,
+      creatorId: creatorId || null,
+    }
+  } catch (err) {
+    console.error('Error enriching task:', err);
+    // Return task with default values on error
+    return {
+      ...task,
+      projectTitle: 'No project',
+      creatorName: 'No creator',
+      assigneeNames: [],
+      deadline: task.deadline,
+      createdDate: task.createdDate,
+      modifiedDate: task.modifiedDate,
+      creatorId: null,
+    };
+  }
+}
+
+// --- OPTIMIZED: Batch enrich multiple tasks ---
+async function enrichTasksInBatch(tasks) {
+  if (!tasks || tasks.length === 0) return [];
+
+  try {
+    // Collect all unique user IDs and project IDs
+    const userIds = new Set();
+    const projectIds = new Set();
+
+    tasks.forEach(task => {
+      // Creator ID
+      const creatorId = extractUserId(task.taskCreatedBy);
+      if (creatorId) userIds.add(creatorId);
+
+      // Assignee IDs
+      if (Array.isArray(task.assignedTo)) {
+        task.assignedTo.forEach(ref => {
+          const userId = extractUserId(ref);
+          if (userId) userIds.add(userId);
+        });
+      }
+
+      // Project ID
+      const projectId = extractUserId(task.projectId);
+      if (projectId) projectIds.add(projectId);
+    });
+
+    // Batch fetch all users and projects in parallel
+    const [usersResult, projectsData] = await Promise.all([
+      userIds.size > 0 ? UserService.getUsersByIds(Array.from(userIds)) : { success: true, users: [] },
+      Promise.all(Array.from(projectIds).map(id => getCachedProject(id)))
+    ]);
+
+    // Create lookup maps
+    const userMap = new Map();
+    if (usersResult.success && usersResult.users) {
+      usersResult.users.forEach(user => {
+        userMap.set(user.uid || user.id, user);
+      });
+    }
+
+    const projectMap = new Map();
+    projectsData.forEach(project => {
+      if (project) {
+        projectMap.set(project.id, project);
+      }
+    });
+
+    // Enrich all tasks
+    return tasks.map(task => {
+      const creatorId = extractUserId(task.taskCreatedBy);
+      const creator = userMap.get(creatorId);
+      const creatorName = creator?.name || 'No creator';
+
+      const assigneeNames = [];
+      if (Array.isArray(task.assignedTo)) {
+        task.assignedTo.forEach(ref => {
+          const userId = extractUserId(ref);
+          const user = userMap.get(userId);
+          if (user) {
+            assigneeNames.push(user.name);
+          }
+        });
+      }
+
+      const projectId = extractUserId(task.projectId);
+      const project = projectMap.get(projectId);
+      const projectTitle = project?.title || 'No project';
+
+      // Normalize dates
+      const normalizeDate = (v) => {
+        if (v?.toDate) return v.toDate().toISOString()
+        if (v?.seconds || v?._seconds)
+          return new Date((v.seconds ?? v._seconds) * 1000).toISOString()
+        if (v instanceof Date) return v.toISOString()
+        if (typeof v === 'string') return v
+        return null
+      }
+
+      return {
+        ...task,
+        projectTitle,
+        creatorName,
+        assigneeNames,
+        deadline: normalizeDate(task.deadline),
+        createdDate: normalizeDate(task.createdDate),
+        modifiedDate: normalizeDate(task.modifiedDate),
+        creatorId: creatorId || null,
+      };
+    });
+  } catch (err) {
+    console.error('Error batch enriching tasks:', err);
+    // Fallback to individual enrichment
+    return Promise.all(tasks.map(t => enrichTaskData(t)));
+  }
+}
+
 
 // --- main service function ---
 export async function getTasksForUser(userId) {
@@ -89,8 +302,8 @@ export async function getTasksForUser(userId) {
       const allTasks = allTasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
         .filter((t) => t.isCurrentInstance !== false); // show only current instance
 
-      // ✅ Enrich tasks (project, creator, assignees)
-      const enriched = await Promise.all(allTasks.map((t) => enrichTaskData(t)))
+      // ✅ Batch enrich tasks (optimized)
+      const enriched = await enrichTasksInBatch(allTasks)
       return enriched
     }
 
@@ -148,7 +361,7 @@ export async function getTasksForUser(userId) {
 
       const tasks = Array.from(taskMap.values())
         .filter((t) => t.isCurrentInstance !== false); // show only current instance
-      const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
+      const enriched = await enrichTasksInBatch(tasks) // ✅ Batch enrich
 
       return enriched
     }
@@ -170,7 +383,7 @@ export async function getTasksForUser(userId) {
 
     const tasks = Array.from(taskMap.values())
       .filter((t) => t.isCurrentInstance !== false); // show only current instance
-    const enriched = await Promise.all(tasks.map((t) => enrichTaskData(t)))
+    const enriched = await enrichTasksInBatch(tasks) // ✅ Batch enrich
     return enriched
 
   } catch (err) {
@@ -580,6 +793,23 @@ export async function updateTask(taskId, updates) {
       await taskRef.update(updateData)
     }
 
+    // ✅ Invalidate caches when task data changes
+    // If project changed, invalidate old and new project caches
+    if (updateData.projectId) {
+      const oldProjectId = extractUserId(existingTask.projectId);
+      const newProjectId = extractUserId(updateData.projectId);
+      if (oldProjectId) invalidateProjectCache(oldProjectId);
+      if (newProjectId && newProjectId !== oldProjectId) invalidateProjectCache(newProjectId);
+    }
+    
+    // If assignees changed, invalidate user cache for new assignees
+    if (updateData.assignedTo && Array.isArray(updateData.assignedTo)) {
+      updateData.assignedTo.forEach(ref => {
+        const userId = extractUserId(ref);
+        if (userId) UserService.invalidateUserCache(userId);
+      });
+    }
+
     return { id: taskId, ...updateData }
   } catch (err) {
     throw err
@@ -716,9 +946,9 @@ export async function getSubtasksForTask(taskId) {
       .collection('Subtasks')
       .get();
       
-    // Map all subtasks and enrich them with project/creator/assignee names
+    // Map all subtasks and enrich them with project/creator/assignee names (BATCH)
     const subtasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const enrichedSubtasks = await Promise.all(subtasks.map(st => enrichTaskData(st)));
+    const enrichedSubtasks = await enrichTasksInBatch(subtasks); // ✅ Batch enrich
     
     return enrichedSubtasks;
   } catch (err) {
