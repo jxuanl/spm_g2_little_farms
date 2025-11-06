@@ -8,7 +8,8 @@ import AuthService from './userService.js';
 import { sendToUser } from './webSocketService.js';
 
 const senderEmail = process.env.SENDER_EMAIL;
-
+// Default fallback used for manual testing — override in .env with DEFAULT_TEST_EMAIL.
+const DEFAULT_TEST_EMAIL = process.env.DEFAULT_TEST_EMAIL || 'jovanwang2002@gmail.com'; // prof please change this to your email to test out! or set DEFAULT_TEST_EMAIL in the tests/e2e/.env or repo .env.
 // ==============================
 // Helper Functions
 // ==============================
@@ -129,45 +130,68 @@ export async function handleManagerTaskUpdate(updatedFields) {
   if (!taskDoc.exists) throw new Error("Task not found");
   const taskData = taskDoc.data();
 
-  // Notify assigned users
+  // Notify assigned users (respect per-user channel: 'in-app' or email)
   const assignees = Array.isArray(taskData.assignedTo) ? taskData.assignedTo : [];
+  let perUserEmailCount = 0;
   for (const userRefLike of assignees) {
     const userDoc = await resolveUserDoc(userRefLike);
     if (!userDoc.exists) continue;
+    const userId = userDoc.id;
+    const userData = userDoc.data();
+    const channel = userData.channel || userData.reminderPreference || 'in-app';
+    const title = `Task Updated: ${updatedFields.title?.new || taskTitle}`;
+    const body = changesText || `Task "${updatedFields.title?.new || taskTitle}" was updated.`;
 
     try {
-      // create a change notification (instead of the deadline reminder)
-      const userId = userDoc.id;
-      const title = `Task Updated: ${updatedFields.title?.new || taskTitle}`;
-      const body = changesText || `Task "${updatedFields.title?.new || taskTitle}" was updated.`;
-      await createNotificationForUser({
-        userId,
-        title,
-        body,
-        taskId: id,
-        metadata: { changeCount: Object.keys(changes).length }
-      });
+      if (channel === 'in-app') {
+        await createNotificationForUser({
+          userId,
+          title,
+          body,
+          taskId: id,
+          metadata: { changeCount: Object.keys(changes).length }
+        });
+      } else {
+        const toEmail = userData.email || (userData.user && userData.user.email) || null;
+        if (toEmail) {
+          const emailMsg = { to: toEmail, from: senderEmail, subject: title, text: body };
+          await sendEmail(emailMsg);
+          perUserEmailCount++;
+        } else {
+          // fallback to in-app if no email available
+          await createNotificationForUser({
+            userId,
+            title,
+            body,
+            taskId: id,
+            metadata: { changeCount: Object.keys(changes).length }
+          });
+        }
+      }
     } catch (err) {
-      console.error(`Failed to send notification to user ${userDoc.id}:`, err);
+      console.error(`Failed to notify user ${userId}:`, err);
     }
   }
 
-  // Send update email
-  const emailMsg = {
-    to: "jovanwang2002@gmail.com", // temporary
-    from: senderEmail,
-    subject: `Task Update Notification: ${updatedFields.title?.new || taskTitle}`,
-    text: `Hello, The task "${updatedFields.title?.new || taskTitle}" has been updated.\n\n${changesText}`
-  };
+  // Optional: send fallback/test email only if no per-user emails were sent
+  if (perUserEmailCount === 0) {
+    const emailMsg = {
+      to: DEFAULT_TEST_EMAIL,
+      from: senderEmail,
+      subject: `Task Update Notification: ${updatedFields.title?.new || taskTitle}`,
+      text: `Hello, The task "${updatedFields.title?.new || taskTitle}" has been updated.\n\n${changesText}`
+    };
+    await sendEmail(emailMsg);
+  }
 
-  await sendEmail(emailMsg);
-  return { message: "Email sent and notifications dispatched", changes };
+  return { message: "Notifications dispatched", changes, perUserEmailCount };
 }
 
 // Handle daily digest
 export async function sendDailyDigest(userId, detailedTasks) {
   const userData = await AuthService.getUserById(userId);
-  const userEmail = "jovanwang2002@gmail.com"; // replace with userData.user.email
+  // Prefer the user's stored email; fallback to DEFAULT_TEST_EMAIL for testing.
+  const userEmail = userData?.user?.email || DEFAULT_TEST_EMAIL;
   const tasks = Array.isArray(detailedTasks) ? detailedTasks : [];
 
   // helper: safe HTML escaping

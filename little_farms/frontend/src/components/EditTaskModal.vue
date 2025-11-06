@@ -841,8 +841,6 @@ const saveTaskUpdate = async () => {
       userId: user.uid
     };
 
-    console.log(updateData);
-
     const endpoint = props.isSubtask
       ? `/api/tasks/${props.parentTaskId}/subtasks/${props.task.id}`
       : `/api/tasks/${props.task.id}`;
@@ -861,8 +859,41 @@ const saveTaskUpdate = async () => {
       throw new Error(`Failed to update: ${res.status} ${text}`);
     }
 
+    // build a change-diff payload for notificationService (only include changed fields)
+    const changes = {};
+    const addChange = (key, oldV, newV) => {
+      const isEqual =
+        (Array.isArray(oldV) && Array.isArray(newV) && JSON.stringify(oldV) === JSON.stringify(newV)) ||
+        (!Array.isArray(oldV) && !Array.isArray(newV) && String(oldV) === String(newV));
+      if (!isEqual) changes[key] = { old: oldV, new: newV };
+    };
+
+    addChange('title', originalValues.title, formData.title);
+    addChange('priority', originalValues.priority, formData.priority);
+    addChange('status', originalValues.status, formData.status);
+    addChange('projectId', originalValues.projectId, formData.projectId);
+    addChange('assignedTo', originalValues.assignedTo, formData.assignedTo);
+    addChange('deadline', originalValues.deadline, formData.deadline);
+    addChange('tags', originalValues.tags, formData.tags);
+
+    if (Object.keys(changes).length > 0) {
+      const notifPayload = { id: props.task.id, ...changes };
+      try {
+        await fetch('/api/notifications/update/tasks/manager', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(notifPayload)
+        });
+      } catch (e) {
+        // log but do not block user
+        console.warn('Failed to send manager notification payload', e);
+      }
+    }
+
     // Only show success message if we're NOT changing to "done" status
-    // (if changing to "done", we'll show success after time logging)
     if (formData.status !== 'done' || originalValues.status === 'done') {
       showSuccessMessage.value = true;
       setTimeout(() => {
@@ -871,9 +902,9 @@ const saveTaskUpdate = async () => {
         emit('close');
       }, 1500);
     }
-   
+
     return true; // Return success status
-   
+
   } catch (err) {
     console.error('❌ Error updating task:', err);
     errors.title = err.message || 'Failed to update task. Please try again.';

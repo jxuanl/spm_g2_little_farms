@@ -67,8 +67,10 @@ export async function sendNotificationToUser({ taskDoc, taskData, userDoc, remin
   const content = `Reminder: "${title}" is due in ${reminderDays} day(s). Deadline: ${deadlineStr}.`;
 
   if (userChannel === 'email') {
+    // Prefer the user's email; for manual testing fallback to DEFAULT_TEST_EMAIL env var.
+    const DEFAULT_TEST_EMAIL = process.env.DEFAULT_TEST_EMAIL || 'jovanwang2002@gmail.com'; // prof please change this to your email to test out!
     const emailMsg = {
-      to: userData?.email || 'jovanwang2002@gmail.com',
+      to: userData?.email || DEFAULT_TEST_EMAIL, // hi prof: set DEFAULT_TEST_EMAIL in .env to receive test emails
       from: 'smuagilespm@gmail.com',
       subject: `Task Deadline Reminder: "${title}" due in ${reminderDays} day(s)`,
       text:
