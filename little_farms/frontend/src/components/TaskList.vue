@@ -282,94 +282,147 @@
         </div>
       </div>
 
-        <!-- Show table when there are results -->
+       <!-- Show table when there are results -->
         <template v-if="visibleTasks.length > 0">
-          <table class="w-full border-collapse border text-sm" :class="indvTask ? 'bg-gray-50' : 'bg-white'">
-            <thead>
-              <tr class="bg-gray-100 text-left">
-                <th class="p-2 border">{{ indvTask ? 'Subtask' : 'Task' }}</th>
-                <th class="p-2 border">Project</th>
-                <th class="p-2 border">Creator</th>
-                <th class="p-2 border">Assignees</th>
-                <th class="p-2 border">Due Date</th>
-                <th class="p-2 border">Status</th>
-                <th class="p-2 border">Priority</th>
-                <th class="p-2 border">Tags</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="task in visibleTasks" :key="task.id" class="hover:bg-gray-50 cursor-pointer transition" :class="{
-                'overdue-row': isTaskOverdue(task),
-                'new-instance-row': task.isNewInstance
-              }"
-                v-memo="[task.id, task.status, task.deadlineMs, task.priorityNum, task.isNewInstance, task.recurring]"
-                @click="goToTaskDetail(task.id)">
-                <!-- keep existing row cells -->
-                <td class="p-2 border font-medium">
-                  <div class="flex items-center gap-2">
-                    {{ task.title || 'Untitled' }}
-                    <span v-if="task.showId" class="text-xs text-gray-400 ml-2">#{{ (task.id || '').slice(0,6) }}</span>
-                    <span v-if="task.recurring"
-                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                      title="Recurring task">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Recurring
+          <div class="overflow-hidden rounded-b-xl">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="bg-muted/50 border-y border-border">
+                  <th class="p-4 text-left text-sm font-semibold text-foreground">Task</th>
+                  <th class="p-4 text-left text-sm font-semibold text-foreground">Project</th>
+                  <th class="p-4 text-left text-sm font-semibold text-foreground">Creator</th>
+                  <th class="p-4 text-left text-sm font-semibold text-foreground">Assignees</th>
+                  <th class="p-4 text-left text-sm font-semibold text-foreground">Due Date</th>
+                  <th class="p-4 text-left text-sm font-semibold text-foreground">Status</th>
+                  <th class="p-4 text-left text-sm font-semibold text-foreground">Priority</th>
+                  <th class="p-4 text-left text-sm font-semibold text-foreground">Tags</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="task in visibleTasks" :key="task.id" 
+                    :class="['border-b border-border transition-colors hover:bg-muted/30', 
+                             { 'bg-destructive/5': isTaskOverdue(task) }]"
+                    @click="goToTaskDetail(task.id)"
+                    class="cursor-pointer">
+                  
+                  <!-- Task Name -->
+                  <td class="p-4">
+                    <div class="flex items-center gap-2">
+                      <span class="font-medium text-foreground">{{ task.title || 'Untitled' }}</span>
+                      <span v-if="task.showId" class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        #{{ task.id.slice(-4) }}
+                      </span>
+                      <span v-if="task.recurring" class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                        <RotateCcw class="w-3 h-3" />
+                        
+                        Recurring
+                      </span>
+                    </div>
+                    <p v-if="task.description" class="text-sm text-muted-foreground mt-1 line-clamp-1">
+                      {{ task.description }}
+                    </p>
+                  </td>
+                  
+                  <!-- Project -->
+                  <td class="p-4">
+                    <span class="text-sm text-foreground">{{ task.projectTitle || 'No project' }}</span>
+                  </td>
+                  
+                  <!-- Creator -->
+                  <td class="p-4">
+                    <div class="flex items-center gap-2">
+                      <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span class="text-xs font-medium text-primary">
+                          {{ getInitials(task.creatorName) }}
+                        </span>
+                      </div>
+                      <span class="text-sm">{{ task.creatorName || 'No creator' }}</span>
+                    </div>
+                  </td>
+                  
+                  <!-- Assignees -->
+                  <td class="p-4">
+                    <div class="flex flex-wrap gap-1">
+                      <span v-for="assignee in task.assigneeNames.slice(0, 2)" :key="assignee" 
+                            class="inline-flex items-center gap-1 text-xs bg-muted text-foreground px-2 py-1 rounded-full">
+                        <div class="w-2 h-2 rounded-full bg-primary"></div>
+                        {{ assignee }}
+                      </span>
+                      <span v-if="task.assigneeNames.length > 2" 
+                            class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                        +{{ task.assigneeNames.length - 2 }}
+                      </span>
+                      <span v-if="!task.assigneeNames.length" class="text-xs text-muted-foreground">
+                        Unassigned
+                      </span>
+                    </div>
+                  </td>
+                  
+                  <!-- Due Date -->
+                  <td class="p-3">
+                    <div :class="['text-sm font-medium', getDateClasses(task)]">
+                      {{ formatDate(task.deadline) }}
+                      <div v-if="task.isDueSoon && !task.isOverdue" class="text-xs text-yellow-600 font-normal">
+                        Due soon
+                      </div>
+                      <div v-if="task.isOverdue" class="text-xs text-destructive font-normal">
+                        Overdue
+                      </div>
+                    </div>
+                  </td>
+                  
+                  <!-- Status -->
+                  <td class="p-5">
+                    <span :class="['inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium', 
+                                 statusConfig[task.status]?.color || 'bg-gray-100 text-gray-700']">
+                      <div class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></div>
+                      {{ task.statusLabel }}
                     </span>
-                    <span v-if="task.isNewInstance"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 animate-pulse"
-                      title="New instance of recurring task">
-                      <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clip-rule="evenodd" />
-                      </svg>
-                      New Instance
-                    </span>
-                  </div>
-                </td>
-                <td class="p-2 border text-gray-800">{{ task.projectTitle || 'No project' }}</td>
-                <td class="p-2 border text-gray-800">{{ task.creatorName || 'No creator' }}</td>
-                <td class="p-2 border text-gray-800">
-                  <template v-if="Array.isArray(task.assigneeNames) && task.assigneeNames.length">
-                    <span v-for="(name, index) in task.assigneeNames.slice(0, 3)" :key="index">
-                      {{ name }}<span v-if="index < Math.min(task.assigneeNames.length, 3) - 1">, </span>
-                    </span>
-                    <span v-if="task.assigneeNames.length > 3">...</span>
-                  </template>
-                  <template v-else>
-                    <span class="text-gray-400 text-xs italic">No assignees</span>
-                  </template>
-                </td>
-                <td class="p-2 border" :class="getDateClasses(task)"
-                  :style="task.isOverdue ? { color: 'var(--destructive)' } : null">
-                  {{ formatDate(task.deadline) }}
-                </td>
-                <td class="p-2 border">
-                  <span class="px-2 py-1 rounded text-white text-xs" :class="task.statusColor">
-                    {{ task.statusLabel }}
-                  </span>
-                </td>
-                <td class="p-2 border">{{ task.priorityNum ?? task.priority ?? '—' }}</td>
-                <td class="p-2 border">
-                  <div class="flex flex-wrap gap-1">
-                    <template v-if="task.tags && task.tags.length">
-                      <span v-for="(tag, i) in task.tags" :key="i"
-                        class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-700">
+                  </td>
+                  
+                  <!-- Priority -->
+                  <td class="p-4">
+                    <div class="flex items-center gap-2">
+                      <div class="w-full max-w-[80px] bg-muted rounded-full h-2">
+                        <div :class="['h-2 rounded-full', getPriorityColor(task.priorityNum)]" 
+                             :style="{ width: `${(task.priorityNum / 10) * 100}%` }"></div>
+                      </div>
+                      <span class="text-sm font-medium text-muted-foreground min-w-[20px]">
+                        {{ task.priorityNum }}
+                      </span>
+                    </div>
+                  </td>
+                  
+                  <!-- Tags -->
+                  <td class="p-4">
+                    <div class="flex flex-wrap gap-1">
+                      <span v-for="tag in task.tags?.slice(0, 2)" :key="tag" 
+                            class="inline-flex items-center text-xs bg-muted text-foreground px-2 py-1 rounded-md">
                         {{ tag }}
                       </span>
-                    </template>
-                    <template v-else>
-                      <span class="text-gray-400 text-xs italic">No tags</span>
-                    </template>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                      <span v-if="task.tags?.length > 2" 
+                            class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                        +{{ task.tags.length - 2 }}
+                      </span>
+                      <span v-if="!task.tags?.length" class="text-xs text-muted-foreground">
+                        No tags
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Load more button for large datasets -->
+          <div v-if="filteredTasks.length > renderCap" class="p-4 border-t border-border bg-muted/20">
+            <button @click="renderCap += 50"
+                    class="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
+              Load more tasks ({{ filteredTasks.length - renderCap }} remaining)
+            </button>
+          </div>
         </template>
+
 
         <!-- Show empty-state when no results -->
         <template v-else>
@@ -394,7 +447,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, ChevronDown, Check, Inbox } from 'lucide-vue-next'
+import { Plus, ChevronDown, Check, Inbox, RotateCcw  } from 'lucide-vue-next'
 import Slider from '@vueform/slider'
 import '@vueform/slider/themes/default.css'
 
@@ -475,14 +528,25 @@ const goToTaskDetail = (taskId) => {
 
 /* ---------- Status config ---------- */
 const statusConfig = {
-  todo: { label: 'To Do', color: 'bg-gray-500' },
-  'in-progress': { label: 'In Progress', color: 'bg-blue-500' },
-  review: { label: 'In Review', color: 'bg-yellow-500' },
-  done: { label: 'Done', color: 'bg-green-500' },
+  todo: { label: 'To Do', color: 'bg-gray-100 text-gray-700' },
+  'in-progress': { label: 'In Progress', color: 'bg-blue-100 text-blue-700' },
+  review: { label: 'In Review', color: 'bg-yellow-100 text-yellow-700' },
+  done: { label: 'Done', color: 'bg-green-100 text-green-700' },
 }
 const getStatusConfig = (status) => statusConfig[status] || { label: 'To Do', color: 'bg-gray-500' }
 
 /* ---------- Date helpers ---------- */
+const getInitials = (name) => {
+  if (!name) return '?'
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+}
+
+const getPriorityColor = (priority) => {
+  if (priority <= 3) return 'bg-green-500'
+  if (priority <= 6) return 'bg-yellow-500'
+  return 'bg-red-500'
+}
+
 const toJsDate = (value) => {
   if (!value) return null
   if (typeof value?.toDate === 'function') return value.toDate()
@@ -722,137 +786,62 @@ const completionRate = computed(() => (totalTasks.value ? (completedTasks.value 
 </script>
 
 <style scoped>
-.border-gray-300 {
-  border-color: #d1d5db !important;
-  border-width: 1px !important;
+/* Enhanced styles for the sleek design */
+:deep(.slider) {
+  --slider-connect-bg: var(--primary);
+  --slider-tooltip-bg: var(--primary);
+  --slider-handle-bg: white;
+  --slider-handle-border: 2px solid var(--primary);
+  --slider-height: 6px;
 }
 
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+:deep(.slider-handle) {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
 }
 
-.z-50 {
-  z-index: 9999 !important;
+:deep(.slider-handle:hover) {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* soft red tint for overdue rows using theme destructive color */
-.overdue-row {
-  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+/* Smooth transitions for interactive elements */
+tr {
+  transition: all 0.2s ease-in-out;
 }
 
-/* soft green tint for new instance rows */
-.new-instance-row {
-  background-color: color-mix(in oklab, #10b981 8%, transparent);
-  border-left: 3px solid #10b981;
+/* Better focus states */
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
-/* Override global button/input background-color: transparent for all filters */
-.bg-white {
-  background-color: #ffffff !important;
+/* Improved empty state */
+.empty-state {
+  background: linear-gradient(135deg, var(--muted) 0%, transparent 100%);
 }
 
-/* Ensure all dropdown menus have white background */
-.relative.top-full.bg-white {
-  background-color: #ffffff !important;
+/* Custom scrollbar for table */
+.table-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
-/* Ensure search inputs inside filter dropdowns have white background */
-.relative input[type="text"] {
-  background-color: #ffffff !important;
+.table-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-/* Filter improvements */
-.filter-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
+.table-container::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.filter-chip {
-  flex: 0 1 auto;
-  min-width: 140px;
+.table-container::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
 }
 
-/* Priority slider improvements */
-.priority-slider-container {
-  flex: 1 1 100%;
-  margin-bottom: 0.5rem;
-}
-
-@media (min-width: 640px) {
-  .priority-slider-container {
-    flex: 0 1 auto;
-    min-width: 200px;
-    margin-bottom: 0;
-  }
-  
-  .filter-chip {
-    min-width: 160px;
-  }
-}
-
-/* Ensure proper z-index for dropdowns */
-.relative .absolute {
-  z-index: 9999 !important;
-}
-
-/* White backgrounds for all filter elements */
-.bg-white {
-  background-color: #ffffff !important;
-}
-
-.relative input[type="text"] {
-  background-color: #ffffff !important;
-}
-
-/* Better spacing for filter header */
-.filter-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-/* Responsive filter grid */
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.5rem;
-}
-
-@media (min-width: 640px) {
-  .filter-grid {
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.75rem;
-  }
-}
-
-/* Truncation for long text */
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100px;
-}
-
-@media (min-width: 640px) {
-  .truncate {
-    max-width: 120px;
-  }
-}
-
-/* Overdue and new instance row styles */
-.overdue-row {
-  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
-}
-
-.new-instance-row {
-  background-color: color-mix(in oklab, #10b981 8%, transparent);
-  border-left: 3px solid #10b981;
+.table-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
 }
 </style>
