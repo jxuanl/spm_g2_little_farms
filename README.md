@@ -84,7 +84,13 @@ Run E2E tests:
 cd tests/e2e
 npm run test:e2e
 ```
-*Note: in the package.json under test folder, 
+*Note: For Winidows OS users, in the package.json under test folder, change the script to:
+
+```{
+  "scripts": {
+    "test": "cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --forceExit --runInBand"
+  }
+}```
 
 ## Features
 
