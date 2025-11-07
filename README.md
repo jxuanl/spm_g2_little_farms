@@ -90,7 +90,8 @@ npm run test:e2e
   "scripts": {
     "test": "cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --forceExit --runInBand"
   }
-}```
+}
+```
 
 ## Features
 
