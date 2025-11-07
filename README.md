@@ -199,3 +199,5 @@ This project is licensed under the MIT License.
 ---
 
 **Need Help?** Open an issue on GitHub or contact the maintainers.
+
+Link to github repo: https://github.com/jxuanl/spm_g2_little_farms
