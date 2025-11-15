@@ -467,7 +467,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, ChevronDown, Check, Inbox, RotateCcw } from 'lucide-vue-next'
 import Slider from '@vueform/slider'
@@ -537,24 +537,6 @@ const toggleDropdown = (dropdown) => {
 const closeAllDropdowns = () => {
   Object.keys(dropdownStates.value).forEach(key => (dropdownStates.value[key] = false))
 }
-
-// Template ref for filters container
-const filtersContainer = ref(null)
-
-// Handle click outside to close dropdowns
-const handleClickOutside = (event) => {
-  if (filtersContainer.value && !filtersContainer.value.contains(event.target)) {
-    closeAllDropdowns()
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 
 const goToTaskDetail = (taskId) => {
   if (props.indvTask && props.parentTaskId) {
@@ -645,18 +627,7 @@ watch(
   () => props.tasks,
   (arr) => {
     const src = Array.isArray(arr) ? arr : []
-    // Preprocess tasks and mark tasks that share a duplicate title so we can
-    // optionally show the task id when multiple tasks have the same title.
-    const pre = src.map(preprocessTask)
-    const titleCounts = {}
-    for (const t of pre) {
-      const key = (t.title || 'Untitled').trim()
-      titleCounts[key] = (titleCounts[key] || 0) + 1
-    }
-    processedTasks.value = pre.map(t => {
-      const key = (t.title || 'Untitled').trim()
-      return { ...t, showId: titleCounts[key] > 1 }
-    })
+    processedTasks.value = src.map(preprocessTask)
     // once first props.tasks arrives (even empty), stop showing "Loading"
     localBootLoading.value = false
   },
@@ -684,6 +655,9 @@ const toggleSelection = (filterType, value) => {
   const i = filter.value.indexOf(value)
   if (i > -1) filter.value.splice(i, 1)
   else filter.value.push(value)
+
+  // Debug logging
+  console.log(`Toggle ${filterType}:`, value, 'Selected:', filter.value)
 }
 
 const clearFilter = (filterType) => {
